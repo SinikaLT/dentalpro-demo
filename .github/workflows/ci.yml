@@ -1,0 +1,16 @@
+name: DentalPro 2.0 CI
+on:
+  push:
+    branches: [main, feature/dentalpro-2-unified-demo]
+  pull_request:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and domain tests
+        run: npm run verify
