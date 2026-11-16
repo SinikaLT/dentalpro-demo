@@ -1,0 +1,15 @@
+{
+  "name": "dentalpro-demo",
+  "version": "2.0.0-demo",
+  "private": true,
+  "type": "module",
+  "description": "Odontologijos klinikų valdymo sistemos demonstracinė versija",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/domain.mjs && node --check src/store.mjs && node --check src/views.mjs",
+    "verify": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
