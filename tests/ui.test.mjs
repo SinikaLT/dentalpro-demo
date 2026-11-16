@@ -31,7 +31,7 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   assert.equal(hooks.db.clinics.length,2);
   assert.equal(hooks.db.chairs.length,4);
   assert.equal(hooks.db.patients.length,20);
-  for(const r of ["calendar","patients","doctors","odontogram","plans","notes","finances","services","vlk","admin"]){
+  for(const r of ["calendar","patients","doctors","odontogram","plans","notes","finances","forms","reports","services","vlk","admin"]){
     hooks.route(r);
     assert.match(node("page").innerHTML,/<h1>/);
     assert.ok(node("page").innerHTML.length>200,r+" should render");
