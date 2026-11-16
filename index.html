@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DentalPro</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#183047}
+header{background:#087e8b;color:white;padding:18px 24px}
+header h1{margin:0;font-size:26px}
+header small{opacity:.9}
+nav{display:flex;gap:8px;flex-wrap:wrap;background:white;padding:12px;border-bottom:1px solid #ddd}
+button,select,input,textarea{font:inherit;padding:9px;border:1px solid #cbd5e1;border-radius:7px}
+button{cursor:pointer;background:white}
+button.active,.primary{background:#087e8b;color:white;border-color:#087e8b}
+main{max-width:1200px;margin:20px auto;padding:0 14px}
+.card{background:white;border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px #0001}
+.grid{display:grid;grid-template-columns:280px 1fr;gap:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.patient{display:block;width:100%;text-align:left;margin:5px 0}
+.patient.selected{background:#d7f4f2;border-color:#087e8b}
+.teeth{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.tooth{width:46px;height:52px;padding:4px;border:2px solid #94a3b8;border-radius:10px;background:#fff}
+.tooth.selected{border-color:#087e8b;background:#b9f3eb}
+.tooth.problem{background:#ffe0e0}
+.tooth small{display:block;font-size:10px}
+label{display:block;margin:10px 0 5px;font-weight:bold}
+input,textarea,select{max-width:100%;width:100%}
+textarea{min-height:75px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:9px;border-bottom:1px solid #ddd;text-align:left}
+.muted{color:#64748b}
+.notice{background:#fff3cd;padding:12px;border-radius:8px}
+@media(max-width:750px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>🦷 DentalPro</h1>
+<small>Odontologijos klinikų demonstracinė sistema</small>
+</header>
+<nav>
+<button onclick="showTab('patients')" id="tab-patients">Pacientai</button>
+<button onclick="showTab('visits')" id="tab-visits">Vizitai</button>
+<button onclick="showTab('plans')" id="tab-plans">Gydymo planai</button>
+<button onclick="showTab('vlk')" id="tab-vlk">VLK / PSDF</button>
+</nav>
+<main>
+<div class="card">
+<div class="row">
+<strong>Klinika:</strong>
+<select id="clinic" onchange="changeClinic()" style="width:230px">
+<option>Naujoji Akmenė</option>
+<option>Kuršėnai</option>
+</select>
+<span class="muted">Demonstraciniai duomenys</span>
+</div>
+</div>
+<div id="content"></div>
+</main>
+<script>
+const names=[
+["Jonas Kazlauskas","Ona Petrauskienė","Mantas Jankauskas","Rūta Stankevičienė","Vytautas Žukauskas","Aistė Balčiūnaitė","Darius Vaitkus","Ieva Paulauskaitė","Tomas Butkus","Emilija Šimkutė"],
+["Antanas Rimkus","Birutė Norkienė","Lukas Kavaliauskas","Gabija Urbonaitė","Povilas Žilinskas","Monika Kairytė","Arūnas Mikalauskas","Greta Mockutė","Saulius Navickas","Agnė Jurevičiūtė"]
+];
+let clinic=0,patient=0,tab="patients",selectedTooth=11;
+let data=JSON.parse(localStorage.getItem("dentalpro_demo")||"{}");
+function key(){return clinic+"-"+patient}
+function record(){
+if(!data[key()])data[key()]={teeth:{},visits:[],plans:[]};
+return data[key()];
+}
+function save(){localStorage.setItem("dentalpro_demo",JSON.stringify(data))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function showTab(t){tab=t;render()}
+function changeClinic(){clinic=+document.getElementById("clinic").selectedIndex;patient=0;render()}
+function choosePatient(i){patient=i;selectedTooth=11;render()}
+function teethList(primary){
+return primary?
+[55,54,53,52,51,61,62,63,64,65,85,84,83,82,81,71,72,73,74,75]:
+[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+}
+function toothButtons(primary){
+return teethList(primary).map(n=>{
+let info=record().teeth[n];
+return `<button class="tooth ${selectedTooth===n?'selected':''} ${info?'problem':''}" onclick="selectTooth(${n})">${n}<small>${info?'●':'○'}</small></button>`
+}).join("");
+}
+function selectTooth(n){selectedTooth=n;render()}
+function saveTooth(){
+record().teeth[selectedTooth]={
+surface:document.getElementById("surface").value,
+diagnosis:document.getElementById("diagnosis").value,
+treatment:document.getElementById("treatment").value
+};
+save();render();
+}
+function addVisit(){
+let date=document.getElementById("visitdate").value;
+let text=document.getElementById("visittext").value.trim();
+if(!date||!text){alert("Įrašykite datą ir aprašymą");return}
+record().visits.push({date,text});save();render();
+}
+function addPlan(){
+let text=document.getElementById("plantext").value.trim();
+if(!text)return;
+record().plans.push(text);save();render();
+}
+function render(){
+document.getElementById("clinic").selectedIndex=clinic;
+document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.id==="tab-"+tab));
+let html="";
+if(tab==="patients"){
+let p=record(),t=p.teeth[selectedTooth]||{};
+html=`<div class="grid"><section class="card"><h3>Pacientai</h3>
+${names[clinic].map((n,i)=>`<button class="patient ${patient===i?'selected':''}" onclick="choosePatient(${i})">${esc(n)}</button>`).join("")}
+</section><section>
+<div class="card"><h2>${esc(names[clinic][patient])}</h2>
+<p class="muted">Klinika: ${clinic===0?'Naujoji Akmenė':'Kuršėnai'}</p>
+<h3>Nuolatinių dantų odontograma (32)</h3>
+<div class="teeth">${toothButtons(false)}</div>
+<h3>Pieninių dantų odontograma (20)</h3>
+<div class="teeth">${toothButtons(true)}</div></div>
+<div class="card"><h3>Dantis ${selectedTooth}</h3>
+<label>Paviršius</label><select id="surface">
+${["Visas dantis","M – medialinis","D – distalinis","O/I – kramtomasis / kandamasis","V/B – vestibulinis","L/P – liežuvinis / gomurinis"].map(x=>`<option ${t.surface===x?'selected':''}>${x}</option>`).join("")}
+</select>
+<label>Diagnozė</label><input id="diagnosis" value="${esc(t.diagnosis||"")}" placeholder="Pvz., ėduonis">
+<label>Gydymas / procedūra</label><textarea id="treatment" placeholder="Atliktas ar planuojamas gydymas">${esc(t.treatment||"")}</textarea>
+<p><button class="primary" onclick="saveTooth()">Išsaugoti danties įrašą</button></p>
+</div></section></div>`;
+}
+if(tab==="visits"){
+html=`<div class="card"><h2>Vizitai – ${esc(names[clinic][patient])}</h2>
+<p>Pacientą pasirinkite skiltyje „Pacientai“.</p>
+<label>Data</label><input type="date" id="visitdate">
+<label>Vizito aprašymas</label><textarea id="visittext"></textarea>
+<p><button class="primary" onclick="addVisit()">Pridėti vizitą</button></p>
+<table><tr><th>Data</th><th>Aprašymas</th></tr>
+${record().visits.map(v=>`<tr><td>${esc(v.date)}</td><td>${esc(v.text)}</td></tr>`).join("")}</table></div>`;
+}
+if(tab==="plans"){
+html=`<div class="card"><h2>Gydymo planas – ${esc(names[clinic][patient])}</h2>
+<label>Planuojamas gydymas</label><textarea id="plantext"></textarea>
+<p><button class="primary" onclick="addPlan()">Pridėti į planą</button></p>
+${record().plans.map((p,i)=>`<p>${i+1}. ${esc(p)}</p>`).join("")}</div>`;
+}
+if(tab==="vlk"){
+html=`<div class="card"><h2>VLK / PSDF apskaita</h2>
+<p>Paslaugų sritys pagal šios demonstracijos klinikų veiklą:</p>
+<ul><li>Dantų protezavimo paslaugos suaugusiesiems</li>
+<li>Dantų protezavimo paslaugos vaikams</li>
+<li>Gydytojo odontologo konsultacijos su siuntimu</li></ul>
+<div class="notice">Tai tik demonstracinis modulis. Jis neskaičiuoja kompensacijų, netikrina teisės į PSDF finansavimą ir neteikia duomenų VLK sistemoms.</div></div>`;
+}
+document.getElementById("content").innerHTML=html;
+}
+render();
+</script>
+</body>
+</html>
