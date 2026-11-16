@@ -1,4 +1,4 @@
-name: Publish DentalPro demo (GitHub Pages)
+name: Publish OLD DentalPro demo (GitHub Pages)
 on:
   workflow_dispatch:
 permissions:
@@ -16,9 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare original working DentalPro as website root
+        run: |
+          mkdir -p public
+          cp legacy.html public/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: public
       - id: deployment
         uses: actions/deploy-pages@v4
