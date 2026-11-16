@@ -204,7 +204,7 @@ render();
 const STORAGE="dentalpro_calendar_v1";
 const weekdays=["Sekm.","Pirm.","Antr.","Treč.","Ketv.","Penkt.","Šešt."];
 const clinicNames=["Naujoji Akmenė","Kuršėnai"];
-const statuses=["Registruotas","Atvykęs","Atliktas","Neatvyko","Atšauktas"];
+const statuses=["Registruotas","Patvirtintas","Atvykęs","Atliekamas","Atliktas","Neatvyko","Atšauktas"];
 const services=[
 "Konsultacija su siuntimu",
 "Dantų protezavimo konsultacija",
@@ -276,7 +276,7 @@ const end=start+Number(a.duration);
 if(end>1440)return true;
 return appointments.some(b=>{
 if(b.id===a.id||b.clinic!==a.clinic||b.date!==a.date||b.status==="Atšauktas"||a.status==="Atšauktas")return false;
-if(b.doctor.trim().toLowerCase()!==a.doctor.trim().toLowerCase())return false;
+if(b.doctor.trim().toLowerCase()!==a.doctor.trim().toLowerCase()&&(!a.room||!b.room||b.room.trim().toLowerCase()!==a.room.trim().toLowerCase()))return false;
 const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
 return start<bs+Number(b.duration)&&bs<end;
 });
@@ -306,7 +306,7 @@ const occupied=rows.some(a=>a.doctor===doctor&&a.status!=="Atšauktas"&&(Number(
 html+='<div class="cal-slot '+(occupied?'cal-busy':'')+'">';
 for(const a of starts){
 const cls=a.status==="Atliktas"?"done":a.status==="Atšauktas"?"cancelled":a.status==="Atvykęs"?"arrived":"";
-html+='<button class="cal-event '+cls+'" onclick="DentalCalendar.edit(\''+safe(a.id)+'\')"><strong>'+safe(a.time)+' · '+safe(a.patient)+'</strong><span>'+safe(a.service)+' · '+safe(a.duration)+' min. · '+safe(a.status)+'</span></button>';
+html+='<button class="cal-event '+cls+'" onclick="DentalCalendar.edit(\''+safe(a.id)+'\')"><strong>'+safe(a.time)+' · '+safe(a.patient)+'</strong><span>'+safe(a.service)+' · '+safe(a.duration)+' min. · '+safe(a.status)+(a.room?' · '+safe(a.room):'')+'</span></button>';
 }
 if(!starts.length&&!occupied)html+='<button class="cal-free" onclick="DentalCalendar.slot(\''+date+'\',\''+time+'\','+JSON.stringify(doctor).replace(/"/g,"&quot;")+')" aria-label="Registruoti '+safe(time)+' '+safe(doctor)+'">+</button>';
 html+='</div>';
@@ -340,7 +340,7 @@ el("fullcalendar").innerHTML='<p class="notice">Kalendoriaus biblioteka neįkelt
 return;
 }
 const events=appointments.filter(a=>a.clinic===clinic&&(calendarView!=="resourceDay"||!selectedDoctor||a.doctor===selectedDoctor)).map(a=>({
-id:a.id,title:a.patient+" · "+a.doctor,
+id:a.id,title:a.patient+" · "+a.doctor+(a.room?" · "+a.room:""),
 start:a.date+"T"+a.time,
 end:(()=>{const d=new Date(a.date+"T"+a.time);d.setMinutes(d.getMinutes()+Number(a.duration));return localDate(d)+"T"+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")})(),
 backgroundColor:a.status==="Atšauktas"?"#d9a2a2":a.status==="Atliktas"?"#70b78a":a.status==="Atvykęs"?"#d4b35a":"#087e8b",
@@ -381,7 +381,7 @@ if(!a){info.revert();return}
 const start=info.event.start,end=info.event.end;
 const proposed={...a,date:localDate(start),time:String(start.getHours()).padStart(2,"0")+":"+String(start.getMinutes()).padStart(2,"0"),duration:String(Math.round((end-start)/60000))};
 if(conflictFor(proposed)){
-alert("Vizitų laikai persidengia arba vizitas baigiasi po vidurnakčio.");info.revert();return;
+alert("Gydytojas arba kabinetas jau užimtas, arba vizitas baigiasi po vidurnakčio.");info.revert();return;
 }
 Object.assign(a,proposed);persist();
 }
@@ -440,6 +440,9 @@ el("calEditor").innerHTML=`
 <select id="calPatient">${patientOptions(c,patientName)}</select></div>
 <div><label>Gydytojas</label>
 <input id="calDoctor" value="${safe(a?.doctor||pendingSlot?.doctor||"")}" placeholder="Gydytojo vardas, pavardė"></div>
+<div><label>Kabinetas</label>
+<input id="calRoom" list="calRoomOptions" value="${safe(a?.room||"")}" placeholder="Pvz., 1 kabinetas">
+<datalist id="calRoomOptions"><option value="1 kabinetas"><option value="2 kabinetas"><option value="3 kabinetas"></datalist></div>
 <div><label>Data</label>
 <input id="calDate" type="date" value="${safe(date)}"></div>
 <div><label>Laikas</label>
@@ -458,7 +461,7 @@ el("calEditor").innerHTML=`
 ${a?'<button onclick="DentalCalendar.remove()">Ištrinti vizitą</button>':""}
 <button onclick="DentalCalendar.clear()">Išvalyti formą</button>
 </p>
-<p class="cal-small">Sistema tikrina, ar toje pačioje klinikoje gydytojui nepersidengia vizitų laikai.</p>`;
+<p class="cal-small">Sistema tikrina, ar toje pačioje klinikoje nepersidengia gydytojo ir kabineto užimtumas.</p>`;
 }
 function saveVisit(){
 const a={
@@ -466,6 +469,7 @@ id:editingId||"v"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
 clinic,
 patient:el("calPatient").value,
 doctor:el("calDoctor").value.trim(),
+room:el("calRoom").value.trim(),
 date:el("calDate").value,
 time:el("calTime").value,
 duration:el("calDuration").value,
@@ -483,15 +487,17 @@ if(end>1440){
 alert("Vizitas negali tęstis po vidurnakčio.");
 return;
 }
-const conflict=appointments.some(b=>{
-if(b.id===a.id||b.clinic!==a.clinic||b.date!==a.date)return false;
-if(b.doctor.toLowerCase()!==a.doctor.toLowerCase())return false;
-if(b.status==="Atšauktas"||a.status==="Atšauktas")return false;
+const conflict=appointments.find(b=>{
+if(b.id===a.id||b.clinic!==a.clinic||b.date!==a.date||b.status==="Atšauktas"||a.status==="Atšauktas")return false;
+const sameDoctor=b.doctor.trim().toLowerCase()===a.doctor.trim().toLowerCase();
+const sameRoom=Boolean(a.room&&b.room&&b.room.trim().toLowerCase()===a.room.trim().toLowerCase());
+if(!sameDoctor&&!sameRoom)return false;
 const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
 return start<bs+Number(b.duration)&&bs<end;
 });
 if(conflict){
-alert("Šis gydytojas tuo metu jau turi kitą vizitą. Pasirinkite kitą laiką.");
+const reason=conflict.doctor.trim().toLowerCase()===a.doctor.trim().toLowerCase()?"Gydytojas":"Kabinetas";
+alert(reason+" jau užimtas šiuo laiku ("+conflict.time+", "+conflict.patient+"). Pasirinkite kitą laiką.");
 return;
 }
 const index=appointments.findIndex(x=>x.id===a.id);
