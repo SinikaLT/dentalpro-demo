@@ -20,6 +20,6 @@ export function mkCatalog(){
     const priceMin=nums.length?nums[0]:null;
     const priceMax=raw.includes("-")?nums[1]:raw.endsWith("+")||raw==="individualiai"?null:priceMin;
     const duration=/implant|protez|kanal|šalinim|operac|All on 4/i.test(category+" "+name)?90:/higien|balinim/i.test(category)?60:30;
-    return {id:"mk-"+String(index+1).padStart(3,"0"),name,category,duration,price:priceMin??0,priceMin,priceMax,priceLabel:raw==="individualiai"?"Derinama individualiai":raw.replace("-", "–")+" €",active:raw!=="individualiai",source:"mkodontologija.lt"};
+    return {id:"mk-"+String(index+1).padStart(3,"0"),name,category,duration,price:priceMin??0,priceMin,priceMax,priceLabel:raw==="individualiai"?"Derinama individualiai":raw.replace("-", "–")+" €",active:true,source:"mkodontologija.lt"};
   });
 }
