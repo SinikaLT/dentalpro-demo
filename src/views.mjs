@@ -1,10 +1,11 @@
 
 import {CLINICS,CHAIRS,STATUSES,PLAN_STATUSES,WEEKDAYS,PERMANENT,PRIMARY,CONDITIONS,SURFACES,uid,isoDate,shiftDate,validDate,weekday,minutes,timeString,overlaps,money,appointmentIssues,patientName,doctorName,serviceName,invoiceTotal,planTotal} from "./domain.mjs";
 import {openRepository,defaultAvailability,defaultBreaks} from "./store.mjs";
+import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
 
 const repository=openRepository();
 let db=repository.get();
-const ui={route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
+const ui={category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const opt=(arr,value)=>arr.map(x=>'<option value="'+esc(x[0])+'"'+(String(x[0])===String(value)?' selected':'')+'>'+esc(x[1])+'</option>').join("");
@@ -14,6 +15,10 @@ const fmt=d=>validDate(d)?new Date(d+"T12:00:00").toLocaleDateString("lt-LT",{da
 const name=id=>patientName(db,id);
 const doctor=id=>doctorName(db,id);
 const service=id=>serviceName(db,id);
+const activeServices=()=>db.services.filter(s=>s.active);
+const primaryService=()=>activeServices()[0]||db.services[0];
+const serviceChoices=(selected="")=>{const groups=new Map();for(const s of activeServices()){if(!groups.has(s.category))groups.set(s.category,[]);groups.get(s.category).push(s)}const historic=db.services.find(s=>s.id===selected&&!s.active);let html=historic?opt([[historic.id,historic.name+" (archyvinė)"]],selected):"";for(const [label,items] of groups)html+='<optgroup label="'+esc(label)+'">'+opt(items.map(s=>[s.id,s.name+" · "+(s.priceLabel||money(s.price))]),selected)+"</optgroup>";return html};
+const pricePicker=(serviceId,selected)=>{const s=db.services.find(x=>x.id===serviceId);const values=priceOptions(s);return values.length?'<select name="price" id="plan-item-price">'+opt(values.map(v=>[v,money(v)]),selected??values[0])+"</select>":'<input name="price" id="plan-item-price" type="number" min="0" step="0.01" value="'+esc(selected??s?.price??0)+'" required>'};
 const clinic=id=>db.clinics.find(x=>x.id===id)?.name||"—";
 const chair=id=>db.chairs.find(x=>x.id===id)?.name||"—";
 const pill=s=>{let cls="";if(["Atšauktas","Neatvyko"].includes(s))cls="danger";else if(["Atvykęs","Atliekamas"].includes(s))cls="warning";else if(["Registruotas","Juodraštis","Neaktyvi"].includes(s))cls="grey";return '<span class="pill '+cls+'">'+esc(s)+'</span>';};
@@ -224,9 +229,9 @@ function planDetails(p){
     '<div class="table-wrap"><table class="data-table"><thead><tr><th>Dantis</th><th>Procedūra</th><th>Suma</th><th>Atlikta</th></tr></thead><tbody>'+
     p.items.map(i=>'<tr><td>'+esc(i.tooth||"—")+'</td><td>'+esc(i.description)+'</td><td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
     '<td><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'></td></tr>').join("")+'</tbody></table></div>'+
-    '<h3 style="margin-top:20px">Pridėti procedūrą</h3><form id="plan-item-form"><div class="field-grid"><div class="field"><label>Paslauga</label><select name="serviceId">'+opt(db.services.filter(s=>s.active).map(s=>[s.id,s.name]),db.services[0]?.id)+'</select></div>'+
+    '<h3 style="margin-top:20px">Pridėti procedūrą</h3><form id="plan-item-form"><div class="field-grid"><div class="field"><label>Paslauga</label><select name="serviceId" id="plan-item-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
     '<div class="field"><label>Dantis</label><input name="tooth" placeholder="Pvz., 16"></div><div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="20" value="1"></div>'+
-    '<div class="field"><label>Kaina (€)</label><input name="price" type="number" min="0" step="0.01" value="'+Number(db.services[0]?.price||0)+'"></div>'+
+    '<div class="field"><label>Pasirenkama kaina (€)</label><div id="plan-price-container">'+pricePicker(primaryService()?.id)+'</div><small class="help">Intervalai: 10 € žingsniu ir tiksli intervalo pabaiga. „Nuo“ kainos tikslinamos.</small></div>'+
     '<div class="field full"><label>Aprašymas</label><input name="description" placeholder="Papildomas paaiškinimas"></div></div>'+
     '<p style="margin-top:14px">'+btn("+ Pridėti į planą","save-plan-item","btn primary")+'</p></form>';
 }
@@ -260,11 +265,17 @@ function viewFinances(){
     }).join("")+'</tbody></table></div>'+(!invoices.length?empty("Sąskaitų nėra","Sukurkite demonstracinę sąskaitą."):"")+'</section>';
 }
 function viewServices(){
-  return page("Paslaugų katalogas","Procedūrų kainynas, kategorijos ir trukmės",btn("+ Pridėti paslaugą","new-service","btn primary"))+
-    '<div class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Paslauga</th><th>Kategorija</th><th>Trukmė</th><th>Kaina</th><th>Būsena</th><th></th></tr></thead><tbody>'+
-    db.services.map(s=>'<tr><td><b>'+esc(s.name)+'</b></td><td>'+esc(s.category)+'</td><td>'+s.duration+' min.</td><td>'+money(s.price)+'</td><td>'+pill(s.active?"Aktyvi":"Neaktyvi")+'</td>'+
-    '<td>'+btn("Redaguoti","edit-service","btn small","data-id='"+esc(s.id)+"'")+'</td></tr>').join("")+'</tbody></table></div></div>';
+  const categories=[...new Set(db.services.filter(s=>s.source==="mkodontologija.lt").map(s=>s.category))];
+  const rows=db.services.filter(s=>ui.category==="all"?s.source==="mkodontologija.lt":ui.category==="legacy"?s.source!=="mkodontologija.lt":s.category===ui.category);
+  return page("Paslaugų katalogas","MK odontologijos kainynas pagal svetainės paslaugų grupes",btn("+ Pridėti paslaugą","new-service","btn primary"))+
+    '<section class="panel"><div class="search-line"><label>Paslaugų grupė <select id="service-category-filter"><option value="all">Visos MK grupės</option>'+
+    opt(categories.map(c=>[c,c]),ui.category)+opt([["legacy","Ankstesnės demo paslaugos"]],ui.category)+'</select></label></div>'+
+    '<p class="help">Šaltinis: <a href="'+PRICE_SOURCE+'" target="_blank" rel="noopener noreferrer">mkodontologija.lt/kainos</a> (peržiūrėta '+PRICE_REVIEWED+'). Intervalai yra orientaciniai, o paslaugų trukmės – demonstracinės.</p>'+
+    '<div class="table-wrap"><table class="data-table"><thead><tr><th>Paslauga</th><th>Grupė</th><th>Trukmė</th><th>Kaina pagal kainyną</th><th>Būsena</th><th></th></tr></thead><tbody>'+
+    rows.map(s=>'<tr><td><b>'+esc(s.name)+'</b></td><td>'+esc(s.category)+'</td><td>'+s.duration+' min.</td><td>'+esc(s.priceLabel||money(s.price))+'</td><td>'+pill(s.active?"Aktyvi":"Neaktyvi")+'</td>'+
+    '<td>'+btn("Redaguoti","edit-service","btn small","data-id=\''+esc(s.id)+'\'")+'</td></tr>').join("")+'</tbody></table></div></section>';
 }
+
 function viewVlk(){
   return page("VLK / PSDF","Tik informacinis demonstracinis modulis")+
     '<section class="panel"><h2>VLK / PSDF</h2><p>Demonstracinis paslaugų katalogas apima konsultacijas su siuntimu, suaugusiųjų ir vaikų dantų protezavimo paslaugas.</p>'+
@@ -286,7 +297,7 @@ function viewDrawer(){
   if(d.kind==="appointment"){
     const original=db.appointments.find(a=>a.id===d.id);
     const a=Object.assign({clinicId:ui.clinic==="all"?"akm":ui.clinic,chairId:"",patientId:ui.patient,
-      staffId:"",date:ui.day,time:"09:00",duration:30,serviceId:db.services[0]?.id||"",status:"Registruotas",notes:""},original||{},d.preset||{});
+      staffId:"",date:ui.day,time:"09:00",duration:30,serviceId:primaryService()?.id||"",status:"Registruotas",notes:""},original||{},d.preset||{});
     if(!a.chairId||!db.chairs.some(c=>c.id===a.chairId&&c.clinicId===a.clinicId))a.chairId=a.clinicId+"-1";
     if(!db.patients.some(p=>p.id===a.patientId&&p.clinicIds.includes(a.clinicId)))a.patientId=db.patients.find(p=>p.clinicIds.includes(a.clinicId))?.id||"";
     const doctorOptions=db.staff.filter(s=>s.clinicIds.includes(a.clinicId)).map(s=>[s.id,s.name]);
@@ -301,7 +312,7 @@ function viewDrawer(){
       '<div class="field"><label>Data</label><input type="date" name="date" value="'+esc(a.date)+'" required></div>'+
       '<div class="field"><label>Laikas</label><input type="time" name="time" value="'+esc(a.time)+'" step="900" required></div>'+
       '<div class="field"><label>Trukmė (min.)</label><select name="duration" id="appt-duration">'+opt([15,30,45,60,75,90,105,120,150,180,210,240].map(x=>[x,x+" min."]),a.duration)+'</select></div>'+
-      '<div class="field"><label>Paslauga</label><select name="serviceId" id="appt-service">'+opt(db.services.filter(s=>s.active||s.id===a.serviceId).map(s=>[s.id,s.name]),a.serviceId)+'</select></div>'+
+      '<div class="field"><label>Paslauga</label><select name="serviceId" id="appt-service">'+serviceChoices(a.serviceId)+'</select></div>'+
       '<div class="field full"><label>Būsena</label><select name="status">'+simple(STATUSES,a.status)+'</select></div>'+
       '<div class="field full"><label>Pastabos (tik demo)</label><textarea name="notes">'+esc(a.notes||"")+'</textarea></div></div>'+
       '<div class="drawer-footer">'+(original?btn("Paciento kortelė","appointment-patient","btn small")+btn("Ištrinti","delete-appt","btn danger"):"")+
@@ -358,9 +369,9 @@ function viewDrawer(){
     const clinicId=ui.clinic==="all"?"akm":ui.clinic;
     return wrap("Nauja demonstracinė sąskaita",'<form id="invoice-form"><div class="field-grid"><div class="field full"><label>Klinika</label><select name="clinicId" id="invoice-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),clinicId)+'</select></div>'+
       '<div class="field full"><label>Pacientas</label><select name="patientId" id="invoice-patient">'+opt(db.patients.filter(p=>p.clinicIds.includes(clinicId)).map(p=>[p.id,name(p.id)]),ui.patient)+'</select></div>'+
-      '<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+opt(db.services.filter(s=>s.active).map(s=>[s.id,s.name]),db.services[0]?.id)+'</select></div>'+
+      '<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
       '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div>'+
-      '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(db.services[0]?.price||0)+'"></div>'+
+      '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(primaryService()?.price||0)+'"></div>'+
       '<div class="field full"><label>Data</label><input name="date" type="date" value="'+isoDate()+'"></div></div>'+
       '<div class="drawer-footer">'+btn("Sukurti sąskaitą","save-invoice","btn primary")+'</div></form>');
   }
@@ -485,7 +496,7 @@ function saveService(){
   const v=stringValues(formData("service-form")),duration=Number(v.duration),price=Number(v.price),old=db.services.find(s=>s.id===ui.modal.id);
   if(!v.name?.trim()||!v.category?.trim()||!Number.isInteger(duration)||duration<15||duration>240||duration%15!==0||!Number.isFinite(price)||price<0){
     notify("Užpildykite paslaugos laukus. Trukmė turi būti 15 min. kartotinė.",true);return}
-  const s={id:old?.id||uid("s"),name:v.name.trim(),category:v.category.trim(),duration,price,active:v.active==="on"};
+  const s={...old,id:old?.id||uid("s"),name:v.name.trim(),category:v.category.trim(),duration,price,active:v.active==="on",priceMin:price,priceMax:price,priceLabel:money(price),source:old?.source||"custom"};
   update(old?"Atnaujinta paslauga":"Sukurta paslauga",s.id,db=>{
     const i=db.services.findIndex(x=>x.id===s.id);
     if(i>=0)db.services[i]=s;else db.services.push(s);
@@ -620,11 +631,11 @@ function handleChange(target){
     if(d&&$("appt-duration").querySelector('option[value="'+d+'"]'))$("appt-duration").value=String(d);
     return
   }
+  if(target.id==="service-category-filter"){ui.category=target.value;render();return}
   if(target.id==="invoice-clinic"){switchInvoiceClinic(target.value);return}
   if(target.id==="invoice-service"){$("invoice-price").value=db.services.find(s=>s.id===target.value)?.price||0;return}
   if(target.closest("#plan-item-form")&&target.name==="serviceId"){
-    const price=db.services.find(s=>s.id===target.value)?.price||0;
-    $("plan-item-form").querySelector('[name="price"]').value=price;
+    $("plan-price-container").innerHTML=pricePicker(target.value);
   }
 }
 function start(){
