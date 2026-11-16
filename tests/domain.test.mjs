@@ -132,3 +132,15 @@ test("gydymo plano kainų intervalai pateikiami 10 eurų žingsniais",()=>{
   assert.deepEqual(priceOptions({priceMin:50,priceMax:50}),[50]);
   assert.deepEqual(priceOptions({priceMin:null,priceMax:null}),[]);
 });
+
+test("pacientas turi priklausyti klinikai ir negali būti užregistruotas du kartus",()=>{
+  const state=fixture();
+  assert.match(appointmentIssues(state,visit({patientId:"p-1-0"})).join(" "),/pacientą, priskirtą/);
+  state.appointments.push(visit({id:"previous",chairId:"akm-1",staffId:"dr-akm-1"}));
+  const other=visit({id:"next",chairId:"akm-2",staffId:"dr-akm-2"});
+  assert.match(appointmentIssues(state,other).join(" "),/Pacientas jau turi vizitą/);
+});
+test("neatvykęs pacientas neužblokuoja naujo laiko",()=>{
+ const state=fixture();state.appointments.push(visit({id:"old",status:"Neatvyko"}));
+ assert.deepEqual(appointmentIssues(state,visit()),[]);
+});
