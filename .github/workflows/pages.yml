@@ -1,5 +1,11 @@
-name: Publish OLD DentalPro demo (GitHub Pages)
+name: Publish DentalPro 2.0 (GitHub Pages)
 on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - src/**
+      - .github/workflows/pages.yml
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,16 +16,24 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare original working DentalPro as website root
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check new DentalPro 2.0
+        run: npm run verify
+      - name: Prepare new DentalPro 2.0 website
         run: |
-          mkdir -p public
-          cp legacy.html public/index.html
+          mkdir -p public/src
+          cp index.html public/index.html
+          cp src/domain.mjs src/store.mjs src/views.mjs src/styles.css public/src/
+          echo 'User-agent: *' > public/robots.txt
+          echo 'Disallow: /' >> public/robots.txt
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
