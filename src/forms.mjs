@@ -32,6 +32,7 @@ export function validateForm(type,answers,signature){
  const issues=[];
  for(const field of requiredFields(type))if(!String(answers?.[field]??"").trim())issues.push("Neužpildytas laukas: "+field);
  if(type==="health")for(const [name] of HEALTH_QUESTIONS)if(!["Taip","Ne","Nežinau"].includes(answers?.["q_"+name]))issues.push("Neteisingas atsakymas: "+name);
+ if(answers?.capacity==="atstovas"&&!String(answers?.representationBasis||"").trim())issues.push("Nurodykite teisėto atstovavimo pagrindą.");
  if(type==="invasive"&&!["Sutinku","Atsisakau"].includes(answers?.decision))issues.push("Pasirinkite sutikimą ar atsisakymą.");
  if(type==="invasive"&&answers?.decision==="Sutinku"&&!String(answers?.procedure).trim())issues.push("Nurodykite konkrečią procedūrą.");
  if(!signature||typeof signature!=="string"||!signature.startsWith("data:image/png;base64,")||signature.length<150)issues.push("Reikia paciento / atstovo ranka nupiešto demonstracinio parašo.");
