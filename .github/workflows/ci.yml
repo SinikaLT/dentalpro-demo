@@ -12,5 +12,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Syntax and domain tests
+      - name: Syntax, build and automated tests
         run: npm run verify
+      - name: Downloadable demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dentalpro-standalone-demo
+          path: demo-standalone.html
+          if-no-files-found: error
