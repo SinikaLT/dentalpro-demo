@@ -2,6 +2,7 @@
 import {CLINICS,CHAIRS,STATUSES,PLAN_STATUSES,WEEKDAYS,PERMANENT,PRIMARY,CONDITIONS,SURFACES,uid,isoDate,shiftDate,validDate,weekday,minutes,timeString,overlaps,money,appointmentIssues,patientName,doctorName,serviceName,invoiceTotal,planTotal} from "./domain.mjs";
 import {openRepository,defaultAvailability,defaultBreaks} from "./store.mjs";
 import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
+import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm} from "./forms.mjs";
 
 const repository=openRepository();
 let db=repository.get();
@@ -37,13 +38,14 @@ function route(r){ui.route=r;ui.modal=null;render()}
 function render(){
   $("global-clinic").value=ui.clinic;
   document.querySelectorAll(".nav-btn").forEach(n=>n.classList.toggle("active",n.dataset.route===ui.route));
-  $("section-name").textContent=({overview:"Apžvalga",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",reports:"Ataskaitos",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
+  $("section-name").textContent=({overview:"Apžvalga",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",reports:"Ataskaitos",forms:"Paciento dokumentai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
   $("page").innerHTML=({
     overview:viewOverview,calendar:viewCalendar,patients:viewPatients,doctors:viewDoctors,
     odontogram:viewOdontogram,plans:viewPlans,notes:viewNotes,finances:viewFinances,
-    services:viewServices,reports:viewReports,vlk:viewVlk,admin:viewAdmin
+    services:viewServices,reports:viewReports,forms:viewForms,vlk:viewVlk,admin:viewAdmin
   }[ui.route]||viewOverview)();
-  $("drawer-root").innerHTML=ui.modal?viewDrawer():"";
+  $("drawer-root").innerHTML=ui.modal?((ui.modal.kind==="registration-form"||ui.modal.kind==="signed-form")?formDrawer(ui.modal):viewDrawer()):"";
+  if(ui.modal?.kind==="registration-form")setupSignatureCanvas();
 }
 function eventRows(items){
   if(!items.length)return empty("Vizitų nėra","Pasirinkite kitą datą arba registruokite vizitą.");
@@ -276,6 +278,109 @@ function viewServices(){
     '<td>'+btn("Redaguoti","edit-service","btn small","data-id=\''+esc(s.id)+'\'")+'</td></tr>').join("")+'</tbody></table></div></section>';
 }
 
+function viewForms(){
+ const p=db.patients.find(x=>x.id===ui.patient)||listPatients()[0];
+ if(!p)return page("Paciento dokumentai","Registravimo formos – demo")+empty("Nėra pacientų","Sukurkite sintetinį pacientą.");
+ const rows=(db.forms||[]).filter(f=>f.patientId===p.id).sort((a,b)=>String(b.signedAt).localeCompare(String(a.signedAt)));
+ const items=FORM_TYPES.map(form=>{
+   const latest=rows.find(x=>x.type===form.id);
+   return '<div class="segment" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><b>'+esc(form.name)+'</b><small style="display:block">'+(latest?'Paskutinis įrašas: '+esc(new Date(latest.signedAt).toLocaleString("lt-LT")):'Dokumentas dar nepasirašytas')+'</small>'+
+     '<small style="display:block">'+pill(statusOfForm(latest))+'</small></div><div class="actions">'+
+     btn("Užpildyti ir pasirašyti","new-form","btn primary","data-kind=\'"+form.id+"\'")+
+     (latest?btn("Peržiūrėti","view-form","btn small","data-id=\'"+esc(latest.id)+"\'"):"")+'</div></div>';
+ });
+ return page("Paciento dokumentai","Keturi atskiri dokumentai su demonstraciniu paciento parašu")+
+   '<div class="panel"><div class="search-line">'+patientPicker()+'</div><p class="help">Pacientas: <b>'+esc(name(p.id))+
+   '</b>. Dokumentai išsaugomi tik šios naršyklės demonstracinėje saugykloje. Nėra asmens tapatybės patvirtinimo ar kvalifikuoto elektroninio parašo.</p>'+
+   '<div class="notice warn">NEVESTI realių pacientų sveikatos duomenų, tikrus parašus ar tapatybės informaciją. Klinikos vadovas turi patvirtinti realias formas ir jų versijas prieš naudojimą.</div>'+
+   items.join("")+'</div><section class="panel"><h2>Pasirašymo istorija</h2>'+
+   (rows.length?'<div class="table-wrap"><table class="data-table"><thead><tr><th>Dokumentas</th><th>Data</th><th>Būsena</th><th></th></tr></thead><tbody>'+
+   rows.map(x=>'<tr><td>'+esc(FORM_TYPES.find(t=>t.id===x.type)?.short||x.type)+'</td><td>'+esc(new Date(x.signedAt).toLocaleString("lt-LT"))+'</td><td>'+pill("Pasirašyta (demo)")+'</td><td>'+
+   btn("Atverti","view-form","btn small","data-id=\'"+esc(x.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>':empty("Dokumentų dar nėra","Pasirinkite pirmąją formą."))+'</section>';
+}
+const formInput=(label,name,required=true,placeholder="")=>'<div class="field"><label>'+esc(label)+(required?" *":"")+'</label><textarea rows="2" name="'+esc(name)+'" '+(required?"required":"")+' placeholder="'+esc(placeholder)+'"></textarea></div>';
+function formFields(kind,p){
+ const rep='<div class="field"><label>Pasirašančiojo vardas, pavardė (demo) *</label><input name="representative" value="'+esc(name(p.id))+'" maxlength="160" required></div>'+
+   '<div class="field"><label>Pasirašančiojo vaidmuo *</label><select name="capacity"><option value="pacientas">Pacientas</option><option value="atstovas">Teisėtas atstovas (tik demo)</option></select></div>'+
+   '<div class="field"><label>Atstovavimo pagrindas (jei taikoma)</label><input name="representationBasis" maxlength="240" placeholder="Pvz., tėvas, globėjas – demo"></div>';
+ if(kind==="agreement")return '<p>Susipažinau su paslaugų teikimo eiga, kainynu, informavimu apie mokamas paslaugas, vizitų atšaukimą, paciento teisėmis ir pareigomis. Ši demonstracinė sutartis nėra realios įstaigos patvirtinta sutartis.</p>'+
+   '<div class="field"><label>Klinika *</label><select name="clinicId">'+opt(db.clinics.filter(c=>p.clinicIds.includes(c.id)).map(c=>[c.id,c.name]),p.clinicIds[0])+'</select></div>'+
+   '<div class="field"><label>Susipažinimas su vidaus tvarkos taisyklėmis *</label><select name="rules" required><option value="">Pasirinkite</option><option value="Susipažinau">Susipažinau (demo)</option></select></div>'+
+   '<div class="field"><label>Informacija apie kainyną ir apmokėjimą *</label><select name="fees" required><option value="">Pasirinkite</option><option value="Informuotas">Esu informuotas (demo)</option></select></div>'+
+   formInput("Papildomos sutarties sąlygos (tik demo)","otherTerms",false)+rep;
+ if(kind==="privacy")return '<p>Informacinis BDAR pranešimas, <b>ne bendras privalomas sutikimas tvarkyti sveikatos duomenis</b>. Sveikatos priežiūros duomenys tvarkomi pagal atitinkamą teisėtą pagrindą ir BDAR 9 str. sąlygą; gydymas negali būti siejamas su privalomu sutikimu rinkodarai.</p>'+
+  '<div class="field"><label>Duomenų valdytojas (įstaiga, tik demo) *</label><input name="controller" required value="DentalPro demonstracinė klinika (ne juridinis asmuo)"></div>'+
+  '<div class="field"><label>Duomenų apsaugos kontaktas / informavimo būdas (demo) *</label><input name="contact" required value="Demo aplinka – kontaktai nenurodyti"></div>'+
+  '<p><b>Tikslai:</b> paciento registracija, sveikatos priežiūros paslaugos, dokumentavimas, atsiskaitymų apskaita. <b>Duomenys:</b> tapatybės, kontaktiniai, sveikatos, vizitų ir mokėjimo duomenys. <b>Teisės:</b> gauti informaciją, susipažinti, reikalauti taisymo, kitais BDAR numatytais atvejais apriboti tvarkymą, pateikti skundą VDAI. Saugojimo terminus ir gavėjus turi nustatyti reali klinika pagal teisės aktus.</p>'+
+  '<div class="field"><label>Susipažinimas su informacija *</label><select name="notice" required><option value="">Pasirinkite</option><option value="Susipažinau">Susipažinau (demo)</option></select></div>'+
+  '<div class="field"><label>Atskiras NEPRIVALOMAS rinkodaros pasirinkimas</label><select name="marketing"><option value="Nesutinku">Nesutinku</option><option value="Sutinku">Sutinku</option></select></div>'+rep;
+ if(kind==="health")return '<p>Į klausimus atsakykite pagal demonstracinį, išgalvotą atvejį. Gydytojas per realų vizitą privalėtų išsiaiškinti ir įvertinti individualias rizikas.</p>'+
+   HEALTH_QUESTIONS.map(([key,label])=>'<div class="field"><label>'+esc(label)+' *</label><select name="q_'+key+'" required><option value="">Pasirinkite</option><option>Ne</option><option>Taip</option><option>Nežinau</option></select></div>').join("")+
+   formInput("Paaiškinimai apie vaistus, alergijas, ligas","details",false)+rep;
+ if(kind==="invasive")return '<p><b>Konkrečios procedūros sutikimas arba atsisakymas.</b> Gydytojas turi individualiai įvardyti procedūrą, jos alternatyvas, tikslus, komplikacijas ir atsisakymo padarinius. Bendro pobūdžio tekstas negali atstoti gydytojo paaiškinimo.</p>'+
+   formInput("Konkreti chirurginė / invazinė / intervencinė procedūra","procedure")+
+   formInput("Procedūros esmė, pobūdis ir tikslai","purpose")+
+   formInput("Alternatyvos ir jų ypatumai","alternatives")+
+   formInput("Dažnos komplikacijos","risksCommon")+
+   formInput("Retos komplikacijos","risksRare")+
+   formInput("Individualios paciento rizikos ir kitos aplinkybės","risksIndividual")+
+   formInput("Nuskausminimo metodas arba netaikymo pagrindas","anesthesia")+
+   formInput("Nuskausminimo rizikos ir galimos komplikacijos","anesthesiaRisks")+
+   formInput("Pasekmės atsisakius procedūros","refusalRisks")+
+   formInput("Leistina procedūros apimties keitimo riba","scope")+
+   '<div class="field"><label>Informaciją pateikęs sveikatos priežiūros specialistas (demo) *</label><input name="clinician" required placeholder="Išgalvotas gydytojo vardas, pavardė, pareigos"></div>'+
+   '<div class="field"><label>Paciento sprendimas *</label><select name="decision" required><option value="">Pasirinkite</option><option value="Sutinku">Sutinku</option><option value="Atsisakau">Atsisakau</option></select></div>'+rep;
+ return "";
+}
+function formDrawer(d){
+ if(d.kind==="signed-form"){
+  const form=(db.forms||[]).find(x=>x.id===d.id),type=FORM_TYPES.find(t=>t.id===form?.type);
+  if(!form)return '<div class="notice warn">Dokumentas nerastas.</div>';
+  return '<div role="dialog" aria-modal="true" class="drawer"><div class="drawer-header"><h2>'+esc(type?.name)+'</h2>'+btn("✕","close-modal","btn small ghost")+'</div>'+
+  '<section class="panel"><div class="notice">Demonstracinis įrašas. Parašas nepatvirtina tapatybės ir nėra kvalifikuotas e. parašas.</div>'+
+  '<p>Pacientas: '+esc(name(form.patientId))+' · Pasirašyta: '+esc(new Date(form.signedAt).toLocaleString("lt-LT"))+'</p>'+
+  Object.entries(form.answers).map(([k,v])=>'<div class="detail-item"><small>'+esc(k)+'</small><b>'+esc(v)+'</b></div>').join("")+
+  '<p>Demo parašas:</p><img alt="Demonstracinis ranka nupieštas parašas" style="max-width:100%;border:1px solid #ddd" src="'+esc(form.signature)+'">'+
+  '<div class="drawer-footer">'+btn("Uždaryti","close-modal","btn primary")+'</div></section></div>';
+ }
+ const type=FORM_TYPES.find(t=>t.id===d.formType),p=db.patients.find(p=>p.id===ui.patient);
+ if(!type||!p)return '<div class="notice warn">Dokumentas nepasiekiamas.</div>';
+ return '<div class="drawer" role="dialog" aria-modal="true"><div class="drawer-header"><h2>'+esc(type.name)+'</h2>'+btn("✕","close-modal","btn small ghost")+'</div>'+
+   '<div class="drawer-body"><div class="notice warn">Tik demonstracija su išgalvotais duomenimis. Toks pieštas parašas nėra kvalifikuotas elektroninis parašas. Formą realiai klinikai turi patvirtinti vadovas / teisininkas.</div>'+
+   '<p><b>Pacientas:</b> '+esc(name(p.id))+' · <b>Forma:</b> '+FORM_VERSION+'</p>'+
+   '<form id="registration-form"><div class="field-grid">'+formFields(type.id,p)+'</div>'+
+   '<div class="field"><label>Paciento / atstovo parašas pirštu arba pele *</label>'+
+   '<canvas id="form-signature" width="600" height="170" aria-label="Demonstracinio parašo laukelis" style="width:100%;height:170px;background:white;border:2px solid #cad5d8;border-radius:8px;touch-action:none"></canvas>'+
+   '<small class="help">Brėžkite laukelyje. Parašas išsaugomas tik šios naršyklės demonstracinėje saugykloje.</small>'+
+   btn("Išvalyti parašą","clear-signature","btn small ghost")+'</div>'+
+   '<div class="drawer-footer">'+btn("Pasirašyti ir išsaugoti (DEMO)","save-registration-form","btn primary")+'</div></form></div></div>';
+}
+function setupSignatureCanvas(){
+ const canvas=document.querySelector("#form-signature");
+ if(!canvas||typeof canvas.getContext!=="function")return;
+ const ctx=canvas.getContext("2d");if(!ctx)return;
+ ctx.strokeStyle="#0d2c3a";ctx.lineWidth=2.8;ctx.lineJoin="round";ctx.lineCap="round";
+ let drawing=false,points=0;
+ const locate=e=>{const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height}};
+ canvas.addEventListener("pointerdown",e=>{e.preventDefault();drawing=true;canvas.setPointerCapture?.(e.pointerId);const p=locate(e);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+0.1,p.y+0.1);ctx.stroke();points++;});
+ canvas.addEventListener("pointermove",e=>{if(!drawing)return;e.preventDefault();const p=locate(e);ctx.lineTo(p.x,p.y);ctx.stroke();points++;});
+ const finish=()=>{if(!drawing)return;drawing=false;if(points>=3){ui.modal.signature=canvas.toDataURL("image/png");ui.modal.signatureDrawn=true;}};
+ canvas.addEventListener("pointerup",finish);canvas.addEventListener("pointercancel",finish);
+ canvas.addEventListener("pointerleave",finish);
+ if(ui.modal?.signature){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0);img.src=ui.modal.signature}
+}
+function saveRegistrationForm(){
+ const form=document.querySelector("#registration-form");
+ if(!form||!ui.modal?.signatureDrawn){notify("Pacientas turi ranka nupiešti demonstracinį parašą.",true);return}
+ const answers=stringValues(new FormData(form));
+ const issues=validateForm(ui.modal.formType,answers,ui.modal.signature);
+ if(issues.length){notify("Patikrinkite privalomus laukus ir parašą: "+issues.join("; "),true);return}
+ const type=ui.modal.formType,patientId=ui.patient;
+ const signed={id:uid("form"),version:FORM_VERSION,type,patientId,clinicId:db.patients.find(p=>p.id===patientId)?.clinicIds[0],
+ answers,signature:ui.modal.signature,signedAt:new Date().toISOString(),demo:true};
+ update("Pasirašytas demo paciento dokumentas",signed.id,s=>{s.forms??=[];s.forms.push(signed)});
+ ui.modal=null;ui.route="forms";render();notify("Dokumentas pasirašytas (tik demo).");
+}
 function viewReports(){
   const visits=db.appointments.filter(a=>ui.clinic==="all"||a.clinicId===ui.clinic);
   const invoices=db.invoices.filter(i=>ui.clinic==="all"||i.clinicId===ui.clinic);
@@ -602,6 +707,10 @@ function handleAction(target,event){
       ui.patient=a.patientId;ui.modal=null;route("patients");break;
     }
     case "new-patient":modal("patient");break;
+    case "new-form":modal("registration-form","",{formType:target.dataset.kind,signature:"",signatureDrawn:false});break;
+    case "view-form":modal("signed-form",id);break;
+    case "save-registration-form":saveRegistrationForm();break;
+    case "clear-signature":if(ui.modal?.kind==="registration-form"){ui.modal.signature="";ui.modal.signatureDrawn=false;render()}break;
     case "edit-patient":modal("patient",id);break;
     case "save-patient":savePatient();break;
     case "select-patient":ui.patient=id;ui.patientTab="overview";render();break;
@@ -688,6 +797,7 @@ function start(){
       ["overview","▦","Apžvalga","DARBO VIETA"],
       ["calendar","▤","Registracijos kalendorius",""],
       ["patients","♙","Pacientai","KLINIKA"],
+       ["forms","✎","Paciento dokumentai",""],
       ["doctors","▥","Gydytojų grafikai",""],
       ["odontogram","◇","Odontograma",""],
       ["plans","☷","Gydymo planai",""],
