@@ -258,6 +258,29 @@ function viewOverview(){
       return '<div class="kpi-bar"><div style="width:150px"><b>'+esc(c.name)+'</b><small class="muted" style="display:block">'+esc(clinic(c.clinicId))+'</small></div><div class="kpi-track"><div class="kpi-fill" style="width:'+Math.round(Math.min(100,duration/600*100))+'%"></div></div><small>'+filtered.length+' viz.</small></div>';
     }).join("")+'<hr class="section-divider"><div class="notice">Ši sistema veikia tik demonstraciniu režimu; duomenys saugomi naršyklėje.</div></section></div>';
 }
+const doctorPalette=["#07818a","#5f72c4","#a46b39","#26875f","#b55d83","#8b61b5","#317d91","#ab8b24"];
+function colorForDoctor(staffId,clinicId){
+  const key=clinicId+":"+staffId;
+  const stored=db.preferences?.doctorColors?.[key];
+  if(typeof stored==="string"&&/^#[0-9a-fA-F]{6}$/.test(stored))return stored;
+  const oldClinic=clinicId==="kur"?1:0,staff=db.staff.find(x=>x.id===staffId);
+  try{
+    const legacy=JSON.parse(localStorage.getItem("dentalpro_doctor_colors_"+oldClinic)||"{}");
+    const saved=legacy?.[staff?.name];
+    if(typeof saved==="string"&&/^#[0-9a-fA-F]{6}$/.test(saved))return saved;
+  }catch{}
+  const doctors=db.staff.filter(x=>x.clinicIds.includes(clinicId)),n=doctors.findIndex(x=>x.id===staffId);
+  return doctorPalette[Math.max(0,n)%doctorPalette.length];
+}
+function doctorColorControls(){
+  const doctors=listDoctors().flatMap(d=>d.clinicIds.filter(cid=>ui.clinic==="all"||ui.clinic===cid).map(cid=>({d,cid})));
+  return '<details class="doctor-colors" style="margin-top:14px"><summary style="cursor:pointer;font-size:13px;font-weight:650">Gydytojų spalvos (keisti)</summary>'+
+    '<div class="flex" style="margin-top:12px">'+doctors.map(({d,cid})=>
+      '<label style="display:flex;align-items:center;gap:7px;font-weight:500;background:#f5fafb;border:1px solid #e2edef;border-radius:8px;padding:6px 10px">'+
+      '<input type="color" value="'+colorForDoctor(d.id,cid)+'" style="width:34px;height:30px;padding:2px;cursor:pointer" data-change="doctor-color" data-doctor="'+esc(d.id)+'" data-clinic="'+esc(cid)+'" aria-label="'+esc(d.name+' · '+clinic(cid))+' spalva">'+esc(d.name)+
+      (ui.clinic==="all"?' <small>('+esc(clinic(cid))+')</small>':"")+'</label>').join("")+'</div></details>';
+}
+
 function viewCalendar(){
   const viewNames={day:"Diena",week:"Savaitė",month:"Mėnuo",list:"Sąrašas"};
   let out=page("Registracijos kalendorius","Registracijos seka: kėdė → pacientas → gydytojas",btn("+ Registruoti vizitą","new-appt","btn primary"));
@@ -267,7 +290,7 @@ function viewCalendar(){
     '<div class="calendar-filters"><select data-change="doctor-filter" aria-label="Gydytojų filtras"><option value="">Visi gydytojai</option>'+opt(listDoctors().map(d=>[d.id,d.name]),ui.doctor)+'</select>'+
     '<select data-change="chair-filter" aria-label="Kėdžių filtras"><option value="">Visos kėdės</option>'+opt(listChairs().map(c=>[c.id,clinic(c.clinicId)+" · "+c.name]),ui.chair)+'</select>'+
     '<select data-change="service-filter" aria-label="Paslaugų filtras"><option value="">Visos paslaugos</option>'+opt(db.services.map(s=>[s.id,s.name]),ui.service)+'</select>'+
-    '<select data-change="status-filter" aria-label="Būsenų filtras"><option value="">Visos būsenos</option>'+simple(STATUSES,ui.status)+'</select></div></section>';
+    '<select data-change="status-filter" aria-label="Būsenų filtras"><option value="">Visos būsenos</option>'+simple(STATUSES,ui.status)+'</select></div>'+doctorColorControls()+'</section>';
   const rows=appts();
   return out+'<section class="panel">'+(ui.view==="day"?calendarDay(rows):ui.view==="week"?calendarWeek(rows):ui.view==="month"?calendarMonth(rows):calendarList(rows))+'</section>';
 }
@@ -286,7 +309,7 @@ function calendarDay(rows){
     const i=chairs.findIndex(c=>c.id===a.chairId),start=minutes(a.time);
     if(i<0||start<420||start>=1320||!Number.isFinite(start))continue;
     const row=2+Math.floor((start-420)/15),span=Math.min(62-row,Math.max(1,Math.ceil(a.duration/15)));
-    const color=["#07818a","#5f72c4","#a46b39","#26875f"][Math.max(0,listDoctors().findIndex(x=>x.id===a.staffId))%4];
+    const color=colorForDoctor(a.staffId,a.clinicId);
     out+='<button class="sch-event '+(a.status==="Atšauktas"?"cancelled":"")+'" draggable="true" data-id="'+esc(a.id)+'" data-action="edit-appt" style="--event:'+color+';grid-column:'+(i+2)+';grid-row:'+row+' / span '+span+'"><b>'+esc(a.time)+' · '+esc(name(a.patientId))+'</b><span>'+esc(doctor(a.staffId))+'</span><span>'+esc(service(a.serviceId))+'</span></button>';
   }
   return out+'</div></div><p class="help">Spauskite laisvą intervalą, kad registruotumėte pacientą. Vizitą galima keisti formoje arba nutempti į kitą langelį.</p>';
@@ -760,6 +783,14 @@ function handleAction(target,event){
 function handleChange(target){
   const act=target.dataset.change;
   if(act==="day"){if(validDate(target.value)){ui.day=target.value;render()}return}
+  if(act==="doctor-color"){
+    const color=String(target.value||"");
+    if(!/^#[0-9a-fA-F]{6}$/.test(color))return;
+    const key=target.dataset.clinic+":"+target.dataset.doctor;
+    update("Pakeista gydytojo spalva",key,s=>{
+      s.preferences??={};s.preferences.doctorColors??={};s.preferences.doctorColors[key]=color;
+    });return
+  }
   if(act==="doctor-filter"){ui.doctor=target.value;render();return}
   if(act==="chair-filter"){ui.chair=target.value;render();return}
   if(act==="service-filter"){ui.service=target.value;render();return}
