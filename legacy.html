@@ -1,0 +1,605 @@
+
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DentalPro</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#183047}
+header{background:#087e8b;color:white;padding:18px 24px}
+header h1{margin:0;font-size:26px}
+header small{opacity:.9}
+nav{display:flex;gap:8px;flex-wrap:wrap;background:white;padding:12px;border-bottom:1px solid #ddd}
+button,select,input,textarea{font:inherit;padding:9px;border:1px solid #cbd5e1;border-radius:7px}
+button{cursor:pointer;background:white}
+button.active,.primary{background:#087e8b;color:white;border-color:#087e8b}
+main{max-width:1200px;margin:20px auto;padding:0 14px}
+.card{background:white;border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 8px #0001}
+.grid{display:grid;grid-template-columns:280px 1fr;gap:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.patient{display:block;width:100%;text-align:left;margin:5px 0}
+.patient.selected{background:#d7f4f2;border-color:#087e8b}
+.teeth{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.tooth{width:46px;height:52px;padding:4px;border:2px solid #94a3b8;border-radius:10px;background:#fff}
+.tooth.selected{border-color:#087e8b;background:#b9f3eb}
+.tooth.problem{background:#ffe0e0}
+.tooth small{display:block;font-size:10px}
+label{display:block;margin:10px 0 5px;font-weight:bold}
+input,textarea,select{max-width:100%;width:100%}
+textarea{min-height:75px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:9px;border-bottom:1px solid #ddd;text-align:left}
+.muted{color:#64748b}
+.notice{background:#fff3cd;padding:12px;border-radius:8px}
+@media(max-width:750px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>🦷 DentalPro</h1>
+<small>Odontologijos klinikų demonstracinė sistema</small>
+</header>
+<nav>
+<button onclick="showTab('patients')" id="tab-patients">Pacientai</button>
+<button onclick="showTab('visits')" id="tab-visits">Vizitai</button>
+<button onclick="showTab('plans')" id="tab-plans">Gydymo planai</button>
+<button onclick="showTab('vlk')" id="tab-vlk">VLK / PSDF</button>
+</nav>
+<main>
+<div class="card">
+<div class="row">
+<strong>Klinika:</strong>
+<select id="clinic" onchange="changeClinic()" style="width:230px">
+<option>Naujoji Akmenė</option>
+<option>Kuršėnai</option>
+</select>
+<span class="muted">Demonstraciniai duomenys</span>
+</div>
+</div>
+<div id="content"></div>
+</main>
+<script>
+const names=[
+["Jonas Kazlauskas","Ona Petrauskienė","Mantas Jankauskas","Rūta Stankevičienė","Vytautas Žukauskas","Aistė Balčiūnaitė","Darius Vaitkus","Ieva Paulauskaitė","Tomas Butkus","Emilija Šimkutė"],
+["Antanas Rimkus","Birutė Norkienė","Lukas Kavaliauskas","Gabija Urbonaitė","Povilas Žilinskas","Monika Kairytė","Arūnas Mikalauskas","Greta Mockutė","Saulius Navickas","Agnė Jurevičiūtė"]
+];
+let clinic=0,patient=0,tab="patients",selectedTooth=11;
+let data=JSON.parse(localStorage.getItem("dentalpro_demo")||"{}");
+function key(){return clinic+"-"+patient}
+function record(){
+if(!data[key()])data[key()]={teeth:{},visits:[],plans:[]};
+return data[key()];
+}
+function save(){localStorage.setItem("dentalpro_demo",JSON.stringify(data))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function showTab(t){tab=t;render()}
+function changeClinic(){clinic=+document.getElementById("clinic").selectedIndex;patient=0;if(tab==="calendar"&&window.DentalCalendar){DentalCalendar.open()}else render()}
+function choosePatient(i){patient=i;selectedTooth=11;render()}
+function teethList(primary){
+return primary?
+[55,54,53,52,51,61,62,63,64,65,85,84,83,82,81,71,72,73,74,75]:
+[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+}
+function toothButtons(primary){
+return teethList(primary).map(n=>{
+let info=record().teeth[n];
+return `<button class="tooth ${selectedTooth===n?'selected':''} ${info?'problem':''}" onclick="selectTooth(${n})">${n}<small>${info?'●':'○'}</small></button>`
+}).join("");
+}
+function selectTooth(n){selectedTooth=n;render()}
+function saveTooth(){
+record().teeth[selectedTooth]={
+surface:document.getElementById("surface").value,
+diagnosis:document.getElementById("diagnosis").value,
+treatment:document.getElementById("treatment").value
+};
+save();render();
+}
+function addVisit(){
+let date=document.getElementById("visitdate").value;
+let text=document.getElementById("visittext").value.trim();
+if(!date||!text){alert("Įrašykite datą ir aprašymą");return}
+record().visits.push({date,text});save();render();
+}
+function addPlan(){
+let text=document.getElementById("plantext").value.trim();
+if(!text)return;
+record().plans.push(text);save();render();
+}
+function render(){
+document.getElementById("clinic").selectedIndex=clinic;
+document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.id==="tab-"+tab));
+let html="";
+if(tab==="patients"){
+let p=record(),t=p.teeth[selectedTooth]||{};
+html=`<div class="grid"><section class="card"><h3>Pacientai</h3>
+${names[clinic].map((n,i)=>`<button class="patient ${patient===i?'selected':''}" onclick="choosePatient(${i})">${esc(n)}</button>`).join("")}
+</section><section>
+<div class="card"><h2>${esc(names[clinic][patient])}</h2>
+<p class="muted">Klinika: ${clinic===0?'Naujoji Akmenė':'Kuršėnai'}</p>
+<h3>Nuolatinių dantų odontograma (32)</h3>
+<div class="teeth">${toothButtons(false)}</div>
+<h3>Pieninių dantų odontograma (20)</h3>
+<div class="teeth">${toothButtons(true)}</div></div>
+<div class="card"><h3>Dantis ${selectedTooth}</h3>
+<label>Paviršius</label><select id="surface">
+${["Visas dantis","M – medialinis","D – distalinis","O/I – kramtomasis / kandamasis","V/B – vestibulinis","L/P – liežuvinis / gomurinis"].map(x=>`<option ${t.surface===x?'selected':''}>${x}</option>`).join("")}
+</select>
+<label>Diagnozė</label><input id="diagnosis" value="${esc(t.diagnosis||"")}" placeholder="Pvz., ėduonis">
+<label>Gydymas / procedūra</label><textarea id="treatment" placeholder="Atliktas ar planuojamas gydymas">${esc(t.treatment||"")}</textarea>
+<p><button class="primary" onclick="saveTooth()">Išsaugoti danties įrašą</button></p>
+</div></section></div>`;
+}
+if(tab==="visits"){
+html=`<div class="card"><h2>Vizitai – ${esc(names[clinic][patient])}</h2>
+<p>Pacientą pasirinkite skiltyje „Pacientai“.</p>
+<label>Data</label><input type="date" id="visitdate">
+<label>Vizito aprašymas</label><textarea id="visittext"></textarea>
+<p><button class="primary" onclick="addVisit()">Pridėti vizitą</button></p>
+<table><tr><th>Data</th><th>Aprašymas</th></tr>
+${record().visits.map(v=>`<tr><td>${esc(v.date)}</td><td>${esc(v.text)}</td></tr>`).join("")}</table></div>`;
+}
+if(tab==="plans"){
+html=`<div class="card"><h2>Gydymo planas – ${esc(names[clinic][patient])}</h2>
+<label>Planuojamas gydymas</label><textarea id="plantext"></textarea>
+<p><button class="primary" onclick="addPlan()">Pridėti į planą</button></p>
+${record().plans.map((p,i)=>`<p>${i+1}. ${esc(p)}</p>`).join("")}</div>`;
+}
+if(tab==="vlk"){
+html=`<div class="card"><h2>VLK / PSDF apskaita</h2>
+<p>Paslaugų sritys pagal šios demonstracijos klinikų veiklą:</p>
+<ul><li>Dantų protezavimo paslaugos suaugusiesiems</li>
+<li>Dantų protezavimo paslaugos vaikams</li>
+<li>Gydytojo odontologo konsultacijos su siuntimu</li></ul>
+<div class="notice">Tai tik demonstracinis modulis. Jis neskaičiuoja kompensacijų, netikrina teisės į PSDF finansavimą ir neteikia duomenų VLK sistemoms.</div></div>`;
+}
+document.getElementById("content").innerHTML=html;
+}
+render();
+</script>
+
+<style>
+.cal-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:15px}
+.cal-toolbar input,.cal-toolbar select{width:auto}
+.cal-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal-day{background:#f8fafc;border:1px solid #dbe3eb;border-radius:9px;padding:8px;min-height:150px;overflow-wrap:anywhere}
+.cal-day.today{border:2px solid #087e8b}
+.cal-date{font-weight:bold;margin-bottom:10px}
+.cal-event{display:block;width:100%;font-size:12px;text-align:left;padding:7px;margin:5px 0;border-radius:6px;background:#d9f0ff;border:1px solid #9fc9e8}
+.cal-event.done{background:#d9f5df;border-color:#91c99d}
+.cal-event.cancelled{background:#fee2e2;border-color:#e5aaaa}
+.cal-event.arrived{background:#fff1c5;border-color:#e9d18a}
+.cal-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cal-form label{margin-top:0}
+.cal-form .wide{grid-column:1/-1}
+.cal-small{font-size:12px;color:#64748b}
+@media(max-width:850px){
+.cal-week{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:500px){
+.cal-week,.cal-form{grid-template-columns:1fr}
+}
+.cal-weekstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:12px 0}
+.cal-weekstrip button{padding:8px 2px;font-size:12px}
+.doctor-colors{margin:10px 0 16px;padding:10px;border:1px solid #dbe3eb;border-radius:8px}
+.doctor-colors summary{cursor:pointer;font-weight:600}
+.doctor-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.doctor-color-item{display:flex;align-items:center;gap:7px;margin:0;padding:5px 9px;border:1px solid #dbe3eb;border-radius:7px}
+.doctor-color-item input{width:38px;height:32px;padding:2px;cursor:pointer}
+.cal-scroll{overflow:auto;max-height:72vh;min-height:420px;border:1px solid #dbe3eb;border-radius:9px;scrollbar-gutter:stable}
+.cal-scroll .cal-head{position:sticky;top:0;z-index:2}
+.cal-hours-hint{font-size:13px;color:#475569;margin:8px 0 12px}
+#fullcalendar .fc-scroller{scrollbar-gutter:stable}
+.cal-grid{display:grid;grid-template-columns:75px repeat(var(--doctor-count),minmax(175px,1fr));min-width:max-content}
+.cal-head{background:#dff2f3;font-weight:bold;text-align:center;padding:12px;border-right:1px solid #dbe3eb;border-bottom:1px solid #b7d5d8}
+.cal-time{background:#f8fafc;color:#64748b;font-size:12px;padding:12px 7px;border-bottom:1px solid #e2e8f0}
+.cal-slot{min-height:60px;padding:4px;border-left:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;min-width:175px}
+.cal-slot.cal-busy{background:#eef7f8}
+.cal-free{width:100%;height:45px;border:1px dashed #cbd5e1;color:#087e8b;background:transparent}
+.cal-free:hover{background:#d7f4f2}
+.cal-event{margin:0 0 3px 0;white-space:normal}
+.cal-event span{display:block;font-size:11px;margin-top:3px}
+@media(max-width:600px){.cal-weekstrip{grid-template-columns:repeat(4,1fr)}}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.19/index.global.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+const STORAGE="dentalpro_calendar_v1";
+const weekdays=["Sekm.","Pirm.","Antr.","Treč.","Ketv.","Penkt.","Šešt."];
+const clinicNames=["Naujoji Akmenė","Kuršėnai"];
+const statuses=["Registruotas","Patvirtintas","Atvykęs","Atliekamas","Atliktas","Neatvyko","Atšauktas"];
+const services=[
+"Konsultacija su siuntimu",
+"Dantų protezavimo konsultacija",
+"Dantų protezavimas – suaugusieji",
+"Dantų protezavimas – vaikai",
+"Kontrolinis vizitas",
+"Kita paslauga"
+];
+
+let appointments=[];
+try{
+const stored=JSON.parse(localStorage.getItem(STORAGE)||"[]");
+if(Array.isArray(stored))appointments=stored;
+}catch(e){}
+
+let currentDate=new Date();
+let editingId=null;
+let pendingSlot=null;
+let calendarViewInitialized=false;
+
+function localDate(d){
+return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function parseDate(s){return new Date(s+"T12:00:00")}
+function addDays(d,n){
+const x=new Date(d);
+x.setDate(x.getDate()+n);
+return x;
+}
+function monday(d){
+const x=new Date(d);
+x.setDate(x.getDate()-(x.getDay()+6)%7);
+return x;
+}
+function safe(s){
+return String(s??"").replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+}
+function persist(){
+localStorage.setItem(STORAGE,JSON.stringify(appointments));
+}
+function el(id){return document.getElementById(id)}
+function options(items,selected){
+return items.map(v=>'<option value="'+safe(v)+'"'+(v===selected?" selected":"")+">"+safe(v)+"</option>").join("");
+}
+function calendarClinic(){
+return Number(el("calClinic").value);
+}
+function selectedPatients(c){
+return names[c];
+}
+function patientOptions(c,selected){
+return selectedPatients(c).map(n=>'<option'+(n===selected?" selected":"")+">"+safe(n)+"</option>").join("");
+}
+function clinicDoctors(c){
+let saved=[];
+try{const parsed=JSON.parse(localStorage.getItem("dentalpro_doctors_"+c)||"[]");if(Array.isArray(parsed))saved=parsed}catch(e){}
+return [...new Set([...saved,...appointments.filter(a=>a.clinic===c).map(a=>a.doctor)].filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim()))].sort((a,b)=>a.localeCompare(b,"lt"));
+}
+function doctorOptions(c,selected){
+const doctors=clinicDoctors(c);
+if(selected&&!doctors.includes(selected))doctors.push(selected);
+return '<option value="">Pasirinkite gydytoją</option>'+options(doctors,selected);
+}
+function addDoctorFromForm(){
+const name=prompt("Naujo gydytojo vardas ir pavardė:");
+if(!name||!name.trim())return;
+const normalized=name.trim();
+const doctors=clinicDoctors(clinic);
+if(doctors.some(d=>d.toLocaleLowerCase("lt")===normalized.toLocaleLowerCase("lt"))){
+alert("Toks gydytojas jau yra sąraše.");
+return;
+}
+const form=el("calEditor");
+const current=editingId;
+const fields=["calChair","calPatient","calDate","calTime","calDuration","calService","calStatus","calNotes"];
+const snapshot={};
+for(const id of fields){const node=el(id);if(node)snapshot[id]=node.value}
+const saved=[];
+try{const parsed=JSON.parse(localStorage.getItem("dentalpro_doctors_"+clinic)||"[]");if(Array.isArray(parsed))saved.push(...parsed)}catch(e){}
+saved.push(normalized);
+localStorage.setItem("dentalpro_doctors_"+clinic,JSON.stringify([...new Set(saved)]));
+drawForm();
+for(const id of fields){const node=el(id);if(node&&Object.prototype.hasOwnProperty.call(snapshot,id))node.value=snapshot[id]}
+el("calDoctor").value=normalized;
+}
+function navigateCalendar(){
+tab="calendar";
+document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+el("tab-calendar").classList.add("active");
+drawCalendar();
+}
+
+let calendarView="timeGridWeek";
+let selectedDoctor="";
+let fullCalendar=null;
+function conflictFor(a){
+const start=Number(a.time.slice(0,2))*60+Number(a.time.slice(3));
+const end=start+Number(a.duration);
+if(end>1440)return true;
+return appointments.some(b=>{
+if(b.id===a.id||b.clinic!==a.clinic||b.date!==a.date||b.status==="Atšauktas"||a.status==="Atšauktas")return false;
+if(b.doctor.trim().toLowerCase()!==a.doctor.trim().toLowerCase()&&chairOf(a)!==chairOf(b))return false;
+const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
+return start<bs+Number(b.duration)&&bs<end;
+});
+}
+function switchCalendarView(v){
+calendarView=v;
+editingId=null;pendingSlot=null;
+drawCalendar();
+}
+function selectCalendarDoctor(v){selectedDoctor=v;drawCalendar()}
+
+const chairNames=["1 kėdė","2 kėdė"];
+const doctorPalette=["#1677b8","#b34d87","#23835d","#a36a16","#7354b3","#bd5b36","#267d91","#677a26"];
+function doctorColor(name,c){
+let saved={};
+try{saved=JSON.parse(localStorage.getItem("dentalpro_doctor_colors_"+c)||"{}")}catch(e){}
+if(saved&&typeof saved[name]==="string"&&/^#[0-9a-fA-F]{6}$/.test(saved[name]))return saved[name];
+const doctors=clinicDoctors(c);
+const i=doctors.indexOf(name);
+return doctorPalette[(i<0?0:i)%doctorPalette.length];
+}
+function saveDoctorColor(name,color){
+if(!/^#[0-9a-fA-F]{6}$/.test(color))return;
+let saved={};
+try{saved=JSON.parse(localStorage.getItem("dentalpro_doctor_colors_"+clinic)||"{}")}catch(e){}
+saved[name]=color;
+localStorage.setItem("dentalpro_doctor_colors_"+clinic,JSON.stringify(saved));
+drawCalendar();
+}
+function doctorLegendHTML(){
+const doctors=clinicDoctors(clinic);
+if(!doctors.length)return '<p class="cal-small">Gydytojų dar nėra. Pridėkite gydytoją registracijos formoje.</p>';
+return '<div class="doctor-legend">'+doctors.map(name=>
+'<label class="doctor-color-item"><input type="color" aria-label="'+safe(name)+' spalva" value="'+doctorColor(name,clinic)+'" onchange="DentalCalendar.color('+JSON.stringify(name).replace(/"/g,"&quot;")+',this.value)"><span>'+safe(name)+'</span></label>'
+).join('')+'</div>';
+}
+function chairOf(a){
+const v=String(a.chair||a.room||"");
+return v==="2 kėdė"||v==="2 kabinetas"?"2 kėdė":"1 kėdė";
+}
+function doctorColumnsHTML(){
+const date=localDate(currentDate);
+const rows=appointments.filter(a=>a.clinic===clinic&&a.date===date);
+let html='<div class="cal-toolbar"><button onclick="DentalCalendar.prev()">← Ankstesnė diena</button><button onclick="DentalCalendar.today()">Šiandien</button><button onclick="DentalCalendar.next()">Kita diena →</button><input type="date" aria-label="Pasirinkti datą" value="'+date+'" onchange="DentalCalendar.goDate(this.value)"><button onclick="DentalCalendar.addDoctor()">+ Gydytojas</button></div>';
+html+='<div class="cal-hours-hint">Kiekvienoje klinikoje – 2 odontologinės kėdės. Registracija: kėdė → pacientas → gydytojas. 07:00–22:00.</div>';
+html+='<div class="cal-scroll"><div class="cal-grid" style="--doctor-count:2"><div class="cal-head">Laikas</div>'+chairNames.map(d=>'<div class="cal-head">'+d+'</div>').join('');
+for(let mins=420;mins<1320;mins+=30){
+const time=String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
+html+='<div class="cal-time">'+time+'</div>';
+for(const chair of chairNames){
+const starts=rows.filter(a=>chairOf(a)===chair&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))>=mins&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))<mins+30);
+const occupied=rows.some(a=>chairOf(a)===chair&&a.status!=="Atšauktas"&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))<mins&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3))+Number(a.duration))>mins);
+html+='<div class="cal-slot '+(occupied?'cal-busy':'')+'">';
+for(const a of starts){
+html+='<button class="cal-event" style="background:'+doctorColor(a.doctor,clinic)+';color:white;border-color:transparent" onclick="DentalCalendar.edit(\''+safe(a.id)+'\')"><strong>'+safe(a.time)+' · '+safe(a.patient)+'</strong><span>'+safe(a.doctor)+' · '+safe(a.service)+' · '+safe(a.duration)+' min. · '+safe(a.status)+'</span></button>';
+}
+if(!starts.length&&!occupied)html+='<button class="cal-free" onclick="DentalCalendar.chairSlot(\''+date+'\',\''+time+'\',\''+chair+'\')" aria-label="Registruoti '+safe(time)+' '+chair+'">+</button>';
+html+='</div>';
+}
+}
+return html+'</div></div>';
+}
+function fullCalendarView(){
+const date=localDate(currentDate);
+const available=typeof FullCalendar!=="undefined";
+let html='<div class="card"><h2>Registracijos kalendorius</h2><div class="cal-toolbar">'+
+'<label for="calClinic">Klinika</label><select id="calClinic" onchange="DentalCalendar.clinic(this.value)">'+
+'<option value="0"'+(clinic===0?' selected':'')+'>Naujoji Akmenė</option>'+
+'<option value="1"'+(clinic===1?' selected':'')+'>Kuršėnai</option></select>'+
+'<button onclick="DentalCalendar.view(\'resourceDay\')">Gydytojai</button>'+
+'<button onclick="DentalCalendar.view(\'timeGridDay\')">Diena</button>'+
+'<button onclick="DentalCalendar.view(\'timeGridWeek\')">Savaitė</button>'+
+'<button onclick="DentalCalendar.view(\'dayGridMonth\')">Mėnuo</button>'+
+'<button class="primary" onclick="DentalCalendar.newOn(\''+date+'\')">+ Naujas vizitas</button></div>'+
+'<p class="cal-hours-hint">Grafikas: 07:00–22:00. Vakarines valandas rasite slinkdami kalendorių žemyn.</p><details class="doctor-colors"><summary>Gydytojų spalvos (keisti)</summary>'+doctorLegendHTML()+'</details><div id="fullcalendar"></div></div><div class="card" id="calEditor"></div>';
+if(calendarView==="resourceDay"){
+html=html.replace('<div id="fullcalendar"></div>',doctorColumnsHTML());
+el("content").innerHTML=html;
+drawForm();
+return;
+}
+el("content").innerHTML=html;
+drawForm();
+if(!available){
+el("fullcalendar").innerHTML='<p class="notice">Kalendoriaus biblioteka neįkelta. Patikrinkite interneto ryšį ir atnaujinkite puslapį.</p>';
+return;
+}
+const events=appointments.filter(a=>a.clinic===clinic&&(calendarView!=="resourceDay"||!selectedDoctor||a.doctor===selectedDoctor)).map(a=>({
+id:a.id,title:chairOf(a)+" · "+a.patient+" · "+a.doctor,
+start:a.date+"T"+a.time,
+end:(()=>{const d=new Date(a.date+"T"+a.time);d.setMinutes(d.getMinutes()+Number(a.duration));return localDate(d)+"T"+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")})(),
+backgroundColor:a.status==="Atšauktas"?"#94a3b8":doctorColor(a.doctor,a.clinic),
+borderColor:"transparent",
+extendedProps:{doctor:a.doctor,status:a.status}
+}));
+fullCalendar=new FullCalendar.Calendar(el("fullcalendar"),{
+locale:"lt",firstDay:1,initialView:calendarView==="resourceDay"?"timeGridDay":calendarView,initialDate:date,
+headerToolbar:{left:"prev,next today",center:"title",right:""},
+buttonText:{today:"Šiandien"},height:Math.max(650,Math.min(950,window.innerHeight-140)),allDaySlot:false,
+slotMinTime:"07:00:00",slotMaxTime:"22:00:00",slotDuration:"00:30:00",
+nowIndicator:true,editable:true,selectable:true,selectMirror:true,
+eventDisplay:"block",events,
+datesSet(info){currentDate=new Date(info.view.calendar.getDate().getTime());},
+select(info){
+const d=info.startStr.slice(0,10),t=info.startStr.slice(11,16)||"09:00";
+editingId=null;pendingSlot={date:d,time:t};drawForm();
+el("calEditor").scrollIntoView({behavior:"smooth",block:"start"});
+},
+dateClick(info){
+editingId=null;pendingSlot={date:info.dateStr.slice(0,10),time:info.dateStr.slice(11,16)||"09:00"};
+drawForm();el("calEditor").scrollIntoView({behavior:"smooth",block:"start"});
+},
+eventClick(info){editingId=info.event.id;pendingSlot=null;drawForm();el("calEditor").scrollIntoView({behavior:"smooth",block:"start"})},
+eventDrop(info){moveEvent(info)},
+eventResize(info){moveEvent(info)}
+});
+fullCalendar.render();
+}
+function localTimeAfter(date,time,duration){
+const d=new Date(date+"T"+time);
+d.setMinutes(d.getMinutes()+duration);
+return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+function moveEvent(info){
+const a=appointments.find(x=>x.id===info.event.id);
+if(!a){info.revert();return}
+const start=info.event.start,end=info.event.end;
+const proposed={...a,date:localDate(start),time:String(start.getHours()).padStart(2,"0")+":"+String(start.getMinutes()).padStart(2,"0"),duration:String(Math.round((end-start)/60000))};
+if(conflictFor(proposed)){
+alert("Gydytojas arba kabinetas jau užimtas, arba vizitas baigiasi po vidurnakčio.");info.revert();return;
+}
+Object.assign(a,proposed);persist();
+}
+function drawCalendar(){
+fullCalendarView();return;
+const date=localDate(currentDate);
+const start=monday(currentDate);
+const rows=appointments.filter(a=>a.clinic===clinic&&a.date===date);
+let doctors=[];
+try{doctors=JSON.parse(localStorage.getItem("dentalpro_doctors_"+clinic)||"[]")}catch(e){}
+for(const a of rows){if(a.doctor&&!doctors.includes(a.doctor))doctors.push(a.doctor)}
+if(!doctors.length)doctors=["Gydytojas 1","Gydytojas 2"];
+let html=`<div class="card"><h2>Vizitų registracijos grafikas</h2>
+<div class="cal-toolbar"><button onclick="DentalCalendar.prev()">← Ankstesnė diena</button><button onclick="DentalCalendar.today()">Šiandien</button><button onclick="DentalCalendar.next()">Kita diena →</button>
+<input type="date" aria-label="Pasirinkti datą" value="${date}" onchange="DentalCalendar.goDate(this.value)"></div>
+<div class="cal-toolbar"><label for="calClinic">Klinika</label><select id="calClinic" onchange="DentalCalendar.clinic(this.value)">
+<option value="0"${clinic===0?" selected":""}>Naujoji Akmenė</option><option value="1"${clinic===1?" selected":""}>Kuršėnai</option></select>
+<button onclick="DentalCalendar.addDoctor()">+ Gydytojas</button>
+<button class="primary" onclick="DentalCalendar.newOn('${date}')">+ Naujas vizitas</button></div>
+<div class="cal-weekstrip">`;
+for(let i=0;i<7;i++){
+const d=addDays(start,i),ds=localDate(d);
+html+=`<button class="${ds===date?"active":""}" onclick="DentalCalendar.goDate('${ds}')">${weekdays[d.getDay()]}<br>${ds.slice(5)}</button>`;
+}
+html+=`</div><p class="cal-small">Paspauskite laisvą laiką gydytojo stulpelyje. „Gydytojas 1“ ir „Gydytojas 2“ – laikini demonstraciniai pavadinimai.</p>
+<div class="cal-scroll"><div class="cal-grid" style="--doctor-count:${doctors.length}">
+<div class="cal-head">Laikas</div>${doctors.map(d=>`<div class="cal-head">${safe(d)}</div>`).join("")}`;
+for(let mins=420;mins<1320;mins+=30){
+const time=String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
+html+=`<div class="cal-time">${time}</div>`;
+for(const doctor of doctors){
+const starts=rows.filter(a=>a.doctor===doctor&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))>=mins&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))<mins+30);
+const occupied=rows.some(a=>a.doctor===doctor&&a.status!=="Atšauktas"&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))<mins&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3))+Number(a.duration))>mins);
+html+=`<div class="cal-slot ${occupied?"cal-busy":""}">`;
+for(const a of starts){
+const cls=a.status==="Atliktas"?"done":a.status==="Atšauktas"?"cancelled":a.status==="Atvykęs"?"arrived":"";
+html+=`<button class="cal-event ${cls}" onclick="DentalCalendar.edit('${safe(a.id)}')"><strong>${safe(a.time)} · ${safe(a.patient)}</strong><span>${safe(a.service)} · ${safe(a.duration)} min. · ${safe(a.status)}</span></button>`;
+}
+if(!starts.length&&!occupied)html+=`<button class="cal-free" onclick="DentalCalendar.slot('${date}','${time}',${JSON.stringify(doctor).replace(/"/g,"&quot;")})" aria-label="Registruoti ${safe(time)} ${safe(doctor)}">+</button>`;
+html+="</div>";
+}
+}
+html+='</div></div></div><div class="card" id="calEditor"></div>';
+el("content").innerHTML=html;
+drawForm();
+}
+function drawForm(){
+const a=appointments.find(x=>x.id===editingId);
+const c=clinic;
+const date=a?.date||pendingSlot?.date||localDate(currentDate);
+const patientName=a?.patient||names[c][patient];
+el("calEditor").innerHTML=`
+<h3>${a?"Redaguoti vizitą":"Naujas vizitas"}</h3>
+<div class="cal-form">
+<div><label>Kėdė</label><select id="calChair">${options(chairNames,a?.chair||a?.room||pendingSlot?.chair||chairNames[0])}</select></div>
+<div><label>Pacientas</label>
+<select id="calPatient">${patientOptions(c,patientName)}</select></div>
+<div><label>Gydytojas</label>
+<select id="calDoctor" required>${doctorOptions(c,a?.doctor||pendingSlot?.doctor||"")}</select><button type="button" onclick="DentalCalendar.addDoctorFromForm()">+ Pridėti gydytoją</button></div>
+
+<div><label>Data</label>
+<input id="calDate" type="date" value="${safe(date)}"></div>
+<div><label>Laikas</label>
+<input id="calTime" type="time" value="${safe(a?.time||pendingSlot?.time||"09:00")}"></div>
+<div><label>Trukmė (min.)</label>
+<select id="calDuration">${options(["15","30","45","60","90","120"],a?.duration||"30")}</select></div>
+<div><label>Paslauga</label>
+<select id="calService">${options(services,a?.service||services[0])}</select></div>
+<div><label>Būsena</label>
+<select id="calStatus">${options(statuses,a?.status||statuses[0])}</select></div>
+<div class="wide"><label>Pastabos</label>
+<textarea id="calNotes" placeholder="Tik demonstracinė informacija">${safe(a?.notes||"")}</textarea></div>
+</div>
+<p class="row">
+<button class="primary" onclick="DentalCalendar.save()">Išsaugoti vizitą</button>
+${a?'<button onclick="DentalCalendar.remove()">Ištrinti vizitą</button>':""}
+<button onclick="DentalCalendar.clear()">Išvalyti formą</button>
+</p>
+<p class="cal-small">Sistema tikrina, ar toje pačioje klinikoje nepersidengia gydytojo ir kėdės užimtumas.</p>`;
+}
+function saveVisit(){
+const a={
+id:editingId||"v"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+clinic,
+patient:el("calPatient").value,
+doctor:el("calDoctor").value.trim(),
+room:el("calChair").value,
+chair:el("calChair").value,
+date:el("calDate").value,
+time:el("calTime").value,
+duration:el("calDuration").value,
+service:el("calService").value,
+status:el("calStatus").value,
+notes:el("calNotes").value.trim()
+};
+if(!a.patient||!a.doctor||!a.date||!a.time){
+alert("Užpildykite pacientą, gydytoją, datą ir laiką.");
+return;
+}
+const start=Number(a.time.slice(0,2))*60+Number(a.time.slice(3));
+const end=start+Number(a.duration);
+if(end>1440){
+alert("Vizitas negali tęstis po vidurnakčio.");
+return;
+}
+const conflict=appointments.find(b=>{
+if(b.id===a.id||b.clinic!==a.clinic||b.date!==a.date||b.status==="Atšauktas"||a.status==="Atšauktas")return false;
+const sameDoctor=b.doctor.trim().toLowerCase()===a.doctor.trim().toLowerCase();
+const sameRoom=chairOf(a)===chairOf(b);
+if(!sameDoctor&&!sameRoom)return false;
+const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
+return start<bs+Number(b.duration)&&bs<end;
+});
+if(conflict){
+const reason=conflict.doctor.trim().toLowerCase()===a.doctor.trim().toLowerCase()?"Gydytojas":"Kėdė";
+alert(reason+" jau užimtas šiuo laiku ("+conflict.time+", "+conflict.patient+"). Pasirinkite kitą laiką.");
+return;
+}
+const index=appointments.findIndex(x=>x.id===a.id);
+if(index>=0)appointments[index]=a;
+else appointments.push(a);
+persist();
+editingId=null;
+pendingSlot=null;
+currentDate=parseDate(a.date);
+drawCalendar();
+}
+window.DentalCalendar={
+open:navigateCalendar,
+view:switchCalendarView,
+color:saveDoctorColor,
+addDoctorFromForm,
+chairSlot(date,time,chair){editingId=null;pendingSlot={date,time,chair};drawForm();el("calEditor").scrollIntoView({behavior:"smooth",block:"start"})},
+doctor:selectCalendarDoctor,
+prev(){currentDate=addDays(currentDate,-1);editingId=null;pendingSlot=null;drawCalendar()},
+next(){currentDate=addDays(currentDate,1);editingId=null;pendingSlot=null;drawCalendar()},
+today(){currentDate=new Date();editingId=null;pendingSlot=null;drawCalendar()},
+goDate(v){if(!v)return;currentDate=parseDate(v);editingId=null;pendingSlot=null;drawCalendar()},
+clinic(v){clinic=Number(v);patient=0;el("clinic").selectedIndex=clinic;editingId=null;pendingSlot=null;drawCalendar()},
+newOn(date){editingId=null;pendingSlot={date};currentDate=parseDate(date);drawCalendar();el("calEditor").scrollIntoView({behavior:"smooth",block:"start"});el("calPatient").focus()},
+slot(date,time,doctor){editingId=null;pendingSlot={date,time,doctor};drawForm();el("calEditor").scrollIntoView({behavior:"smooth",block:"start"});el("calPatient").focus()},
+edit(id){editingId=id;pendingSlot=null;drawForm();el("calEditor").scrollIntoView({behavior:"smooth",block:"start"})},
+clear(){editingId=null;pendingSlot=null;drawForm()},
+save:saveVisit,
+addDoctor(){const name=prompt("Įrašykite gydytojo vardą ir pavardę:");if(!name||!name.trim())return;let list=[];try{list=JSON.parse(localStorage.getItem("dentalpro_doctors_"+clinic)||"[]")}catch(e){}if(!list.includes(name.trim()))list.push(name.trim());localStorage.setItem("dentalpro_doctors_"+clinic,JSON.stringify(list));drawCalendar()},
+remove(){if(!editingId||!confirm("Tikrai ištrinti vizitą?"))return;appointments=appointments.filter(a=>a.id!==editingId);persist();editingId=null;pendingSlot=null;drawCalendar()}
+};
+const btn=document.createElement("button");
+btn.id="tab-calendar";
+btn.textContent="📅 Registracijos kalendorius";
+btn.onclick=navigateCalendar;
+document.querySelector("nav").appendChild(btn);
+})();
+</script>
+</body>
+</html>
