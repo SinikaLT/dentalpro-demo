@@ -44,4 +44,12 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
     hooks.modal(kind);
     assert.ok(node("drawer-root").innerHTML.includes('role="dialog"'),kind+" drawer should render");
   }
+  hooks.route("forms");
+  assert.match(node("page").innerHTML,/Paciento aptarnavimo sutartis/);
+  for(const type of ["agreement","privacy","health","invasive"]){
+    hooks.modal("registration-form","",{formType:type});
+    assert.ok(node("drawer-root").innerHTML.includes('id="form-signature"'),type+" includes draw-to-sign canvas");
+    assert.ok(node("drawer-root").innerHTML.includes('id="registration-form"'),type+" fields render");
+  }
+
 });
