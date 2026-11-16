@@ -329,7 +329,7 @@ for(const a of appointments.filter(a=>a.clinic===clinic)){if(a.doctor&&!doctors.
 if(!doctors.length)doctors=["Gydytojas 1","Gydytojas 2"];
 let html='<div class="cal-toolbar"><button onclick="DentalCalendar.prev()">← Ankstesnė diena</button><button onclick="DentalCalendar.today()">Šiandien</button><button onclick="DentalCalendar.next()">Kita diena →</button><input type="date" aria-label="Pasirinkti datą" value="'+date+'" onchange="DentalCalendar.goDate(this.value)"><button onclick="DentalCalendar.addDoctor()">+ Gydytojas</button></div>';
 html+='<div class="cal-scroll"><div class="cal-grid" style="--doctor-count:'+doctors.length+'"><div class="cal-head">Laikas</div>'+doctors.map(d=>'<div class="cal-head">'+safe(d)+'</div>').join('');
-for(let mins=480;mins<1140;mins+=30){
+for(let mins=420;mins<1320;mins+=30){
 const time=String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
 html+='<div class="cal-time">'+time+'</div>';
 for(const doctor of doctors){
@@ -383,7 +383,7 @@ fullCalendar=new FullCalendar.Calendar(el("fullcalendar"),{
 locale:"lt",firstDay:1,initialView:calendarView==="resourceDay"?"timeGridDay":calendarView,initialDate:date,
 headerToolbar:{left:"prev,next today",center:"title",right:""},
 buttonText:{today:"Šiandien"},height:"auto",allDaySlot:false,
-slotMinTime:"08:00:00",slotMaxTime:"19:00:00",slotDuration:"00:30:00",
+slotMinTime:"07:00:00",slotMaxTime:"22:00:00",slotDuration:"00:30:00",
 nowIndicator:true,editable:true,selectable:true,selectMirror:true,
 eventDisplay:"block",events,
 datesSet(info){currentDate=new Date(info.view.calendar.getDate().getTime());},
@@ -441,7 +441,7 @@ html+=`<button class="${ds===date?"active":""}" onclick="DentalCalendar.goDate('
 html+=`</div><p class="cal-small">Paspauskite laisvą laiką gydytojo stulpelyje. „Gydytojas 1“ ir „Gydytojas 2“ – laikini demonstraciniai pavadinimai.</p>
 <div class="cal-scroll"><div class="cal-grid" style="--doctor-count:${doctors.length}">
 <div class="cal-head">Laikas</div>${doctors.map(d=>`<div class="cal-head">${safe(d)}</div>`).join("")}`;
-for(let mins=480;mins<1140;mins+=30){
+for(let mins=420;mins<1320;mins+=30){
 const time=String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
 html+=`<div class="cal-time">${time}</div>`;
 for(const doctor of doctors){
