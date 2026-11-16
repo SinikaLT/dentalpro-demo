@@ -21,7 +21,7 @@ export function appointmentIssues(state,a){
   const issues=[];
   if(!CLINICS.some(c=>c.id===a.clinicId))issues.push("Pasirinkite kliniką.");
   if(!state.chairs.some(c=>c.id===a.chairId&&c.clinicId===a.clinicId))issues.push("Kėdė nepriklauso pasirinktai klinikai.");
-  if(!state.patients.some(p=>p.id===a.patientId))issues.push("Pasirinkite pacientą.");
+  if(!state.patients.some(p=>p.id===a.patientId&&p.clinicIds?.includes(a.clinicId)))issues.push("Pasirinkite pacientą, priskirtą šiai klinikai.");
   const doctor=state.staff.find(s=>s.id===a.staffId);
   if(!doctor||!doctor.clinicIds?.includes(a.clinicId))issues.push("Gydytojas nedirba pasirinktoje klinikoje.");
   if(!validDate(a.date))issues.push("Neteisinga vizito data.");
@@ -30,19 +30,21 @@ export function appointmentIssues(state,a){
   if(Number.isFinite(start)&&(start<420||end>1320))issues.push("Vizitas turi tilpti į 07:00–22:00.");
   if(!STATUSES.includes(a.status))issues.push("Neteisinga vizito būsena.");
   if(!state.services.some(s=>s.id===a.serviceId))issues.push("Pasirinkite paslaugą.");
+  if(String(a.notes||"").length>3000)issues.push("Vizito pastaba per ilga (iki 3000 simbolių).");
   // Atšauktas vizitas neužima išteklių; istorija išlieka.
-  if(issues.length||a.status==="Atšauktas")return issues;
+  if(issues.length||["Atšauktas","Neatvyko"].includes(a.status))return issues;
   const day=weekday(a.date);
   const windows=(doctor.availability||[]).filter(w=>Number(w.weekday)===day&&w.clinicId===a.clinicId);
   if(!windows.some(w=>start>=minutes(w.start)&&end<=minutes(w.end)))issues.push("Gydytojas tuo metu nedirba pagal grafiką.");
   const breaks=(doctor.breaks||[]).filter(b=>Number(b.weekday)===day&&(!b.clinicId||b.clinicId===a.clinicId));
   if(breaks.some(b=>overlaps(start,end,minutes(b.start),minutes(b.end))))issues.push("Vizitas patenka į gydytojo pertrauką.");
   for(const other of state.appointments){
-    if(other.id===a.id||other.status==="Atšauktas"||other.date!==a.date)continue;
+    if(other.id===a.id||["Atšauktas","Neatvyko"].includes(other.status)||other.date!==a.date)continue;
     const os=minutes(other.time),oe=os+Number(other.duration);
     if(!overlaps(start,end,os,oe))continue;
     if(other.clinicId===a.clinicId&&other.chairId===a.chairId)issues.push("Kėdė jau užimta ("+other.time+").");
     if(other.staffId===a.staffId)issues.push("Gydytojas jau užimtas ("+other.time+").");
+    if(other.patientId===a.patientId)issues.push("Pacientas jau turi vizitą tuo metu ("+other.time+").");
   }
   return [...new Set(issues)];
 }
