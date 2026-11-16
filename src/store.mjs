@@ -1,7 +1,8 @@
 import {CLINICS,CHAIRS,isoDate,shiftDate,weekday,uid} from "./domain.mjs";
 import {mkCatalog} from "./pricelist.mjs";
 
-export const STORAGE_KEY="dentalpro_v2_demo";
+// Nauja, izoliuota sintetinė aplinka: neskaitome ankstesnių asmens įrašų.
+export const STORAGE_KEY="dentalpro_v3_synthetic_only";
 export const LEGACY_NAMES=[
 ["Jonas Kazlauskas","Ona Petrauskienė","Mantas Jankauskas","Rūta Stankevičienė","Vytautas Žukauskas","Aistė Balčiūnaitė","Darius Vaitkus","Ieva Paulauskaitė","Tomas Butkus","Emilija Šimkutė"],
 ["Antanas Rimkus","Birutė Norkienė","Lukas Kavaliauskas","Gabija Urbonaitė","Povilas Žilinskas","Monika Kairytė","Arūnas Mikalauskas","Greta Mockutė","Saulius Navickas","Agnė Jurevičiūtė"]
@@ -46,7 +47,7 @@ export function seedData(today=isoDate()){
     ["kur","kur-2","p-1-1","dr-kur-2","11:00","s-prost","Registruotas"]
   ];
   return {
-    version:2,catalogRevision:"mk-2026-11",demo:true,clinics:JSONclone(CLINICS),chairs:JSONclone(CHAIRS),staff,patients,services,
+    version:3,catalogRevision:"mk-2026-11",demo:true,clinics:JSONclone(CLINICS),chairs:JSONclone(CHAIRS),staff,patients,services,
     appointments:appointmentDefs.map((a,i)=>({
       id:"demo-a-"+i,clinicId:a[0],chairId:a[1],patientId:a[2],staffId:a[3],
       date:day,time:a[4],duration:services.find(s=>s.id===a[5]).duration,serviceId:a[5],status:a[6],notes:""
@@ -57,69 +58,17 @@ export function seedData(today=isoDate()){
 function parse(storage,key,defaultValue){
   try{const raw=storage?.getItem(key);return raw?JSON.parse(raw):defaultValue}catch{return defaultValue}
 }
-function legacyMigration(state,storage){
-  const oldPatients=parse(storage,"dentalpro_demo",{});
-  for(let c=0;c<2;c++){
-    const clinicId=CLINICS[c].id;
-    const oldDocs=parse(storage,"dentalpro_doctors_"+c,[]);
-    for(const name of (Array.isArray(oldDocs)?oldDocs:[]))ensureDoctor(state,name,clinicId);
-    for(let i=0;i<LEGACY_NAMES[c].length;i++){
-      const p=state.patients.find(p=>p.id==="p-"+c+"-"+i);
-      const record=oldPatients?.[c+"-"+i];
-      if(!record||!p)continue;
-      for(const [tooth,value] of Object.entries(record.teeth||{})){
-        if(!value||typeof value!=="object")continue;
-        state.findings.push({id:uid("legacy-tooth"),patientId:p.id,toothNumber:Number(tooth),
-          surfaces:[String(value.surface||"Visas dantis")],condition:String(value.diagnosis||"Stebėjimas"),
-          note:String(value.treatment||""),status:"Stebima",updatedAt:new Date().toISOString()});
-      }
-      for(const visit of record.visits||[]){
-        state.clinicalNotes.push({id:uid("legacy-note"),patientId:p.id,appointmentId:"",
-          authorId:"",date:String(visit.date||isoDate()),text:String(visit.text||""),createdAt:new Date().toISOString()});
-      }
-      if(record.plans?.length){
-        state.plans.push({id:uid("legacy-plan"),patientId:p.id,clinicId,status:"Juodraštis",title:"Perkeltas ankstesnis planas",
-          items:record.plans.map(t=>({id:uid("legacy-item"),serviceId:"",description:String(t),tooth:"",qty:1,price:0,done:false}))});
-      }
-    }
-  }
-  const oldAppts=parse(storage,"dentalpro_calendar_v1",[]);
-  if(Array.isArray(oldAppts))for(const item of oldAppts){
-    const c=Number(item.clinic)===1?1:0,clinicId=CLINICS[c].id;
-    const existing=state.patients.find(p=>p.clinicIds.includes(clinicId)&&p.firstName+" "+p.lastName===item.patient);
-    if(!existing)continue;
-    const doctorId=ensureDoctor(state,String(item.doctor||"Demonstracinis gydytojas"),clinicId);
-    const service=state.services.find(s=>s.name===item.service)||state.services[0];
-    const chair=String(item.chair||item.room||"").startsWith("2")?clinicId+"-2":clinicId+"-1";
-    state.appointments.push({id:"old-"+String(item.id||uid("a")),clinicId,chairId:chair,patientId:existing.id,
-      staffId:doctorId,date:String(item.date||isoDate()),time:String(item.time||"09:00"),
-      duration:Number(item.duration)||service.duration,serviceId:service.id,
-      status:String(item.status||"Registruotas"),notes:String(item.notes||"")});
-  }
-  state.audit.push({id:uid("audit"),at:new Date().toISOString(),action:"Perkelti seni vietiniai demo duomenys (jei buvo)",entity:"sistema"});
-  return state;
-}
-function ensureDoctor(state,name,clinicId){
-  const clean=String(name||"").trim();
-  if(!clean)return "";
-  let doc=state.staff.find(s=>s.name.toLocaleLowerCase("lt")===clean.toLocaleLowerCase("lt")&&s.clinicIds.includes(clinicId));
-  if(doc)return doc.id;
-  doc={id:uid("dr"),name:clean,role:"Gydytojas odontologas",clinicIds:[clinicId],
-       availability:defaultAvailability(clinicId),breaks:defaultBreaks(clinicId)};
-  state.staff.push(doc);return doc.id;
-}
 export function openRepository(storage=globalThis.localStorage){
   let current=parse(storage,STORAGE_KEY,null);
-  if(!current||current.version!==2||!Array.isArray(current.appointments)){
-    current=legacyMigration(seedData(),storage);
+  if(!current||current.version!==3||current.demo!==true||!Array.isArray(current.appointments)||
+      !Array.isArray(current.patients)||!current.patients.every(p=>p.synthetic===true)){
+    current=seedData();
     try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}
   }
-  // Atnaujinimas nekeičia jau įrašytų vizitų, planų ir sąskaitų.
-  const mk=mkCatalog();
-  if(current.version===2&&(!current.catalogRevision||current.catalogRevision<"mk-2026-11")){
+  // Kainyno naujinimas keičia tik katalogą, o ne jau išsaugotų planų kainas.
+  if(current.catalogRevision!=="mk-2026-11"){
     const known=new Set(current.services.map(s=>s.id));
-    for(const s of mk)if(!known.has(s.id))current.services.push(s);
-    for(const s of current.services)if(!s.source&&s.active)s.active=false;
+    for(const service of mkCatalog())if(!known.has(service.id))current.services.push(service);
     current.catalogRevision="mk-2026-11";
     try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}
   }
