@@ -1,4 +1,5 @@
 name: Publish DentalPro 2.0 (GitHub Pages)
+# Public demo. Only synthetic patient records may be published.
 on:
   push:
     branches: [main]
