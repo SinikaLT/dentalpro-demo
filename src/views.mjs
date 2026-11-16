@@ -16,7 +16,7 @@ const doctor=id=>doctorName(db,id);
 const service=id=>serviceName(db,id);
 const clinic=id=>db.clinics.find(x=>x.id===id)?.name||"—";
 const chair=id=>db.chairs.find(x=>x.id===id)?.name||"—";
-const pill=s=>'<span class="pill '+(["Atšauktas","Neatvyko"].includes(s)?"danger":(["Atvykęs","Atliekamas"].includes(s)?"warning":(["Registruotas","Juodraštis","Neaktyvi"].includes(s)?"grey":""))+'">'+esc(s)+'</span>';
+const pill=s=>{let cls="";if(["Atšauktas","Neatvyko"].includes(s))cls="danger";else if(["Atvykęs","Atliekamas"].includes(s))cls="warning";else if(["Registruotas","Juodraštis","Neaktyvi"].includes(s))cls="grey";return '<span class="pill '+cls+'">'+esc(s)+'</span>';};
 const listPatients=()=>db.patients.filter(p=>ui.clinic==="all"||p.clinicIds.includes(ui.clinic));
 const listDoctors=()=>db.staff.filter(d=>ui.clinic==="all"||d.clinicIds.includes(ui.clinic));
 const listChairs=()=>db.chairs.filter(c=>ui.clinic==="all"||c.clinicId===ui.clinic);
