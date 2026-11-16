@@ -14,9 +14,9 @@ export function priceOptions(service){
   return [...new Set(values)];
 }
 export function mkCatalog(){
-  return rows.split("\\n").filter(Boolean).map((line,index)=>{
+  return rows.split("\n").filter(Boolean).map((line,index)=>{
     const [category,name,raw]=line.split(";");
-    const nums=(raw.match(/\\d+/g)||[]).map(Number);
+    const nums=(raw.match(/\d+/g)||[]).map(Number);
     const priceMin=nums.length?nums[0]:null;
     const priceMax=raw.includes("-")?nums[1]:raw.endsWith("+")||raw==="individualiai"?null:priceMin;
     const duration=/implant|protez|kanal|šalinim|operac|All on 4/i.test(category+" "+name)?90:/higien|balinim/i.test(category)?60:30;
