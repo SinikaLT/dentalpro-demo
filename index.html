@@ -478,6 +478,7 @@ const patientName=a?.patient||names[c][patient];
 el("calEditor").innerHTML=`
 <h3>${a?"Redaguoti vizitą":"Naujas vizitas"}</h3>
 <div class="cal-form">
+<div><label>Kėdė</label><select id="calChair">${options(chairNames,a?.chair||a?.room||pendingSlot?.chair||chairNames[0])}</select></div>
 <div><label>Pacientas</label>
 <select id="calPatient">${patientOptions(c,patientName)}</select></div>
 <div><label>Gydytojas</label>
@@ -537,7 +538,7 @@ const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
 return start<bs+Number(b.duration)&&bs<end;
 });
 if(conflict){
-const reason=conflict.doctor.trim().toLowerCase()===a.doctor.trim().toLowerCase()?"Gydytojas":"Kabinetas";
+const reason=conflict.doctor.trim().toLowerCase()===a.doctor.trim().toLowerCase()?"Gydytojas":"Kėdė";
 alert(reason+" jau užimtas šiuo laiku ("+conflict.time+", "+conflict.patient+"). Pasirinkite kitą laiką.");
 return;
 }
