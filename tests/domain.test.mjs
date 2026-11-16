@@ -113,3 +113,22 @@ test("pagrindinė demonstracija išlaiko senąją versiją",()=>{
   assert.match(html,/lang="lt"/);
   assert.ok(!html.includes("realūs pacientų duomenys"));
 });
+ 
+import {mkCatalog,priceOptions} from "../src/pricelist.mjs";
+
+test("MK kainynas: 130 suskaidytų procedūrų su kategorijomis",()=>{
+  const services=mkCatalog();
+  assert.ok(services.length>=125);
+  assert.ok(new Set(services.map(s=>s.category)).size>=10);
+  assert.equal(services.find(s=>s.name.includes("Šviesoje kietėjanti plomba – maža")).priceMin,50);
+  assert.equal(services.find(s=>s.name.includes("Šviesoje kietėjanti plomba – maža")).priceMax,60);
+  assert.ok(services.some(s=>s.priceMax===null));
+});
+
+test("gydymo plano kainų intervalai pateikiami 10 eurų žingsniais",()=>{
+  assert.deepEqual(priceOptions({priceMin:50,priceMax:70}),[50,60,70]);
+  assert.deepEqual(priceOptions({priceMin:35,priceMax:50}),[35,40,50]);
+  assert.deepEqual(priceOptions({priceMin:20,priceMax:25}),[20,25]);
+  assert.deepEqual(priceOptions({priceMin:50,priceMax:50}),[50]);
+  assert.deepEqual(priceOptions({priceMin:null,priceMax:null}),[]);
+});
