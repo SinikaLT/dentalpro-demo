@@ -268,6 +268,7 @@ drawCalendar();
 }
 
 let calendarView="timeGridWeek";
+let selectedDoctor="";
 let fullCalendar=null;
 function conflictFor(a){
 const start=Number(a.time.slice(0,2))*60+Number(a.time.slice(3));
@@ -280,7 +281,12 @@ const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
 return start<bs+Number(b.duration)&&bs<end;
 });
 }
-function switchCalendarView(v){if(fullCalendar&&v!=="resourceDay"&&calendarView!=="resourceDay"){calendarView=v;fullCalendar.changeView(v);return}calendarView=v;editingId=null;pendingSlot=null;drawCalendar()}
+function switchCalendarView(v){
+calendarView=v;
+editingId=null;pendingSlot=null;
+drawCalendar();
+}
+function selectCalendarDoctor(v){selectedDoctor=v;drawCalendar()}
 function fullCalendarView(){
 const date=localDate(currentDate);
 const available=typeof FullCalendar!=="undefined";
@@ -294,13 +300,21 @@ let html='<div class="card"><h2>Registracijos kalendorius</h2><div class="cal-to
 '<button onclick="DentalCalendar.view(\'dayGridMonth\')">Mėnuo</button>'+
 '<button class="primary" onclick="DentalCalendar.newOn(\''+date+'\')">+ Naujas vizitas</button></div>'+
 '<div id="fullcalendar"></div></div><div class="card" id="calEditor"></div>';
+if(calendarView==="resourceDay"){
+const doctors=[...new Set(appointments.filter(a=>a.clinic===clinic).map(a=>a.doctor).filter(Boolean))].sort();
+if(selectedDoctor&&!doctors.includes(selectedDoctor))selectedDoctor="";
+html=html.replace('<div id="fullcalendar"></div>',
+'<div class="cal-toolbar"><label for="doctorFilter">Gydytojas</label><select id="doctorFilter" onchange="DentalCalendar.doctor(this.value)"><option value="">Visi gydytojai</option>'+
+doctors.map(d=>'<option value="'+safe(d)+'"'+(selectedDoctor===d?' selected':'')+'>'+safe(d)+'</option>').join('')+
+'</select></div><div id="fullcalendar"></div>');
+}
 el("content").innerHTML=html;
 drawForm();
 if(!available){
 el("fullcalendar").innerHTML='<p class="notice">Kalendoriaus biblioteka neįkelta. Patikrinkite interneto ryšį ir atnaujinkite puslapį.</p>';
 return;
 }
-const events=appointments.filter(a=>a.clinic===clinic).map(a=>({
+const events=appointments.filter(a=>a.clinic===clinic&&(calendarView!=="resourceDay"||!selectedDoctor||a.doctor===selectedDoctor)).map(a=>({
 id:a.id,title:a.patient+" · "+a.doctor,
 start:a.date+"T"+a.time,
 end:(()=>{const d=new Date(a.date+"T"+a.time);d.setMinutes(d.getMinutes()+Number(a.duration));return localDate(d)+"T"+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")})(),
@@ -309,7 +323,7 @@ borderColor:"transparent",
 extendedProps:{doctor:a.doctor,status:a.status}
 }));
 fullCalendar=new FullCalendar.Calendar(el("fullcalendar"),{
-locale:"lt",firstDay:1,initialView:calendarView,initialDate:date,
+locale:"lt",firstDay:1,initialView:calendarView==="resourceDay"?"timeGridDay":calendarView,initialDate:date,
 headerToolbar:{left:"prev,next today",center:"title",right:""},
 buttonText:{today:"Šiandien"},height:"auto",allDaySlot:false,
 slotMinTime:"08:00:00",slotMaxTime:"19:00:00",slotDuration:"00:30:00",
@@ -347,7 +361,7 @@ alert("Vizitų laikai persidengia arba vizitas baigiasi po vidurnakčio.");info.
 Object.assign(a,proposed);persist();
 }
 function drawCalendar(){
-if(calendarView!=="resourceDay"){fullCalendarView();return}
+fullCalendarView();return;
 const date=localDate(currentDate);
 const start=monday(currentDate);
 const rows=appointments.filter(a=>a.clinic===clinic&&a.date===date);
@@ -467,6 +481,7 @@ drawCalendar();
 window.DentalCalendar={
 open:navigateCalendar,
 view:switchCalendarView,
+doctor:selectCalendarDoctor,
 prev(){currentDate=addDays(currentDate,-1);editingId=null;pendingSlot=null;drawCalendar()},
 next(){currentDate=addDays(currentDate,1);editingId=null;pendingSlot=null;drawCalendar()},
 today(){currentDate=new Date();editingId=null;pendingSlot=null;drawCalendar()},
