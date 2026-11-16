@@ -144,3 +144,34 @@ test("neatvykęs pacientas neužblokuoja naujo laiko",()=>{
  const state=fixture();state.appointments.push(visit({id:"old",status:"Neatvyko"}));
  assert.deepEqual(appointmentIssues(state,visit()),[]);
 });
+
+import {FORM_TYPES,FORM_VERSION,HEALTH_QUESTIONS,validateForm} from "../src/forms.mjs";
+
+test("keturi skirtingi pacientų dokumentai ir atskiri parašai",()=>{
+ assert.equal(FORM_TYPES.length,4);
+ assert.ok(FORM_VERSION.includes("demo"));
+ for(const form of FORM_TYPES){
+   assert.ok(validateForm(form.id,{},null).length>0,form.id+" requires patient fields and signature");
+ }
+});
+test("BDAR informavimas nereiškia privalomo sutikimo rinkodarai",()=>{
+ const answers={representative:"Testas Demonstracinis",notice:"Susipažinau",controller:"Demo",contact:"Demo",marketing:"Nesutinku"};
+ const signature="data:image/png;base64,"+"A".repeat(200);
+ assert.deepEqual(validateForm("privacy",answers,signature),[]);
+});
+test("sveikatos anketoje privalomi visi klausimai, tačiau ne tikri medicininiai duomenys",()=>{
+ const answers={representative:"Demo",...Object.fromEntries(HEALTH_QUESTIONS.map(([id])=>["q_"+id,"Ne"]))};
+ const signature="data:image/png;base64,"+"A".repeat(200);
+ assert.deepEqual(validateForm("health",answers,signature),[]);
+ delete answers.q_allergies;
+ assert.ok(validateForm("health",answers,signature).length>0);
+});
+test("invazinių procedūrų sutikimui būtina individuali procedūros informacija",()=>{
+ const answers={representative:"Demo",procedure:"Išgalvota procedūra",purpose:"Demo",alternatives:"Demo",
+ risksCommon:"Demo",risksRare:"Demo",risksIndividual:"Demo",anesthesia:"Demo",anesthesiaRisks:"Demo",
+ refusalRisks:"Demo",scope:"Demo",clinician:"Demo gydytojas",decision:"Sutinku"};
+ const signature="data:image/png;base64,"+"A".repeat(200);
+ assert.deepEqual(validateForm("invasive",answers,signature),[]);
+ assert.ok(validateForm("invasive",{...answers,alternatives:""},signature).length>0);
+ assert.ok(validateForm("invasive",answers,null).length>0);
+});
