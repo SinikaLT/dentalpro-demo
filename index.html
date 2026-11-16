@@ -287,6 +287,33 @@ editingId=null;pendingSlot=null;
 drawCalendar();
 }
 function selectCalendarDoctor(v){selectedDoctor=v;drawCalendar()}
+
+function doctorColumnsHTML(){
+const date=localDate(currentDate);
+const rows=appointments.filter(a=>a.clinic===clinic&&a.date===date);
+let doctors=[];
+try{doctors=JSON.parse(localStorage.getItem("dentalpro_doctors_"+clinic)||"[]")}catch(e){}
+for(const a of appointments.filter(a=>a.clinic===clinic)){if(a.doctor&&!doctors.includes(a.doctor))doctors.push(a.doctor)}
+if(!doctors.length)doctors=["Gydytojas 1","Gydytojas 2"];
+let html='<div class="cal-toolbar"><button onclick="DentalCalendar.prev()">← Ankstesnė diena</button><button onclick="DentalCalendar.today()">Šiandien</button><button onclick="DentalCalendar.next()">Kita diena →</button><input type="date" aria-label="Pasirinkti datą" value="'+date+'" onchange="DentalCalendar.goDate(this.value)"><button onclick="DentalCalendar.addDoctor()">+ Gydytojas</button></div>';
+html+='<div class="cal-scroll"><div class="cal-grid" style="--doctor-count:'+doctors.length+'"><div class="cal-head">Laikas</div>'+doctors.map(d=>'<div class="cal-head">'+safe(d)+'</div>').join('');
+for(let mins=480;mins<1140;mins+=30){
+const time=String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
+html+='<div class="cal-time">'+time+'</div>';
+for(const doctor of doctors){
+const starts=rows.filter(a=>a.doctor===doctor&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))>=mins&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))<mins+30);
+const occupied=rows.some(a=>a.doctor===doctor&&a.status!=="Atšauktas"&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3)))<mins&&(Number(a.time.slice(0,2))*60+Number(a.time.slice(3))+Number(a.duration))>mins);
+html+='<div class="cal-slot '+(occupied?'cal-busy':'')+'">';
+for(const a of starts){
+const cls=a.status==="Atliktas"?"done":a.status==="Atšauktas"?"cancelled":a.status==="Atvykęs"?"arrived":"";
+html+='<button class="cal-event '+cls+'" onclick="DentalCalendar.edit(\''+safe(a.id)+'\')"><strong>'+safe(a.time)+' · '+safe(a.patient)+'</strong><span>'+safe(a.service)+' · '+safe(a.duration)+' min. · '+safe(a.status)+'</span></button>';
+}
+if(!starts.length&&!occupied)html+='<button class="cal-free" onclick="DentalCalendar.slot(\''+date+'\',\''+time+'\','+JSON.stringify(doctor).replace(/"/g,"&quot;")+')" aria-label="Registruoti '+safe(time)+' '+safe(doctor)+'">+</button>';
+html+='</div>';
+}
+}
+return html+'</div></div>';
+}
 function fullCalendarView(){
 const date=localDate(currentDate);
 const available=typeof FullCalendar!=="undefined";
@@ -301,12 +328,10 @@ let html='<div class="card"><h2>Registracijos kalendorius</h2><div class="cal-to
 '<button class="primary" onclick="DentalCalendar.newOn(\''+date+'\')">+ Naujas vizitas</button></div>'+
 '<div id="fullcalendar"></div></div><div class="card" id="calEditor"></div>';
 if(calendarView==="resourceDay"){
-const doctors=[...new Set(appointments.filter(a=>a.clinic===clinic).map(a=>a.doctor).filter(Boolean))].sort();
-if(selectedDoctor&&!doctors.includes(selectedDoctor))selectedDoctor="";
-html=html.replace('<div id="fullcalendar"></div>',
-'<div class="cal-toolbar"><label for="doctorFilter">Gydytojas</label><select id="doctorFilter" onchange="DentalCalendar.doctor(this.value)"><option value="">Visi gydytojai</option>'+
-doctors.map(d=>'<option value="'+safe(d)+'"'+(selectedDoctor===d?' selected':'')+'>'+safe(d)+'</option>').join('')+
-'</select></div><div id="fullcalendar"></div>');
+html=html.replace('<div id="fullcalendar"></div>',doctorColumnsHTML());
+el("content").innerHTML=html;
+drawForm();
+return;
 }
 el("content").innerHTML=html;
 drawForm();
