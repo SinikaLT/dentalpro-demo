@@ -80,18 +80,18 @@ test("finansinės sumos apima eilutes ir kiekius",()=>{
   assert.equal(invoiceTotal({items:[{price:20,qty:2},{price:12,qty:1}]}),52);
   assert.equal(planTotal({items:[{price:10,qty:3}]}),30);
 });
-test("vietinių demonstracinių duomenų migracija yra vienkartinė",()=>{
+test("v3 demo aplinka neperkelia ankstesnių vietinių duomenų",()=>{
   const values=new Map();
   const storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};
-  storage.setItem("dentalpro_demo",JSON.stringify({"0-0":{teeth:{"11":{surface:"M",diagnosis:"Ėduonis",treatment:"Demo"}},
-    visits:[{date:"2026-11-12",text:"Bandomasis įrašas"}],plans:["Demo plombavimas"]}}));
-  const r=openRepository(storage);
-  const a=r.get();
-  assert.equal(a.findings.length,1);
-  assert.equal(a.clinicalNotes.length,1);
-  assert.equal(a.plans.length,1);
-  assert.equal(a.patients.length,20);
-  assert.equal(openRepository(storage).get().findings.length,1);
+  storage.setItem("dentalpro_demo",JSON.stringify({"0-0":{teeth:{"11":{surface:"M",diagnosis:"Ėduonis"}},
+    visits:[{date:"2026-11-12",text:"Asmeniniai duomenys neperkeliami"}]}}));
+  storage.setItem("dentalpro_v2_demo",JSON.stringify({version:2,patients:[{firstName:"Nesaugus"}]}));
+  const state=openRepository(storage).get();
+  assert.equal(state.version,3);
+  assert.equal(state.patients.length,20);
+  assert.ok(state.patients.every(p=>p.synthetic===true));
+  assert.equal(state.clinicalNotes.length,0);
+  assert.equal(state.findings.length,0);
   assert.ok(values.has(STORAGE_KEY));
 });
 test("saugyklos operacijos izoliuotos ir atstatomos",()=>{
