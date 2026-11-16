@@ -183,7 +183,10 @@ render();
 }
 .cal-weekstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:12px 0}
 .cal-weekstrip button{padding:8px 2px;font-size:12px}
-.cal-scroll{overflow-x:auto;border:1px solid #dbe3eb;border-radius:9px}
+.cal-scroll{overflow:auto;max-height:72vh;min-height:420px;border:1px solid #dbe3eb;border-radius:9px;scrollbar-gutter:stable}
+.cal-scroll .cal-head{position:sticky;top:0;z-index:2}
+.cal-hours-hint{font-size:13px;color:#475569;margin:8px 0 12px}
+#fullcalendar .fc-scroller{scrollbar-gutter:stable}
 .cal-grid{display:grid;grid-template-columns:75px repeat(var(--doctor-count),minmax(175px,1fr));min-width:max-content}
 .cal-head{background:#dff2f3;font-weight:bold;text-align:center;padding:12px;border-right:1px solid #dbe3eb;border-bottom:1px solid #b7d5d8}
 .cal-time{background:#f8fafc;color:#64748b;font-size:12px;padding:12px 7px;border-bottom:1px solid #e2e8f0}
@@ -328,7 +331,7 @@ try{doctors=JSON.parse(localStorage.getItem("dentalpro_doctors_"+clinic)||"[]")}
 for(const a of appointments.filter(a=>a.clinic===clinic)){if(a.doctor&&!doctors.includes(a.doctor))doctors.push(a.doctor)}
 if(!doctors.length)doctors=["Gydytojas 1","Gydytojas 2"];
 let html='<div class="cal-toolbar"><button onclick="DentalCalendar.prev()">← Ankstesnė diena</button><button onclick="DentalCalendar.today()">Šiandien</button><button onclick="DentalCalendar.next()">Kita diena →</button><input type="date" aria-label="Pasirinkti datą" value="'+date+'" onchange="DentalCalendar.goDate(this.value)"><button onclick="DentalCalendar.addDoctor()">+ Gydytojas</button></div>';
-html+='<div class="cal-scroll"><div class="cal-grid" style="--doctor-count:'+doctors.length+'"><div class="cal-head">Laikas</div>'+doctors.map(d=>'<div class="cal-head">'+safe(d)+'</div>').join('');
+html+='<p class="cal-hours-hint">Grafikas: 07:00–22:00. Norėdami matyti vakarines valandas, slinkite grafiko viduje žemyn.</p><div class="cal-scroll"><div class="cal-grid" style="--doctor-count:'+doctors.length+'"><div class="cal-head">Laikas</div>'+doctors.map(d=>'<div class="cal-head">'+safe(d)+'</div>').join('');
 for(let mins=420;mins<1320;mins+=30){
 const time=String(Math.floor(mins/60)).padStart(2,"0")+":"+String(mins%60).padStart(2,"0");
 html+='<div class="cal-time">'+time+'</div>';
@@ -358,7 +361,7 @@ let html='<div class="card"><h2>Registracijos kalendorius</h2><div class="cal-to
 '<button onclick="DentalCalendar.view(\'timeGridWeek\')">Savaitė</button>'+
 '<button onclick="DentalCalendar.view(\'dayGridMonth\')">Mėnuo</button>'+
 '<button class="primary" onclick="DentalCalendar.newOn(\''+date+'\')">+ Naujas vizitas</button></div>'+
-'<div id="fullcalendar"></div></div><div class="card" id="calEditor"></div>';
+'<p class="cal-hours-hint">Grafikas: 07:00–22:00. Vakarines valandas rasite slinkdami kalendorių žemyn.</p><div id="fullcalendar"></div></div><div class="card" id="calEditor"></div>';
 if(calendarView==="resourceDay"){
 html=html.replace('<div id="fullcalendar"></div>',doctorColumnsHTML());
 el("content").innerHTML=html;
@@ -382,7 +385,7 @@ extendedProps:{doctor:a.doctor,status:a.status}
 fullCalendar=new FullCalendar.Calendar(el("fullcalendar"),{
 locale:"lt",firstDay:1,initialView:calendarView==="resourceDay"?"timeGridDay":calendarView,initialDate:date,
 headerToolbar:{left:"prev,next today",center:"title",right:""},
-buttonText:{today:"Šiandien"},height:"auto",allDaySlot:false,
+buttonText:{today:"Šiandien"},height:Math.max(650,Math.min(950,window.innerHeight-140)),allDaySlot:false,
 slotMinTime:"07:00:00",slotMaxTime:"22:00:00",slotDuration:"00:30:00",
 nowIndicator:true,editable:true,selectable:true,selectMirror:true,
 eventDisplay:"block",events,
