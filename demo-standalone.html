@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0e2d3c"><title>DentalPro 2.0 – demonstracija (offline)</title>
+<style>
+
+:root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172e43;background:#f4f7fa;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}a{color:inherit}label{font-weight:650;font-size:13px;color:#395266;display:block;margin-bottom:6px}input,select,textarea{width:100%;border:1px solid #d5e0e7;border-radius:9px;background:#fff;color:#19374c;padding:11px 12px;outline:0}input:focus,select:focus,textarea:focus,button:focus-visible{outline:3px solid #9dd5db;outline-offset:1px;border-color:#067e8b}textarea{min-height:92px;resize:vertical}input[type=checkbox]{width:auto;accent-color:#06838b;vertical-align:middle}h1,h2,h3,h4,p{margin-top:0}h1{font-size:24px;letter-spacing:-.7px}h2{font-size:19px;letter-spacing:-.3px}h3{font-size:16px}p{line-height:1.5}small{font-size:12px}.muted{color:#6a7f8f}.tiny{font-size:12px}.app{min-height:100vh;display:grid;grid-template-columns:248px minmax(0,1fr)}.sidebar{background:#0e2d3c;color:#c1d1d8;padding:25px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:auto}.brand{display:flex;align-items:center;gap:11px;padding:0 10px 28px;color:white}.brand-icon{width:37px;height:37px;display:grid;place-items:center;border-radius:12px;background:#11a7a3;font-size:23px}.brand strong{font-size:20px;letter-spacing:-.6px}.brand small{display:block;color:#b0c5d0}.nav-group{padding:15px 13px 8px;font-size:10px;text-transform:uppercase;letter-spacing:1.6px;color:#7696a7}.nav-btn{width:100%;border:0;background:transparent;text-align:left;color:#c2d2d9;border-radius:9px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin:2px 0;font-weight:550}.nav-btn:hover{background:#1e4654}.nav-btn.active{color:#fff;background:#176c73;box-shadow:inset 3px 0 #69e0ca}.nav-symbol{width:20px;text-align:center;font-size:19px}.sidebar-bottom{margin-top:auto;border-top:1px solid #345563;padding:18px 12px;font-size:12px;line-height:1.6}.status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#61dbb6;margin-right:6px}.work{min-width:0}.topbar{height:76px;padding:14px 30px;border-bottom:1px solid #e2eaf0;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:20px}.breadcrumbs{color:#7b8d9d;font-size:12px}.breadcrumbs b{display:block;font-size:19px;color:#132b3c;margin-top:4px}.top-right{display:flex;gap:14px;align-items:center}.clinic-select{min-width:194px}.clinic-select select{padding:8px 10px}.user-avatar{width:37px;height:37px;border-radius:50%;display:grid;place-items:center;color:#077b86;background:#d5f2f0;font-weight:800}.workspace{max-width:1570px;margin:auto;padding:28px 32px 70px}.page-lead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:24px}.page-lead p{margin:5px 0 0;color:#758b9c}.page-lead h1{margin:0}.actions,.flex,.inline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.space-between{justify-content:space-between}.btn{border:1px solid #d9e4e9;border-radius:9px;background:#fff;color:#25465b;font-weight:650;padding:10px 14px;min-height:39px}.btn:hover{background:#f1f8f9}.btn.primary{border-color:#07828a;background:#07828a;color:#fff}.btn.primary:hover{background:#086f78}.btn.danger{color:#b2394d;border-color:#f0c9cf}.btn.small{font-size:12px;padding:7px 10px;min-height:32px}.btn.ghost{border:0;background:transparent}.pill{display:inline-flex;padding:5px 9px;border-radius:99px;background:#e7f7f4;color:#11756e;font-size:11px;font-weight:700}.pill.warning{background:#fff2d7;color:#976018}.pill.danger{background:#fae5e9;color:#a63d56}.pill.grey{background:#eef2f5;color:#516a7c}.panel{background:#fff;border:1px solid #e5ebef;border-radius:14px;box-shadow:0 4px 18px rgba(26,54,76,.035);padding:22px;margin-bottom:18px;min-width:0}.panel-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:17px}.panel-title h2,.panel-title h3{margin:0}.stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}.stat{background:#fff;padding:21px;border:1px solid #e5ebef;border-radius:13px}.stat small{color:#72899a;font-size:12px;font-weight:550}.stat strong{display:block;font-size:28px;margin:10px 0 4px;font-weight:750;letter-spacing:-.8px}.stat em{font-size:12px;color:#258e77;font-style:normal}.two-cols{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(310px,1fr);gap:18px}.three-cols{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.field{min-width:0}.field.full{grid-column:1/-1}.help{color:#8295a3;font-size:12px;margin:6px 0}.data-table{width:100%;border-collapse:collapse}.data-table th{text-align:left;background:#f8fafc;color:#6e8393;font-size:11px;text-transform:uppercase;letter-spacing:.35px;font-weight:700}.data-table td,.data-table th{padding:13px 11px;border-bottom:1px solid #edf1f4;vertical-align:middle}.data-table tr:last-child td{border:0}.data-table tbody tr:hover{background:#fafdfd}.table-wrap{overflow-x:auto}.click-row{cursor:pointer}.empty{text-align:center;padding:36px 15px;color:#8194a2}.empty strong{color:#3d586a;display:block;margin-bottom:8px}.search-line{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}.search-line input{max-width:300px}.search-line select{max-width:230px}.patient-list{max-height:650px;overflow:auto}.person-card{display:flex;align-items:center;text-align:left;gap:12px;padding:13px 11px;width:100%;border:1px solid transparent;background:transparent;border-radius:9px;margin-bottom:5px}.person-card:hover,.person-card.selected{background:#e8f5f4;border-color:#a9d9d6}.person-dot{width:38px;height:38px;flex:none;border-radius:11px;display:grid;place-items:center;background:#e5eef4;color:#1e6479;font-weight:700}.person-card small{display:block;color:#728b98;margin-top:3px}.tabs{display:flex;gap:8px;flex-wrap:wrap;padding-bottom:15px;border-bottom:1px solid #e8eef2;margin-bottom:18px}.tab{background:transparent;border:0;border-bottom:2px solid transparent;color:#657d8d;font-weight:650;padding:9px 13px}.tab.active{border-color:#07828a;color:#067a84}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.detail-item small{display:block;color:#8a9aa7;margin-bottom:5px}.detail-item b{font-weight:600}.notice{padding:13px 15px;background:#eff8f8;color:#276a70;border:1px solid #cbe6e6;border-radius:10px;font-size:13px;line-height:1.6}.notice.warn{background:#fff9eb;border-color:#f1dfb8;color:#795c26}.notice.danger{background:#fff0f3;border-color:#ecc1ca;color:#94384a}.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.toolbar select,.toolbar input{max-width:200px}.view-switch{display:inline-flex;background:#eef3f6;border-radius:10px;padding:4px;gap:3px}.view-switch button{border:0;border-radius:7px;padding:8px 13px;background:transparent;color:#526f7f;font-weight:650}.view-switch button.active{background:white;color:#075f6d;box-shadow:0 1px 6px #102c3519}.calendar-filters{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.calendar-filters select{flex:1;min-width:145px;max-width:245px}.calendar-head{margin:0 0 14px}.schedule-scroll{overflow:auto;max-height:68vh;min-height:420px;border:1px solid #e4ebef;border-radius:12px}.schedule{display:grid;grid-template-columns:68px repeat(var(--columns),minmax(180px,1fr));grid-template-rows:52px repeat(60,32px);min-width:max-content;background:white;position:relative}.sch-head{background:#eaf5f5;color:#315c68;padding:14px 8px;position:sticky;top:0;z-index:5;text-align:center;font-weight:700;border-bottom:1px solid #bcd6d9;border-right:1px solid #cfe1e2}.sch-time{padding:0 9px;text-align:right;color:#8497a2;font-size:11px;border-bottom:1px solid #eef2f5;transform:translateY(-5px)}.sch-slot{border-right:1px solid #eaf0f3;border-bottom:1px solid #edf2f4;padding:0;background:#fff;text-align:left;border-radius:0;min-width:0}.sch-slot.hour{border-top:1px solid #d7e3ea}.sch-slot:hover{background:#ebf7f5}.sch-event{z-index:2;margin:2px 3px;padding:6px 8px;overflow:hidden;border:0;border-left:4px solid var(--event);background:color-mix(in srgb,var(--event),white 89%);color:#214559;border-radius:7px;text-align:left;font-size:12px;box-shadow:0 1px 5px #00000017;min-width:0;cursor:grab}.sch-event b{display:block;font-size:12px}.sch-event span{display:block;line-height:1.25;margin-top:4px}.sch-event.cancelled{opacity:.5;text-decoration:line-through;pointer-events:auto}.sch-event:active{cursor:grabbing}.week-grid{display:grid;grid-template-columns:repeat(7,minmax(125px,1fr));gap:10px;overflow-x:auto}.week-day,.month-cell{border:1px solid #e3eaee;border-radius:10px;padding:12px;background:#fff;min-height:215px}.week-day.today,.month-cell.today{border-color:#07828a}.week-day .day-label{margin-bottom:10px;font-weight:700}.compact-appt{display:block;width:100%;text-align:left;background:#eef6f7;border:0;border-left:3px solid #148b92;border-radius:5px;margin:5px 0;padding:7px;font-size:11px;line-height:1.4}.month-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:8px;overflow:auto}.month-weekday{text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#8599a7;padding:10px}.month-cell{min-height:128px;padding:9px}.month-cell.outside{background:#f8fafb;opacity:.55}.month-cell .num{font-weight:750;margin-bottom:8px}.month-cell .compact-appt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.list-events{display:grid;gap:8px}.event-row{display:grid;grid-template-columns:95px minmax(130px,1fr) minmax(110px,1fr) minmax(95px,1fr) 110px;gap:12px;align-items:center;padding:14px;border:1px solid #e5edf0;border-radius:9px;background:#fff;text-align:left;color:inherit;width:100%}.event-row:hover{background:#f7fbfb}.event-row .patient-link{font-weight:750}.event-row small{color:#8599a4}.drawer-shade{position:fixed;inset:0;background:#0d223354;z-index:20;display:flex;justify-content:flex-end}.drawer{background:white;width:min(575px,100%);height:100vh;overflow:auto;padding:25px 28px;box-shadow:-6px 0 30px #0c253321}.drawer .drawer-title{display:flex;justify-content:space-between;gap:12px;align-items:center;padding-bottom:15px;border-bottom:1px solid #e6eef1;margin-bottom:20px}.drawer h2{margin:0}.drawer-footer{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:20px}.toast{position:fixed;right:25px;bottom:25px;background:#1e3e4a;color:white;padding:12px 18px;border-radius:9px;box-shadow:0 7px 30px #14293340;z-index:30;max-width:460px;font-size:14px}.toast.error{background:#913e4a}.tooth-row{display:flex;gap:6px;flex-wrap:wrap;margin:15px 0}.tooth{border:2px solid #c7d7df;border-radius:9px;min-width:38px;width:40px;height:51px;background:#fff;color:#38576b;display:grid;place-content:center;padding:3px;font-weight:700}.tooth small{color:#96a8b0}.tooth.issue{background:#fff0e9;border-color:#efb6a2}.tooth.selected{background:#d9f2ef;border-color:#02898a;box-shadow:0 0 0 2px #c1e9e4}.odontogram-label{font-size:12px;color:#78919d;margin-bottom:6px}.tooth-chart{margin-bottom:20px}.segment{padding:14px;background:#f7fafb;border-radius:9px;margin-top:8px}.timeline{border-left:2px solid #d6e9e9;padding-left:22px;margin-left:5px}.timeline-entry{position:relative;margin:0 0 22px}.timeline-entry:before{content:"";position:absolute;left:-29px;top:2px;width:10px;height:10px;background:#088a8c;border:3px solid #e2f4f1;border-radius:50%}.schedule-table{width:100%;border-collapse:collapse}.schedule-table td,.schedule-table th{padding:10px 7px;border-bottom:1px solid #edf1f4}.schedule-table th{text-align:left;color:#6a8391;font-size:12px}.schedule-table input[type=time]{min-width:102px;padding:8px}.schedule-table input[type=checkbox]{width:18px;height:18px}.kpi-bar{display:flex;align-items:center;gap:10px;padding:9px 0}.kpi-track{height:9px;border-radius:20px;background:#eaf0f3;flex:1;overflow:hidden}.kpi-fill{height:100%;background:#0e8e8b;border-radius:20px}.audit-list{max-height:410px;overflow:auto}.audit-entry{display:flex;justify-content:space-between;gap:15px;border-bottom:1px solid #edf2f4;padding:10px 0;font-size:12px}.audit-entry strong{color:#375362}.section-divider{border:0;border-top:1px solid #e7edf1;margin:20px 0}.report-card{background:#f8fbfb;padding:17px;border-radius:10px}.nowrap{white-space:nowrap}.hide-mobile{display:initial}
+@media(max-width:1150px){.sidebar{width:75px;padding:21px 7px}.app{grid-template-columns:75px 1fr}.brand{padding:0 8px 20px}.brand strong,.brand small,.nav-group,.nav-title,.sidebar-bottom{display:none}.nav-btn{justify-content:center;padding:13px}.nav-symbol{width:auto}.workspace{padding:24px}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.two-cols{grid-template-columns:1fr}}
+@media(max-width:750px){.app{display:block}.sidebar{height:auto;width:100%;position:relative;display:flex;flex-direction:row;overflow-x:auto;align-items:center;padding:8px}.brand{padding:0 12px 0 4px;flex:none}.brand strong{display:block;font-size:17px}.brand small{display:none}.nav-btn{flex:none;width:auto;padding:9px 11px}.nav-title{display:none}.topbar{height:auto;padding:12px 16px}.clinic-select{min-width:150px}.workspace{padding:20px 14px}.three-cols,.two-cols,.field-grid,.detail-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.stat-grid{gap:10px}.stat{padding:15px}.stat strong{font-size:23px}.week-grid{grid-template-columns:repeat(7,minmax(155px,1fr))}.month-grid{grid-template-columns:repeat(7,minmax(125px,1fr))}.event-row{grid-template-columns:75px 1fr;gap:6px}.event-row .hide-mobile{display:none}.drawer{padding:17px}.schedule-scroll{max-height:65vh}.topbar .muted{display:none}}
+
+</style></head><body><div id="app"></div><script>
+// DentalPro 2.0 – grynoji demonstracinė verslo logika, be DOM ir DB priklausomybių.
+const CLINICS=[{id:"akm",name:"Naujoji Akmenė"},{id:"kur",name:"Kuršėnai"}];
+const CHAIRS=[{id:"akm-1",clinicId:"akm",name:"1 kėdė"},{id:"akm-2",clinicId:"akm",name:"2 kėdė"},{id:"kur-1",clinicId:"kur",name:"1 kėdė"},{id:"kur-2",clinicId:"kur",name:"2 kėdė"}];
+const STATUSES=["Registruotas","Patvirtintas","Atvykęs","Atliekamas","Atliktas","Neatvyko","Atšauktas"];
+const PLAN_STATUSES=["Juodraštis","Patvirtintas","Vykdomas","Užbaigtas","Atšauktas"];
+const WEEKDAYS=["Sekmadienis","Pirmadienis","Antradienis","Trečiadienis","Ketvirtadienis","Penktadienis","Šeštadienis"];
+const PERMANENT=[18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+const PRIMARY=[55,54,53,52,51,61,62,63,64,65,85,84,83,82,81,71,72,73,74,75];
+const CONDITIONS=["Sveikas","Ėduonis","Plomba","Vainikėlis","Trūkstamas","Šaknų gydymas","Stebėjimas","Kita"];
+const SURFACES=["Visas dantis","M","D","O/I","V/B","L/P"];
+const uid=(prefix="id")=>prefix+"-"+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9));
+function isoDate(d=new Date()){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-")}
+function shiftDate(value,days){const d=new Date(value+"T12:00:00");d.setDate(d.getDate()+days);return isoDate(d)}
+function validDate(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value||""))return false;const d=new Date(value+"T12:00:00Z");return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===value}
+function weekday(value){return new Date(value+"T12:00:00Z").getUTCDay()}
+function minutes(value){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(value)))return NaN;const [h,m]=value.split(":").map(Number);return h*60+m}
+function timeString(value){return String(Math.floor(value/60)).padStart(2,"0")+":"+String(value%60).padStart(2,"0")}
+function overlaps(s1,e1,s2,e2){return s1<e2&&s2<e1}
+function money(v){return (Number(v)||0).toLocaleString("lt-LT",{style:"currency",currency:"EUR"})}
+function appointmentIssues(state,a){
+  const issues=[];
+  if(!CLINICS.some(c=>c.id===a.clinicId))issues.push("Pasirinkite kliniką.");
+  if(!state.chairs.some(c=>c.id===a.chairId&&c.clinicId===a.clinicId))issues.push("Kėdė nepriklauso pasirinktai klinikai.");
+  if(!state.patients.some(p=>p.id===a.patientId))issues.push("Pasirinkite pacientą.");
+  const doctor=state.staff.find(s=>s.id===a.staffId);
+  if(!doctor||!doctor.clinicIds?.includes(a.clinicId))issues.push("Gydytojas nedirba pasirinktoje klinikoje.");
+  if(!validDate(a.date))issues.push("Neteisinga vizito data.");
+  const start=minutes(a.time),length=Number(a.duration),end=start+length;
+  if(!Number.isFinite(start)||!Number.isInteger(length)||length<15||length>240||length%15!==0)issues.push("Neteisingas laikas arba trukmė (15–240 min.).");
+  if(Number.isFinite(start)&&(start<420||end>1320))issues.push("Vizitas turi tilpti į 07:00–22:00.");
+  if(!STATUSES.includes(a.status))issues.push("Neteisinga vizito būsena.");
+  if(!state.services.some(s=>s.id===a.serviceId))issues.push("Pasirinkite paslaugą.");
+  // Atšauktas vizitas neužima išteklių; istorija išlieka.
+  if(issues.length||a.status==="Atšauktas")return issues;
+  const day=weekday(a.date);
+  const windows=(doctor.availability||[]).filter(w=>Number(w.weekday)===day&&w.clinicId===a.clinicId);
+  if(!windows.some(w=>start>=minutes(w.start)&&end<=minutes(w.end)))issues.push("Gydytojas tuo metu nedirba pagal grafiką.");
+  const breaks=(doctor.breaks||[]).filter(b=>Number(b.weekday)===day&&(!b.clinicId||b.clinicId===a.clinicId));
+  if(breaks.some(b=>overlaps(start,end,minutes(b.start),minutes(b.end))))issues.push("Vizitas patenka į gydytojo pertrauką.");
+  for(const other of state.appointments){
+    if(other.id===a.id||other.status==="Atšauktas"||other.date!==a.date)continue;
+    const os=minutes(other.time),oe=os+Number(other.duration);
+    if(!overlaps(start,end,os,oe))continue;
+    if(other.clinicId===a.clinicId&&other.chairId===a.chairId)issues.push("Kėdė jau užimta ("+other.time+").");
+    if(other.staffId===a.staffId)issues.push("Gydytojas jau užimtas ("+other.time+").");
+  }
+  return [...new Set(issues)];
+}
+function patientName(state,id){const p=state.patients.find(p=>p.id===id);return p?p.firstName+" "+p.lastName:"—"}
+function doctorName(state,id){return state.staff.find(s=>s.id===id)?.name||"—"}
+function serviceName(state,id){return state.services.find(s=>s.id===id)?.name||"—"}
+function invoiceTotal(invoice){return (invoice.items||[]).reduce((total,item)=>total+Number(item.price||0)*Number(item.qty||1),0)}
+function planTotal(plan){return (plan.items||[]).reduce((total,item)=>total+Number(item.price||0)*Number(item.qty||1),0)}
+
+;
+
+const STORAGE_KEY="dentalpro_v2_demo";
+const LEGACY_NAMES=[
+["Jonas Kazlauskas","Ona Petrauskienė","Mantas Jankauskas","Rūta Stankevičienė","Vytautas Žukauskas","Aistė Balčiūnaitė","Darius Vaitkus","Ieva Paulauskaitė","Tomas Butkus","Emilija Šimkutė"],
+["Antanas Rimkus","Birutė Norkienė","Lukas Kavaliauskas","Gabija Urbonaitė","Povilas Žilinskas","Monika Kairytė","Arūnas Mikalauskas","Greta Mockutė","Saulius Navickas","Agnė Jurevičiūtė"]
+];
+const JSONclone=x=>JSON.parse(JSON.stringify(x));
+function defaultAvailability(clinicId){
+  return [1,2,3,4,5].map(weekday=>({clinicId,weekday,start:"08:00",end:"18:00"}));
+}
+function defaultBreaks(clinicId){
+  return [1,2,3,4,5].map(weekday=>({clinicId,weekday,start:"12:00",end:"12:30"}));
+}
+function seedData(today=isoDate()){
+  const patients=LEGACY_NAMES.flatMap((names,c)=>names.map((name,i)=>({
+    id:"p-"+c+"-"+i,firstName:name.split(" ")[0],lastName:name.split(" ").slice(1).join(" "),
+    clinicIds:[CLINICS[c].id],birthDate:"",phone:"",email:"",alerts:"",createdAt:today,synthetic:true
+  })));
+  const staff=[
+    {id:"dr-akm-1",name:"Dr. Eglė Mockienė",role:"Gydytojas odontologas",clinicIds:["akm"],availability:defaultAvailability("akm"),breaks:defaultBreaks("akm")},
+    {id:"dr-akm-2",name:"Dr. Saulius Pocius",role:"Gydytojas odontologas",clinicIds:["akm"],availability:defaultAvailability("akm"),breaks:defaultBreaks("akm")},
+    {id:"dr-kur-1",name:"Dr. Lina Daunoravičienė",role:"Gydytojas odontologas",clinicIds:["kur"],availability:defaultAvailability("kur"),breaks:defaultBreaks("kur")},
+    {id:"dr-kur-2",name:"Dr. Tomas Jurkus",role:"Gydytojas odontologas",clinicIds:["kur"],availability:defaultAvailability("kur"),breaks:defaultBreaks("kur")}
+  ];
+  const services=[
+    {id:"s-cons",name:"Konsultacija",duration:30,price:35,category:"Diagnostika",active:true},
+    {id:"s-hyg",name:"Profesionali burnos higiena",duration:60,price:65,category:"Profilaktika",active:true},
+    {id:"s-fill",name:"Danties plombavimas",duration:60,price:85,category:"Terapija",active:true},
+    {id:"s-endo",name:"Šaknų kanalų gydymas",duration:90,price:145,category:"Endodontija",active:true},
+    {id:"s-prost",name:"Protezavimo konsultacija",duration:45,price:40,category:"Protezavimas",active:true},
+    {id:"s-check",name:"Kontrolinis vizitas",duration:30,price:20,category:"Profilaktika",active:true},
+    {id:"s-vlk",name:"Konsultacija su siuntimu",duration:30,price:0,category:"VLK (demo)",active:true},
+    {id:"s-prosta",name:"Dantų protezavimas – suaugusieji",duration:90,price:200,category:"Protezavimas",active:true},
+    {id:"s-prostc",name:"Dantų protezavimas – vaikai",duration:60,price:120,category:"Protezavimas",active:true}
+  ];
+  let day=today;
+  for(let i=0;i<7&&(weekday(day)===0||weekday(day)===6);i++)day=shiftDate(day,1);
+  const appointmentDefs=[
+    ["akm","akm-1","p-0-0","dr-akm-1","09:00","s-cons","Patvirtintas"],
+    ["akm","akm-2","p-0-1","dr-akm-2","09:30","s-hyg","Atvykęs"],
+    ["akm","akm-1","p-0-2","dr-akm-1","10:00","s-fill","Registruotas"],
+    ["kur","kur-1","p-1-0","dr-kur-1","09:00","s-cons","Patvirtintas"],
+    ["kur","kur-2","p-1-1","dr-kur-2","11:00","s-prost","Registruotas"]
+  ];
+  return {
+    version:2,demo:true,clinics:JSONclone(CLINICS),chairs:JSONclone(CHAIRS),staff,patients,services,
+    appointments:appointmentDefs.map((a,i)=>({
+      id:"demo-a-"+i,clinicId:a[0],chairId:a[1],patientId:a[2],staffId:a[3],
+      date:day,time:a[4],duration:services.find(s=>s.id===a[5]).duration,serviceId:a[5],status:a[6],notes:""
+    })),
+    findings:[],clinicalNotes:[],plans:[],invoices:[],audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
+  };
+}
+function parse(storage,key,defaultValue){
+  try{const raw=storage?.getItem(key);return raw?JSON.parse(raw):defaultValue}catch{return defaultValue}
+}
+function legacyMigration(state,storage){
+  const oldPatients=parse(storage,"dentalpro_demo",{});
+  for(let c=0;c<2;c++){
+    const clinicId=CLINICS[c].id;
+    const oldDocs=parse(storage,"dentalpro_doctors_"+c,[]);
+    for(const name of (Array.isArray(oldDocs)?oldDocs:[]))ensureDoctor(state,name,clinicId);
+    for(let i=0;i<LEGACY_NAMES[c].length;i++){
+      const p=state.patients.find(p=>p.id==="p-"+c+"-"+i);
+      const record=oldPatients?.[c+"-"+i];
+      if(!record||!p)continue;
+      for(const [tooth,value] of Object.entries(record.teeth||{})){
+        if(!value||typeof value!=="object")continue;
+        state.findings.push({id:uid("legacy-tooth"),patientId:p.id,toothNumber:Number(tooth),
+          surfaces:[String(value.surface||"Visas dantis")],condition:String(value.diagnosis||"Stebėjimas"),
+          note:String(value.treatment||""),status:"Stebima",updatedAt:new Date().toISOString()});
+      }
+      for(const visit of record.visits||[]){
+        state.clinicalNotes.push({id:uid("legacy-note"),patientId:p.id,appointmentId:"",
+          authorId:"",date:String(visit.date||isoDate()),text:String(visit.text||""),createdAt:new Date().toISOString()});
+      }
+      if(record.plans?.length){
+        state.plans.push({id:uid("legacy-plan"),patientId:p.id,clinicId,status:"Juodraštis",title:"Perkeltas ankstesnis planas",
+          items:record.plans.map(t=>({id:uid("legacy-item"),serviceId:"",description:String(t),tooth:"",qty:1,price:0,done:false}))});
+      }
+    }
+  }
+  const oldAppts=parse(storage,"dentalpro_calendar_v1",[]);
+  if(Array.isArray(oldAppts))for(const item of oldAppts){
+    const c=Number(item.clinic)===1?1:0,clinicId=CLINICS[c].id;
+    const existing=state.patients.find(p=>p.clinicIds.includes(clinicId)&&p.firstName+" "+p.lastName===item.patient);
+    if(!existing)continue;
+    const doctorId=ensureDoctor(state,String(item.doctor||"Demonstracinis gydytojas"),clinicId);
+    const service=state.services.find(s=>s.name===item.service)||state.services[0];
+    const chair=String(item.chair||item.room||"").startsWith("2")?clinicId+"-2":clinicId+"-1";
+    state.appointments.push({id:"old-"+String(item.id||uid("a")),clinicId,chairId:chair,patientId:existing.id,
+      staffId:doctorId,date:String(item.date||isoDate()),time:String(item.time||"09:00"),
+      duration:Number(item.duration)||service.duration,serviceId:service.id,
+      status:String(item.status||"Registruotas"),notes:String(item.notes||"")});
+  }
+  state.audit.push({id:uid("audit"),at:new Date().toISOString(),action:"Perkelti seni vietiniai demo duomenys (jei buvo)",entity:"sistema"});
+  return state;
+}
+function ensureDoctor(state,name,clinicId){
+  const clean=String(name||"").trim();
+  if(!clean)return "";
+  let doc=state.staff.find(s=>s.name.toLocaleLowerCase("lt")===clean.toLocaleLowerCase("lt")&&s.clinicIds.includes(clinicId));
+  if(doc)return doc.id;
+  doc={id:uid("dr"),name:clean,role:"Gydytojas odontologas",clinicIds:[clinicId],
+       availability:defaultAvailability(clinicId),breaks:defaultBreaks(clinicId)};
+  state.staff.push(doc);return doc.id;
+}
+function openRepository(storage=globalThis.localStorage){
+  let current=parse(storage,STORAGE_KEY,null);
+  if(!current||current.version!==2||!Array.isArray(current.appointments)){
+    current=legacyMigration(seedData(),storage);
+    try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}
+  }
+  const persist=()=>{try{storage?.setItem(STORAGE_KEY,JSON.stringify(current));return true}catch{return false}};
+  return {
+    get(){return JSONclone(current)},
+    transaction(action,entity,update){
+      const copy=JSONclone(current);
+      const result=update(copy);
+      copy.audit.unshift({id:uid("audit"),at:new Date().toISOString(),action,entity:String(entity||"")});
+      copy.audit=copy.audit.slice(0,250);
+      current=copy;persist();return result;
+    },
+    reset(){current=seedData();persist();return this.get()},
+    export(){return JSON.stringify(current,null,2)},
+    storageAvailable(){try{const k="__dentalpro_probe";storage?.setItem(k,"1");storage?.removeItem(k);return true}catch{return false}}
+  };
+}
+
+;
+
+
+
+const repository=openRepository();
+let db=repository.get();
+const ui={route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const opt=(arr,value)=>arr.map(x=>'<option value="'+esc(x[0])+'"'+(String(x[0])===String(value)?' selected':'')+'>'+esc(x[1])+'</option>').join("");
+const simple=(arr,value)=>opt(arr.map(x=>[x,x]),value);
+const btn=(text,action,cls="btn",data="")=>'<button type="button" class="'+cls+'" data-action="'+action+'" '+data+'>'+text+'</button>';
+const fmt=d=>validDate(d)?new Date(d+"T12:00:00").toLocaleDateString("lt-LT",{day:"numeric",month:"short",year:"numeric"}):"—";
+const name=id=>patientName(db,id);
+const doctor=id=>doctorName(db,id);
+const service=id=>serviceName(db,id);
+const clinic=id=>db.clinics.find(x=>x.id===id)?.name||"—";
+const chair=id=>db.chairs.find(x=>x.id===id)?.name||"—";
+const pill=s=>{let cls="";if(["Atšauktas","Neatvyko"].includes(s))cls="danger";else if(["Atvykęs","Atliekamas"].includes(s))cls="warning";else if(["Registruotas","Juodraštis","Neaktyvi"].includes(s))cls="grey";return '<span class="pill '+cls+'">'+esc(s)+'</span>';};
+const listPatients=()=>db.patients.filter(p=>ui.clinic==="all"||p.clinicIds.includes(ui.clinic));
+const listDoctors=()=>db.staff.filter(d=>ui.clinic==="all"||d.clinicIds.includes(ui.clinic));
+const listChairs=()=>db.chairs.filter(c=>ui.clinic==="all"||c.clinicId===ui.clinic);
+const appts=()=>db.appointments.filter(a=>(ui.clinic==="all"||a.clinicId===ui.clinic)&&(!ui.doctor||a.staffId===ui.doctor)&&(!ui.chair||a.chairId===ui.chair)&&(!ui.status||a.status===ui.status)&&(!ui.service||a.serviceId===ui.service)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+const modal=(kind,id="",extra={})=>{ui.modal={kind,id,...extra};render()};
+const update=(action,id,fn)=>{repository.transaction(action,id,fn);db=repository.get();render()};
+const notify=(message,error=false)=>{document.querySelector(".toast")?.remove();const n=document.createElement("div");n.className="toast"+(error?" error":"");n.textContent=message;document.body.appendChild(n);setTimeout(()=>n.remove(),4300)};
+function page(title,description,action=""){return '<div class="page-lead"><div><h1>'+title+'</h1><p>'+description+'</p></div>'+action+'</div>'}
+function empty(title,desc){return '<div class="empty"><strong>'+title+'</strong>'+desc+'</div>'}
+function patientPicker(){return '<select aria-label="Pacientas" data-change="patient">'+opt(listPatients().map(p=>[p.id,name(p.id)]),ui.patient)+'</select>'}
+function selectClinic(c){ui.clinic=c;ui.doctor="";ui.chair="";ui.selectedDoctor="";ui.selectedPlan="";if(!listPatients().some(p=>p.id===ui.patient))ui.patient=listPatients()[0]?.id||"";render()}
+function route(r){ui.route=r;ui.modal=null;render()}
+function render(){
+  $("global-clinic").value=ui.clinic;
+  document.querySelectorAll(".nav-btn").forEach(n=>n.classList.toggle("active",n.dataset.route===ui.route));
+  $("section-name").textContent=({overview:"Apžvalga",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
+  $("page").innerHTML=({
+    overview:viewOverview,calendar:viewCalendar,patients:viewPatients,doctors:viewDoctors,
+    odontogram:viewOdontogram,plans:viewPlans,notes:viewNotes,finances:viewFinances,
+    services:viewServices,vlk:viewVlk,admin:viewAdmin
+  }[ui.route]||viewOverview)();
+  $("drawer-root").innerHTML=ui.modal?viewDrawer():"";
+}
+function eventRows(items){
+  if(!items.length)return empty("Vizitų nėra","Pasirinkite kitą datą arba registruokite vizitą.");
+  return '<div class="list-events">'+items.map(a=>'<button type="button" class="event-row" data-action="edit-appt" data-id="'+esc(a.id)+'">'+
+    '<div><b>'+esc(a.time)+'</b><small style="display:block">'+fmt(a.date)+'</small></div>'+
+    '<div><b>'+esc(name(a.patientId))+'</b><small style="display:block">'+esc(service(a.serviceId))+'</small></div>'+
+    '<div class="hide-mobile">'+esc(doctor(a.staffId))+'</div><div class="hide-mobile">'+esc(chair(a.chairId))+'</div>'+pill(a.status)+'</button>').join("")+'</div>';
+}
+function viewOverview(){
+  const today=appts().filter(a=>a.date===ui.day&&a.status!=="Atšauktas");
+  const invoices=db.invoices.filter(i=>ui.clinic==="all"||i.clinicId===ui.clinic);
+  const debt=invoices.reduce((n,i)=>n+Math.max(0,invoiceTotal(i)-(i.payments||[]).reduce((s,p)=>s+Number(p.amount),0)),0);
+  const activePlans=db.plans.filter(p=>(ui.clinic==="all"||p.clinicId===ui.clinic)&&!["Užbaigtas","Atšauktas"].includes(p.status));
+  return page("Darbo vietos apžvalga","Dvi klinikos · keturios odontologinės kėdės · demonstraciniai duomenys",btn("+ Naujas vizitas","new-appt","btn primary"))+
+    '<div class="stat-grid"><div class="stat"><small>Dienos vizitai</small><strong>'+today.length+'</strong><em>'+today.filter(a=>a.status==="Atliktas").length+' atlikti</em></div>'+
+    '<div class="stat"><small>Pacientai</small><strong>'+listPatients().length+'</strong><em>Visi duomenys sintetiniai</em></div>'+
+    '<div class="stat"><small>Aktyvūs gydymo planai</small><strong>'+activePlans.length+'</strong><em>Planuojamos procedūros</em></div>'+
+    '<div class="stat"><small>Neapmokėta (demo)</small><strong>'+money(debt)+'</strong><em>Be realių mokėjimų</em></div></div>'+
+    '<div class="two-cols"><section class="panel"><div class="panel-title"><h2>Vizitai</h2>'+btn("Kalendorius","go-calendar","btn small")+'</div>'+
+    '<div class="toolbar" style="margin-bottom:14px"><input type="date" data-change="day" value="'+esc(ui.day)+'" aria-label="Apžvalgos data"></div>'+eventRows(today)+'</section>'+
+    '<section class="panel"><h2>Kėdžių užimtumas</h2>'+listChairs().map(c=>{
+      const filtered=today.filter(a=>a.chairId===c.id),duration=filtered.reduce((n,a)=>n+Number(a.duration),0);
+      return '<div class="kpi-bar"><div style="width:150px"><b>'+esc(c.name)+'</b><small class="muted" style="display:block">'+esc(clinic(c.clinicId))+'</small></div><div class="kpi-track"><div class="kpi-fill" style="width:'+Math.round(Math.min(100,duration/600*100))+'%"></div></div><small>'+filtered.length+' viz.</small></div>';
+    }).join("")+'<hr class="section-divider"><div class="notice">Ši sistema veikia tik demonstraciniu režimu; duomenys saugomi naršyklėje.</div></section></div>';
+}
+function viewCalendar(){
+  const viewNames={day:"Diena",week:"Savaitė",month:"Mėnuo",list:"Sąrašas"};
+  let out=page("Registracijos kalendorius","Registracijos seka: kėdė → pacientas → gydytojas",btn("+ Registruoti vizitą","new-appt","btn primary"));
+  out+='<section class="panel"><div class="toolbar space-between"><div class="toolbar">'+btn("←","cal-prev","btn small")+btn("Šiandien","cal-today","btn small")+btn("→","cal-next","btn small")+
+    '<input type="date" aria-label="Kalendoriaus data" data-change="day" value="'+esc(ui.day)+'"><b>'+fmt(ui.day)+'</b></div><div class="view-switch">'+
+    Object.entries(viewNames).map(([key,label])=>'<button type="button" class="'+(ui.view===key?"active":"")+'" data-action="set-view" data-view="'+key+'">'+label+'</button>').join("")+'</div></div>'+
+    '<div class="calendar-filters"><select data-change="doctor-filter" aria-label="Gydytojų filtras"><option value="">Visi gydytojai</option>'+opt(listDoctors().map(d=>[d.id,d.name]),ui.doctor)+'</select>'+
+    '<select data-change="chair-filter" aria-label="Kėdžių filtras"><option value="">Visos kėdės</option>'+opt(listChairs().map(c=>[c.id,clinic(c.clinicId)+" · "+c.name]),ui.chair)+'</select>'+
+    '<select data-change="service-filter" aria-label="Paslaugų filtras"><option value="">Visos paslaugos</option>'+opt(db.services.map(s=>[s.id,s.name]),ui.service)+'</select>'+
+    '<select data-change="status-filter" aria-label="Būsenų filtras"><option value="">Visos būsenos</option>'+simple(STATUSES,ui.status)+'</select></div></section>';
+  const rows=appts();
+  return out+'<section class="panel">'+(ui.view==="day"?calendarDay(rows):ui.view==="week"?calendarWeek(rows):ui.view==="month"?calendarMonth(rows):calendarList(rows))+'</section>';
+}
+function calendarDay(rows){
+  const chairs=listChairs().filter(c=>!ui.chair||c.id===ui.chair);
+  let out='<div class="panel-title"><h2>Dienos grafikas · '+fmt(ui.day)+'</h2><span class="muted tiny">07:00–22:00 · 15 min. intervalai</span></div>'+
+    '<div class="schedule-scroll"><div class="schedule" style="--columns:'+Math.max(1,chairs.length)+'"><div class="sch-head" style="grid-column:1;grid-row:1">Laikas</div>';
+  chairs.forEach((c,i)=>out+='<div class="sch-head" style="grid-column:'+(i+2)+';grid-row:1">'+esc(c.name)+'<small style="display:block;font-weight:400">'+esc(clinic(c.clinicId))+'</small></div>');
+  for(let slot=0;slot<60;slot++){
+    const t=timeString(420+15*slot),row=slot+2;
+    out+='<div class="sch-time" style="grid-column:1;grid-row:'+row+'">'+(slot%2===0?t:"")+'</div>';
+    for(let i=0;i<chairs.length;i++)
+      out+='<button type="button" class="sch-slot '+(slot%4===0?"hour":"")+'" style="grid-column:'+(i+2)+';grid-row:'+row+'" data-action="slot" data-chair="'+esc(chairs[i].id)+'" data-time="'+t+'" aria-label="Registruoti '+esc(t)+'"></button>';
+  }
+  for(const a of rows.filter(a=>a.date===ui.day)){
+    const i=chairs.findIndex(c=>c.id===a.chairId),start=minutes(a.time);
+    if(i<0||start<420||start>=1320||!Number.isFinite(start))continue;
+    const row=2+Math.floor((start-420)/15),span=Math.min(62-row,Math.max(1,Math.ceil(a.duration/15)));
+    const color=["#07818a","#5f72c4","#a46b39","#26875f"][Math.max(0,listDoctors().findIndex(x=>x.id===a.staffId))%4];
+    out+='<button class="sch-event '+(a.status==="Atšauktas"?"cancelled":"")+'" draggable="true" data-id="'+esc(a.id)+'" data-action="edit-appt" style="--event:'+color+';grid-column:'+(i+2)+';grid-row:'+row+' / span '+span+'"><b>'+esc(a.time)+' · '+esc(name(a.patientId))+'</b><span>'+esc(doctor(a.staffId))+'</span><span>'+esc(service(a.serviceId))+'</span></button>';
+  }
+  return out+'</div></div><p class="help">Spauskite laisvą intervalą, kad registruotumėte pacientą. Vizitą galima keisti formoje arba nutempti į kitą langelį.</p>';
+}
+function calendarWeek(rows){
+  const start=shiftDate(ui.day,-((weekday(ui.day)+6)%7));
+  let out='<h2>Savaitė · '+fmt(start)+' – '+fmt(shiftDate(start,6))+'</h2><div class="week-grid">';
+  for(let i=0;i<7;i++){
+    const date=shiftDate(start,i);
+    const items=rows.filter(a=>a.date===date);
+    out+='<div class="week-day '+(date===isoDate()?"today":"")+'"><div class="day-label">'+esc(WEEKDAYS[weekday(date)])+' · '+date.slice(5)+'</div>'+btn("+","new-on-day","btn small","data-date='"+date+"'")+
+      items.map(a=>'<button class="compact-appt" data-action="edit-appt" data-id="'+esc(a.id)+'"><b>'+esc(a.time)+'</b> '+esc(name(a.patientId))+'<small style="display:block">'+esc(chair(a.chairId))+'</small></button>').join("")+'</div>';
+  }
+  return out+'</div>';
+}
+function calendarMonth(rows){
+  const first=ui.day.slice(0,7)+"-01",start=shiftDate(first,-((weekday(first)+6)%7));
+  let out='<h2>'+new Date(first+"T12:00:00").toLocaleDateString("lt-LT",{year:"numeric",month:"long"})+'</h2><div class="month-grid">';
+  for(const x of ["Pr","An","Tr","Kt","Pn","Št","Sk"])out+='<div class="month-weekday">'+x+'</div>';
+  for(let i=0;i<42;i++){
+    const date=shiftDate(start,i),items=rows.filter(a=>a.date===date);
+    out+='<div class="month-cell '+(date===isoDate()?"today ":"")+(date.slice(0,7)!==first.slice(0,7)?"outside":"")+'"><div class="flex space-between"><b>'+Number(date.slice(-2))+'</b>'+
+      btn("+","new-on-day","btn small ghost","data-date='"+date+"'")+'</div>'+items.slice(0,3).map(a=>'<button class="compact-appt" data-action="edit-appt" data-id="'+esc(a.id)+'">'+esc(a.time)+' '+esc(name(a.patientId))+'</button>').join("")+
+      (items.length>3?'<small class="muted">+'+(items.length-3)+' daugiau</small>':"")+'</div>';
+  }
+  return out+'</div>';
+}
+function calendarList(rows){const items=rows.filter(a=>a.date.startsWith(ui.day.slice(0,7)));return '<div class="panel-title"><h2>Vizitai · '+ui.day.slice(0,7)+'</h2><span class="muted">'+items.length+' įrašų</span></div>'+eventRows(items)}
+function viewPatients(){
+  const patients=listPatients().filter(p=>(p.firstName+" "+p.lastName).toLocaleLowerCase("lt").includes(ui.search.toLocaleLowerCase("lt")));
+  const p=db.patients.find(p=>p.id===ui.patient)||patients[0];
+  return page("Pacientai","Pacientų kortelės, vizitų istorija, gydymo eiga",btn("+ Naujas pacientas","new-patient","btn primary"))+
+    '<div class="three-cols"><section class="panel"><div class="panel-title"><h2>Pacientų sąrašas</h2><span class="pill grey">'+patients.length+'</span></div>'+
+    '<input type="search" id="patient-search" value="'+esc(ui.search)+'" placeholder="Ieškoti paciento…" aria-label="Pacientų paieška"><div class="patient-list" style="margin-top:15px">'+
+    patients.map(p=>'<button class="person-card '+(ui.patient===p.id?"selected":"")+'" data-action="select-patient" data-id="'+esc(p.id)+'"><span class="person-dot">'+esc(p.firstName[0]+p.lastName[0])+'</span><span><b>'+esc(name(p.id))+'</b><small>'+esc(p.id)+' · '+esc(p.clinicIds.map(clinic).join(", "))+'</small></span></button>').join("")+'</div></section>'+
+    '<section class="panel">'+(p?patientDetail(p):empty("Paciento nėra","Sukurkite naują demonstracinį įrašą."))+'</section></div>';
+}
+function patientDetail(p){
+  const items=db.appointments.filter(a=>a.patientId===p.id).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  let out='<div class="panel-title"><div><h2>'+esc(name(p.id))+'</h2><small class="muted">Nr. '+esc(p.id)+' · Demonstracinis pacientas</small></div>'+btn("Redaguoti","edit-patient","btn small","data-id='"+esc(p.id)+"'")+'</div>'+
+    '<div class="tabs">'+[["overview","Apžvalga"],["history","Apsilankymai"],["plans","Gydymo planai"]].map(([id,title])=>'<button class="tab '+(ui.patientTab===id?"active":"")+'" data-action="patient-tab" data-tab="'+id+'">'+title+'</button>').join("")+'</div>';
+  if(ui.patientTab==="overview"){
+    out+='<div class="detail-grid">'+[["Gimimo data",p.birthDate?fmt(p.birthDate):"Nenurodyta"],["Telefonas",p.phone||"Nenurodyta"],["El. paštas",p.email||"Nenurodyta"],["Klinikos",p.clinicIds.map(clinic).join(", ")]].map(([k,v])=>'<div class="detail-item"><small>'+k+'</small><b>'+esc(v)+'</b></div>').join("")+'</div>'+
+      (p.alerts?'<div class="notice warn" style="margin-top:14px">'+esc(p.alerts)+'</div>':"")+
+      '<hr class="section-divider"><div class="actions">'+btn("Odontograma","patient-odontogram","btn small")+btn("Klinikiniai įrašai","patient-notes","btn small")+btn("+ Vizitas","new-appt","btn primary small")+'</div><h3 style="margin-top:24px">Apsilankymų istorija</h3>'+eventRows(items.slice(0,5));
+  }else if(ui.patientTab==="history"){
+    out+=eventRows(items);
+    const notes=db.clinicalNotes.filter(n=>n.patientId===p.id);
+    out+='<h3 style="margin-top:24px">Klinikiniai įrašai</h3>'+notes.slice(-6).reverse().map(n=>'<div class="segment"><b>'+fmt(n.date)+'</b><p>'+esc(n.text)+'</p></div>').join("");
+  }else{
+    const plans=db.plans.filter(x=>x.patientId===p.id);
+    out+=plans.map(x=>'<div class="segment"><b>'+esc(x.title)+'</b><small style="display:block">'+esc(x.status)+' · '+money(planTotal(x))+'</small></div>').join("")||empty("Planų nėra","Pridėkite gydymo planą.");
+    out+=btn("Atidaryti planus","patient-plans","btn small");
+  }
+  return out;
+}
+function viewDoctors(){
+  const doctors=listDoctors(),d=doctors.find(d=>d.id===ui.selectedDoctor)||doctors[0];
+  const cid=d?.clinicIds.includes(ui.clinic)?ui.clinic:d?.clinicIds[0];
+  return page("Gydytojų grafikai","Darbo valandos, savaitės dienos ir pertraukos",btn("+ Pridėti gydytoją","new-doctor","btn primary"))+
+    '<div class="three-cols"><section class="panel"><h2>Specialistai</h2>'+doctors.map(x=>'<button class="person-card '+(d?.id===x.id?"selected":"")+'" data-action="select-doctor" data-id="'+esc(x.id)+'"><span class="person-dot">Dr</span><span><b>'+esc(x.name)+'</b><small>'+esc(x.role)+'</small></span></button>').join("")+'</section>'+
+    '<section class="panel">'+(d?doctorSchedule(d,cid):empty("Gydytojų nėra","Pridėkite specialistą."))+'</section></div>';
+}
+function doctorSchedule(d,cid){
+  let out='<h2>'+esc(d.name)+'</h2><p class="muted">'+esc(d.role)+' · '+esc(clinic(cid))+'</p>'+
+    '<p class="help">Dienomis pažymėkite darbo laiką; pertrauka turi patekti į pamainą. Keitimas neturėtų palikti suplanuotų vizitų be darbo laiko.</p>'+
+    '<form id="schedule-form"><input type="hidden" name="doctorId" value="'+esc(d.id)+'"><input type="hidden" name="clinicId" value="'+esc(cid)+'"><div class="table-wrap"><table class="schedule-table"><thead><tr><th>Diena</th><th>Dirba</th><th>Nuo</th><th>Iki</th><th>Pertraukos pradžia</th><th>Pabaiga</th></tr></thead><tbody>';
+  for(let i=1;i<=7;i++){
+    const wd=i%7,w=d.availability.find(x=>x.weekday===wd&&x.clinicId===cid),b=d.breaks.find(x=>x.weekday===wd&&x.clinicId===cid);
+    out+='<tr><td>'+esc(WEEKDAYS[wd])+'</td><td><input type="checkbox" name="active-'+wd+'" '+(w?"checked":"")+' aria-label="'+esc(WEEKDAYS[wd])+'"></td>'+
+      '<td><input type="time" name="start-'+wd+'" value="'+esc(w?.start||"08:00")+'"></td><td><input type="time" name="end-'+wd+'" value="'+esc(w?.end||"18:00")+'"></td>'+
+      '<td><input type="time" name="breakStart-'+wd+'" value="'+esc(b?.start||"")+'"></td><td><input type="time" name="breakEnd-'+wd+'" value="'+esc(b?.end||"")+'"></td></tr>';
+  }
+  return out+'</tbody></table></div><p style="margin-top:20px">'+btn("Išsaugoti darbo grafiką","save-schedule","btn primary")+'</p></form>';
+}
+function viewOdontogram(){
+  const p=db.patients.find(p=>p.id===ui.patient)||listPatients()[0];
+  if(!p)return page("Odontograma","FDI numeracija")+empty("Pasirinkite pacientą","Pacientų nėra.");
+  const f=db.findings.find(f=>f.patientId===p.id&&Number(f.toothNumber)===Number(ui.tooth));
+  const teeth=nums=>'<div class="tooth-row">'+nums.map(n=>{
+    const record=db.findings.find(f=>f.patientId===p.id&&Number(f.toothNumber)===n);
+    return '<button class="tooth '+(record?"issue ":"")+(ui.tooth===n?"selected":"")+'" data-action="tooth" data-tooth="'+n+'" title="'+esc(record?.condition||"Įrašo nėra")+'">'+n+'<small>'+(record?"●":"○")+'</small></button>';
+  }).join("")+'</div>';
+  return page("Odontograma","FDI dantų žymėjimas · "+name(p.id))+
+    '<div class="panel"><div class="search-line">'+patientPicker()+'</div><div class="two-cols"><section><h3>Nuolatiniai dantys · 32</h3><p class="odontogram-label">Viršutinis žandikaulis</p>'+teeth(PERMANENT.slice(0,16))+
+    '<p class="odontogram-label">Apatinis žandikaulis</p>'+teeth(PERMANENT.slice(16))+'<h3>Pieniniai dantys · 20</h3>'+teeth(PRIMARY.slice(0,10))+teeth(PRIMARY.slice(10))+
+    '<div class="notice">● pažymėti dantys turi radinių. Ši odontograma yra tik demonstracinė.</div></section>'+
+    '<section><h3>Dantis '+ui.tooth+'</h3><form id="finding-form"><div class="field-grid"><div class="field"><label>Būklė</label><select name="condition">'+simple(CONDITIONS,f?.condition||"Sveikas")+'</select></div>'+
+    '<div class="field"><label>Statusas</label><select name="status">'+simple(["Stebima","Planuojama","Gydoma","Atlikta"],f?.status||"Stebima")+'</select></div>'+
+    '<div class="field full"><label>Paviršiai</label><div class="flex">'+SURFACES.map(s=>'<label style="font-weight:400"><input type="checkbox" name="surface" value="'+esc(s)+'" '+((f?.surfaces||["Visas dantis"]).includes(s)?"checked":"")+'>'+esc(s)+'</label>').join("")+'</div></div>'+
+    '<div class="field full"><label>Pastabos, procedūros</label><textarea name="note">'+esc(f?.note||"")+'</textarea></div></div>'+
+    '<p style="margin-top:15px">'+btn("Išsaugoti įrašą","save-finding","btn primary")+(f?" "+btn("Ištrinti radinį","delete-finding","btn danger"):"")+'</p></form></section></div></div>';
+}
+function viewPlans(){
+  const p=db.patients.find(p=>p.id===ui.patient)||listPatients()[0];
+  const plans=db.plans.filter(x=>x.patientId===p?.id);
+  const plan=plans.find(x=>x.id===ui.selectedPlan)||plans[0];
+  return page("Gydymo planai","Etapai, procedūros, numatomos išlaidos",btn("+ Naujas planas","new-plan","btn primary"))+
+    '<div class="panel"><div class="search-line">'+(p?patientPicker():"")+'</div><div class="two-cols"><section><h3>Paciento planai</h3>'+
+    plans.map(x=>'<button class="person-card '+(x.id===plan?.id?"selected":"")+'" data-action="select-plan" data-id="'+esc(x.id)+'"><span class="person-dot">☷</span><span><b>'+esc(x.title)+'</b><small>'+esc(x.status)+' · '+money(planTotal(x))+'</small></span></button>').join("")+
+    (!plans.length?empty("Gydymo planų nėra","Sukurkite pirmąjį planą."):"")+'</section>'+
+    '<section>'+(plan?planDetails(plan):empty("Planas nepasirinktas","Pradėkite nuo naujo gydymo plano."))+'</section></div></div>';
+}
+function planDetails(p){
+  return '<h3>'+esc(p.title)+'</h3><div class="flex"><label>Būsena</label><select id="plan-status" data-change="plan-status" style="max-width:230px">'+simple(PLAN_STATUSES,p.status)+'</select><span class="pill">Sąmata '+money(planTotal(p))+'</span></div>'+
+    '<div class="table-wrap"><table class="data-table"><thead><tr><th>Dantis</th><th>Procedūra</th><th>Suma</th><th>Atlikta</th></tr></thead><tbody>'+
+    p.items.map(i=>'<tr><td>'+esc(i.tooth||"—")+'</td><td>'+esc(i.description)+'</td><td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
+    '<td><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'></td></tr>').join("")+'</tbody></table></div>'+
+    '<h3 style="margin-top:20px">Pridėti procedūrą</h3><form id="plan-item-form"><div class="field-grid"><div class="field"><label>Paslauga</label><select name="serviceId">'+opt(db.services.filter(s=>s.active).map(s=>[s.id,s.name]),db.services[0]?.id)+'</select></div>'+
+    '<div class="field"><label>Dantis</label><input name="tooth" placeholder="Pvz., 16"></div><div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="20" value="1"></div>'+
+    '<div class="field"><label>Kaina (€)</label><input name="price" type="number" min="0" step="0.01" value="'+Number(db.services[0]?.price||0)+'"></div>'+
+    '<div class="field full"><label>Aprašymas</label><input name="description" placeholder="Papildomas paaiškinimas"></div></div>'+
+    '<p style="margin-top:14px">'+btn("+ Pridėti į planą","save-plan-item","btn primary")+'</p></form>';
+}
+function viewNotes(){
+  const p=db.patients.find(p=>p.id===ui.patient)||listPatients()[0];
+  if(!p)return page("Klinikiniai įrašai","Vizitų dokumentavimas")+empty("Paciento nėra","Sukurkite pacientą.");
+  const notes=db.clinicalNotes.filter(n=>n.patientId===p.id).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+  return page("Klinikiniai įrašai","Paciento apsilankymų istorija · "+name(p.id))+
+    '<div class="panel"><div class="search-line">'+patientPicker()+'</div><div class="two-cols"><section><h2>Naujas įrašas</h2>'+
+    '<form id="note-form"><div class="field-grid"><div class="field"><label>Data</label><input type="date" name="date" value="'+isoDate()+'" required></div>'+
+    '<div class="field"><label>Gydytojas</label><select name="authorId"><option value="">Nepasirinktas</option>'+opt(db.staff.map(s=>[s.id,s.name]),"")+'</select></div>'+
+    '<div class="field full"><label>Susijęs vizitas</label><select name="appointmentId"><option value="">Nesusietas</option>'+opt(db.appointments.filter(a=>a.patientId===p.id).map(a=>[a.id,a.date+" "+a.time+" · "+service(a.serviceId)]),"")+'</select></div>'+
+    '<div class="field full"><label>Klinikinis aprašymas (demo)</label><textarea name="text" required placeholder="Anamnezė, atliktos procedūros, rekomendacijos…"></textarea></div></div>'+
+    '<p style="margin-top:15px">'+btn("Išsaugoti įrašą","save-note","btn primary")+'</p></form></section>'+
+    '<section><h2>Įrašų istorija</h2><div class="timeline">'+notes.map(n=>'<div class="timeline-entry"><b>'+fmt(n.date)+'</b><small class="muted" style="display:block">'+esc(doctor(n.authorId))+'</small><p style="white-space:pre-wrap">'+esc(n.text)+'</p></div>').join("")+'</div>'+
+    (!notes.length?empty("Įrašų nėra","Sukurkite naują klinikinį įrašą."):"")+'</section></div></div>';
+}
+function viewFinances(){
+  const invoices=db.invoices.filter(i=>ui.clinic==="all"||i.clinicId===ui.clinic);
+  const total=invoices.reduce((n,i)=>n+invoiceTotal(i),0);
+  const paid=invoices.reduce((n,i)=>n+(i.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0),0);
+  return page("Finansai","Demonstracinės sąskaitos ir mokėjimų įrašai",btn("+ Nauja sąskaita","new-invoice","btn primary"))+
+    '<div class="stat-grid"><div class="stat"><small>Sąskaitų</small><strong>'+invoices.length+'</strong></div><div class="stat"><small>Išrašyta</small><strong>'+money(total)+'</strong></div>'+
+    '<div class="stat"><small>Apmokėta (demo)</small><strong>'+money(paid)+'</strong></div><div class="stat"><small>Likutis</small><strong>'+money(Math.max(0,total-paid))+'</strong></div></div>'+
+    '<section class="panel"><div class="notice warn">Sąskaitos ir mokėjimai yra demonstraciniai – nėra realių finansinių operacijų, mokesčių skaičiavimo ar integracijos su bankais.</div>'+
+    '<div class="table-wrap"><table class="data-table"><thead><tr><th>Numeris</th><th>Data</th><th>Pacientas</th><th>Klinika</th><th>Suma</th><th>Likutis</th><th></th></tr></thead><tbody>'+
+    invoices.map(i=>{
+      const rem=Math.max(0,invoiceTotal(i)-(i.payments||[]).reduce((n,p)=>n+Number(p.amount),0));
+      return '<tr><td>'+esc(i.number)+'</td><td>'+fmt(i.date)+'</td><td>'+esc(name(i.patientId))+'</td><td>'+esc(clinic(i.clinicId))+'</td><td>'+money(invoiceTotal(i))+'</td><td>'+money(rem)+'</td>'+
+      '<td>'+btn("Atverti","open-invoice","btn small","data-id='"+esc(i.id)+"'")+'</td></tr>';
+    }).join("")+'</tbody></table></div>'+(!invoices.length?empty("Sąskaitų nėra","Sukurkite demonstracinę sąskaitą."):"")+'</section>';
+}
+function viewServices(){
+  return page("Paslaugų katalogas","Procedūrų kainynas, kategorijos ir trukmės",btn("+ Pridėti paslaugą","new-service","btn primary"))+
+    '<div class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>Paslauga</th><th>Kategorija</th><th>Trukmė</th><th>Kaina</th><th>Būsena</th><th></th></tr></thead><tbody>'+
+    db.services.map(s=>'<tr><td><b>'+esc(s.name)+'</b></td><td>'+esc(s.category)+'</td><td>'+s.duration+' min.</td><td>'+money(s.price)+'</td><td>'+pill(s.active?"Aktyvi":"Neaktyvi")+'</td>'+
+    '<td>'+btn("Redaguoti","edit-service","btn small","data-id='"+esc(s.id)+"'")+'</td></tr>').join("")+'</tbody></table></div></div>';
+}
+function viewVlk(){
+  return page("VLK / PSDF","Tik informacinis demonstracinis modulis")+
+    '<section class="panel"><h2>VLK / PSDF</h2><p>Demonstracinis paslaugų katalogas apima konsultacijas su siuntimu, suaugusiųjų ir vaikų dantų protezavimo paslaugas.</p>'+
+    '<div class="notice warn">Kompensacijos neskaičiuojamos, teisė į PSDF finansavimą netikrinama, duomenys neteikiami VLK ar kitoms valstybinėms sistemoms.</div></section>';
+}
+function viewAdmin(){
+  return page("Administravimas","Duomenų eksportas, demonstracijos atkūrimas ir veiksmų istorija")+
+    '<div class="two-cols"><section class="panel"><h2>Demonstracinė aplinka</h2><div class="notice warn">Nėra prisijungimo, vartotojų teisių, serverinės duomenų bazės, saugaus audito ar atsarginių kopijų. Neveskite tikrų pacientų duomenų.</div>'+
+    '<div class="detail-grid" style="margin:20px 0">'+[["Klinikos",db.clinics.length],["Kėdės",db.chairs.length],["Gydytojai",db.staff.length],["Pacientai",db.patients.length]].map(([k,v])=>'<div class="detail-item"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+
+    '<div class="actions">'+btn("Eksportuoti demo JSON","export","btn primary")+btn("Atkurti demo įrašus","reset","btn danger")+'</div></section>'+
+    '<section class="panel"><h2>Veiksmų žurnalas</h2><div class="audit-list">'+db.audit.slice(0,60).map(a=>'<div class="audit-entry"><span><strong>'+esc(a.action)+'</strong><small class="muted" style="display:block">'+esc(a.entity)+'</small></span><span class="muted">'+esc(new Date(a.at).toLocaleString("lt-LT"))+'</span></div>').join("")+'</div></section></div>';
+}
+
+
+function viewDrawer(){
+  const d=ui.modal;
+  const close=btn("✕","close-modal","btn small ghost","aria-label='Uždaryti'");
+  const wrap=(title,content)=>'<div class="drawer-shade" data-action="backdrop"><aside class="drawer" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="drawer-title"><h2>'+title+'</h2>'+close+'</div>'+content+'</aside></div>';
+  if(d.kind==="appointment"){
+    const original=db.appointments.find(a=>a.id===d.id);
+    const a=Object.assign({clinicId:ui.clinic==="all"?"akm":ui.clinic,chairId:"",patientId:ui.patient,
+      staffId:"",date:ui.day,time:"09:00",duration:30,serviceId:db.services[0]?.id||"",status:"Registruotas",notes:""},original||{},d.preset||{});
+    if(!a.chairId||!db.chairs.some(c=>c.id===a.chairId&&c.clinicId===a.clinicId))a.chairId=a.clinicId+"-1";
+    if(!db.patients.some(p=>p.id===a.patientId&&p.clinicIds.includes(a.clinicId)))a.patientId=db.patients.find(p=>p.clinicIds.includes(a.clinicId))?.id||"";
+    const doctorOptions=db.staff.filter(s=>s.clinicIds.includes(a.clinicId)).map(s=>[s.id,s.name]);
+    const patients=db.patients.filter(p=>p.clinicIds.includes(a.clinicId)).map(p=>[p.id,name(p.id)]);
+    return wrap(original?"Redaguoti vizitą":"Registruoti vizitą",
+      '<div class="notice">Registracijos seka: <b>kėdė → pacientas → gydytojas</b>. Bus patikrintas grafikas, pertrauka ir užimtumas.</div>'+
+      '<form id="appt-form" style="margin-top:17px"><div class="field-grid">'+
+      '<div class="field full"><label>1. Klinika</label><select name="clinicId" id="appt-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),a.clinicId)+'</select></div>'+
+      '<div class="field"><label>2. Kėdė</label><select name="chairId" id="appt-chair">'+opt(db.chairs.filter(c=>c.clinicId===a.clinicId).map(c=>[c.id,c.name]),a.chairId)+'</select></div>'+
+      '<div class="field"><label>3. Pacientas</label><select name="patientId" id="appt-patient">'+opt(patients,a.patientId)+'</select></div>'+
+      '<div class="field full"><label>4. Gydytojas</label><select name="staffId" id="appt-doctor"><option value="">Pasirinkite gydytoją</option>'+opt(doctorOptions,a.staffId)+'</select></div>'+
+      '<div class="field"><label>Data</label><input type="date" name="date" value="'+esc(a.date)+'" required></div>'+
+      '<div class="field"><label>Laikas</label><input type="time" name="time" value="'+esc(a.time)+'" step="900" required></div>'+
+      '<div class="field"><label>Trukmė (min.)</label><select name="duration" id="appt-duration">'+opt([15,30,45,60,75,90,105,120,150,180,210,240].map(x=>[x,x+" min."]),a.duration)+'</select></div>'+
+      '<div class="field"><label>Paslauga</label><select name="serviceId" id="appt-service">'+opt(db.services.filter(s=>s.active||s.id===a.serviceId).map(s=>[s.id,s.name]),a.serviceId)+'</select></div>'+
+      '<div class="field full"><label>Būsena</label><select name="status">'+simple(STATUSES,a.status)+'</select></div>'+
+      '<div class="field full"><label>Pastabos (tik demo)</label><textarea name="notes">'+esc(a.notes||"")+'</textarea></div></div>'+
+      '<div class="drawer-footer">'+(original?btn("Paciento kortelė","appointment-patient","btn small")+btn("Ištrinti","delete-appt","btn danger"):"")+
+      btn("Išsaugoti vizitą","save-appt","btn primary")+'</div></form>');
+  }
+  if(d.kind==="patient"){
+    const p=db.patients.find(p=>p.id===d.id);
+    const a=p||{firstName:"",lastName:"",birthDate:"",phone:"",email:"",alerts:"",clinicIds:[ui.clinic==="all"?"akm":ui.clinic]};
+    return wrap(p?"Redaguoti paciento kortelę":"Naujas demonstracinis pacientas",
+      '<div class="notice warn">Įveskite tik išgalvoto paciento duomenis, ne tikrą asmeninę ar medicininę informaciją.</div>'+
+      '<form id="patient-form" style="margin-top:16px"><div class="field-grid"><div class="field"><label>Vardas</label><input name="firstName" maxlength="90" required value="'+esc(a.firstName)+'"></div>'+
+      '<div class="field"><label>Pavardė</label><input name="lastName" maxlength="90" required value="'+esc(a.lastName)+'"></div>'+
+      '<div class="field"><label>Gimimo data</label><input type="date" name="birthDate" value="'+esc(a.birthDate||"")+'"></div>'+
+      '<div class="field"><label>Telefonas (išgalvotas)</label><input name="phone" maxlength="45" value="'+esc(a.phone||"")+'"></div>'+
+      '<div class="field full"><label>El. paštas (išgalvotas)</label><input type="text" name="email" value="'+esc(a.email||"")+'"></div>'+
+      '<div class="field full"><label>Klinika</label><div class="flex">'+db.clinics.map(c=>'<label style="font-weight:400"><input name="clinicIds" type="checkbox" value="'+c.id+'" '+(a.clinicIds.includes(c.id)?"checked":"")+'>'+esc(c.name)+'</label>').join("")+'</div></div>'+
+      '<div class="field full"><label>Pastabos / įspėjimai (tik demo)</label><textarea name="alerts">'+esc(a.alerts||"")+'</textarea></div></div>'+
+      '<div class="drawer-footer">'+btn("Išsaugoti pacientą","save-patient","btn primary")+'</div></form>');
+  }
+  if(d.kind==="doctor"){
+    return wrap("Pridėti gydytoją",'<form id="doctor-form"><div class="field"><label>Vardas ir pavardė</label><input name="name" required maxlength="110" placeholder="Dr. Vardas Pavardė"></div>'+
+      '<div class="field" style="margin-top:15px"><label>Specialybė</label><input name="role" value="Gydytojas odontologas"></div>'+
+      '<div class="field" style="margin-top:15px"><label>Klinikos</label>'+db.clinics.map(c=>'<label style="font-weight:400"><input type="checkbox" name="clinicIds" value="'+c.id+'" '+((ui.clinic==="all"||ui.clinic===c.id)?"checked":"")+'>'+esc(c.name)+'</label>').join("")+'</div>'+
+      '<div class="drawer-footer">'+btn("Pridėti gydytoją","save-doctor","btn primary")+'</div></form>');
+  }
+  if(d.kind==="plan"){
+    return wrap("Naujas gydymo planas",'<form id="plan-form"><div class="field"><label>Pacientas</label><select name="patientId">'+opt(listPatients().map(p=>[p.id,name(p.id)]),ui.patient)+'</select></div>'+
+      '<div class="field" style="margin-top:15px"><label>Plano pavadinimas</label><input name="title" required maxlength="160" placeholder="Pvz., Viršutinio žandikaulio gydymas"></div>'+
+      '<div class="field" style="margin-top:15px"><label>Būsena</label><select name="status">'+simple(PLAN_STATUSES,"Juodraštis")+'</select></div>'+
+      '<div class="drawer-footer">'+btn("Sukurti planą","save-plan","btn primary")+'</div></form>');
+  }
+  if(d.kind==="service"){
+    const s=db.services.find(s=>s.id===d.id);
+    return wrap(s?"Redaguoti paslaugą":"Nauja paslauga",'<form id="service-form"><div class="field-grid"><div class="field full"><label>Paslaugos pavadinimas</label><input name="name" value="'+esc(s?.name||"")+'" maxlength="160" required></div>'+
+      '<div class="field"><label>Kategorija</label><input name="category" value="'+esc(s?.category||"Kita")+'" required></div>'+
+      '<div class="field"><label>Trukmė (min.)</label><input type="number" name="duration" min="15" max="240" step="15" value="'+Number(s?.duration||30)+'"></div>'+
+      '<div class="field"><label>Kaina (€)</label><input type="number" name="price" min="0" max="100000" step=".01" value="'+Number(s?.price||0)+'"></div>'+
+      '<div class="field"><label>Aktyvi</label><input type="checkbox" name="active" '+(!s||s.active?"checked":"")+'></div></div>'+
+      '<div class="drawer-footer">'+btn("Išsaugoti paslaugą","save-service","btn primary")+'</div></form>');
+  }
+  if(d.kind==="invoice"){
+    const invoice=db.invoices.find(i=>i.id===d.id);
+    if(invoice){
+      const total=invoiceTotal(invoice),paid=(invoice.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0),remaining=Math.max(0,total-paid);
+      return wrap("Sąskaita "+invoice.number,'<div class="detail-grid"><div class="detail-item"><small>Pacientas</small><b>'+esc(name(invoice.patientId))+'</b></div>'+
+        '<div class="detail-item"><small>Data</small><b>'+fmt(invoice.date)+'</b></div>'+
+        '<div class="detail-item"><small>Suma</small><b>'+money(total)+'</b></div><div class="detail-item"><small>Likutis</small><b>'+money(remaining)+'</b></div></div>'+
+        '<h3 style="margin-top:24px">Paslaugos</h3>'+invoice.items.map(x=>'<div class="segment">'+esc(x.description)+' · '+money(x.price)+'</div>').join("")+
+        '<h3 style="margin-top:22px">Demonstraciniai mokėjimai</h3>'+(invoice.payments||[]).map(p=>'<div class="segment">'+fmt(p.date)+' · '+esc(p.method)+' · '+money(p.amount)+'</div>').join("")+
+        (remaining>0?'<form id="payment-form" style="margin-top:18px"><div class="field-grid"><div class="field"><label>Suma (€)</label><input type="number" name="amount" min=".01" max="'+remaining.toFixed(2)+'" step=".01" value="'+remaining.toFixed(2)+'"></div>'+
+        '<div class="field"><label>Būdas</label><select name="method">'+simple(["Grynieji (demo)","Kortelė (demo)","Pavedimas (demo)"],"Kortelė (demo)")+'</select></div></div>'+
+        '<div class="drawer-footer">'+btn("Registruoti mokėjimą","save-payment","btn primary")+'</div></form>':'<div class="notice">Sąskaita apmokėta (demonstracinis įrašas).</div>'));
+    }
+    const clinicId=ui.clinic==="all"?"akm":ui.clinic;
+    return wrap("Nauja demonstracinė sąskaita",'<form id="invoice-form"><div class="field-grid"><div class="field full"><label>Klinika</label><select name="clinicId" id="invoice-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),clinicId)+'</select></div>'+
+      '<div class="field full"><label>Pacientas</label><select name="patientId" id="invoice-patient">'+opt(db.patients.filter(p=>p.clinicIds.includes(clinicId)).map(p=>[p.id,name(p.id)]),ui.patient)+'</select></div>'+
+      '<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+opt(db.services.filter(s=>s.active).map(s=>[s.id,s.name]),db.services[0]?.id)+'</select></div>'+
+      '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div>'+
+      '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(db.services[0]?.price||0)+'"></div>'+
+      '<div class="field full"><label>Data</label><input name="date" type="date" value="'+isoDate()+'"></div></div>'+
+      '<div class="drawer-footer">'+btn("Sukurti sąskaitą","save-invoice","btn primary")+'</div></form>');
+  }
+  return wrap("Veiksmas",empty("Nepasiekiama","Pabandykite dar kartą."));
+}
+function formData(id){return new FormData($(id))}
+function stringValues(form){return Object.fromEntries(form.entries())}
+function calendarMove(direction){
+  if(ui.view==="month"||ui.view==="list"){
+    const d=new Date(ui.day+"T12:00:00");d.setMonth(d.getMonth()+direction);ui.day=isoDate(d);
+  }else ui.day=shiftDate(ui.day,direction*(ui.view==="week"?7:1));
+  render();
+}
+function saveAppointment(){
+  const f=stringValues(formData("appt-form"));
+  const a={
+    id:ui.modal.id||uid("a"),clinicId:f.clinicId,chairId:f.chairId,patientId:f.patientId,
+    staffId:f.staffId,date:f.date,time:f.time,duration:Number(f.duration),serviceId:f.serviceId,
+    status:f.status,notes:String(f.notes||"").trim()
+  };
+  const issues=appointmentIssues(db,a);
+  if(issues.length){notify(issues.join(" "),true);return}
+  update(ui.modal.id?"Redaguotas vizitas":"Sukurtas vizitas",a.id,s=>{
+    const i=s.appointments.findIndex(x=>x.id===a.id);
+    if(i>=0)s.appointments[i]=a;else s.appointments.push(a);
+  });
+  ui.modal=null;ui.day=a.date;
+  render();notify("Vizitas išsaugotas.");
+}
+function savePatient(){
+  const f=formData("patient-form"),v=stringValues(f),ids=f.getAll("clinicIds"),old=db.patients.find(p=>p.id===ui.modal.id);
+  if(!v.firstName?.trim()||!v.lastName?.trim()||!ids.length){notify("Nurodykite vardą, pavardę ir kliniką.",true);return}
+  if(v.birthDate&&!validDate(v.birthDate)){notify("Neteisinga gimimo data.",true);return}
+  if(old){
+    const hasAppts=db.appointments.some(a=>a.patientId===old.id&&!ids.includes(a.clinicId));
+    if(hasAppts){notify("Negalima pašalinti klinikos, kurioje pacientas turi vizitų.",true);return}
+  }
+  const p={id:old?.id||uid("p"),firstName:v.firstName.trim(),lastName:v.lastName.trim(),birthDate:v.birthDate||"",
+    phone:v.phone?.trim()||"",email:v.email?.trim()||"",alerts:v.alerts?.trim()||"",clinicIds:ids,createdAt:old?.createdAt||isoDate(),synthetic:true};
+  update(old?"Atnaujinta paciento kortelė":"Sukurtas demo pacientas",p.id,s=>{
+    const i=s.patients.findIndex(x=>x.id===p.id);if(i>=0)s.patients[i]=p;else s.patients.push(p);
+  });
+  ui.patient=p.id;ui.modal=null;ui.route="patients";render();notify("Paciento kortelė išsaugota.");
+}
+function saveDoctor(){
+  const f=formData("doctor-form"),v=stringValues(f),clinics=f.getAll("clinicIds");
+  if(!v.name?.trim()||!clinics.length){notify("Įrašykite gydytoją ir pasirinkite kliniką.",true);return}
+  if(db.staff.some(s=>s.name.trim().toLowerCase()===v.name.trim().toLowerCase())){notify("Toks gydytojas jau yra.",true);return}
+  const staff={id:uid("dr"),name:v.name.trim(),role:v.role?.trim()||"Gydytojas odontologas",clinicIds:clinics,
+    availability:clinics.flatMap(defaultAvailability),breaks:clinics.flatMap(defaultBreaks)};
+  update("Pridėtas demonstracinis gydytojas",staff.id,s=>s.staff.push(staff));
+  ui.selectedDoctor=staff.id;ui.modal=null;ui.route="doctors";render();notify("Gydytojas pridėtas.");
+}
+function saveSchedule(){
+  const f=formData("schedule-form"),id=f.get("doctorId"),cid=f.get("clinicId");
+  const doctorRecord=db.staff.find(d=>d.id===id);if(!doctorRecord)return;
+  const work=[],breaks=[];
+  for(let wd=0;wd<7;wd++){
+    if(!f.get("active-"+wd))continue;
+    const start=f.get("start-"+wd),end=f.get("end-"+wd),bs=f.get("breakStart-"+wd),be=f.get("breakEnd-"+wd);
+    if(!Number.isFinite(minutes(start))||!Number.isFinite(minutes(end))||minutes(start)<420||minutes(end)>1320||minutes(end)<=minutes(start)){
+      notify("Netinkamas darbo laikas: "+WEEKDAYS[wd]+".",true);return
+    }
+    work.push({clinicId:cid,weekday:wd,start,end});
+    if(bs||be){
+      if(!bs||!be||!Number.isFinite(minutes(bs))||!Number.isFinite(minutes(be))||minutes(bs)<minutes(start)||minutes(be)>minutes(end)||minutes(bs)>=minutes(be)){
+        notify("Netinkama pertrauka: "+WEEKDAYS[wd]+".",true);return
+      }
+      breaks.push({clinicId:cid,weekday:wd,start:bs,end:be});
+    }
+  }
+  const candidate=structuredClone(db);
+  const staff=candidate.staff.find(s=>s.id===id);
+  staff.availability=staff.availability.filter(w=>w.clinicId!==cid).concat(work);
+  staff.breaks=staff.breaks.filter(b=>b.clinicId!==cid).concat(breaks);
+  for(const a of candidate.appointments.filter(a=>a.staffId===id&&a.clinicId===cid&&a.status!=="Atšauktas")){
+    const issues=appointmentIssues(candidate,a);
+    if(issues.length){notify("Grafikas konfliktuoja su vizitu "+a.date+" "+a.time+": "+issues.join(" "),true);return}
+  }
+  update("Pakeistas gydytojo grafikas",id,s=>{
+    const doc=s.staff.find(x=>x.id===id);
+    doc.availability=staff.availability;doc.breaks=staff.breaks;
+  });
+  notify("Darbo grafikas išsaugotas.");
+}
+function saveFinding(){
+  const f=formData("finding-form"),v=stringValues(f),patientId=ui.patient,toothNumber=ui.tooth;
+  const finding={id:uid("tooth"),patientId,toothNumber,surfaces:f.getAll("surface"),condition:v.condition,
+    status:v.status,note:v.note||"",updatedAt:new Date().toISOString()};
+  if(!finding.surfaces.length){notify("Pažymėkite bent vieną paviršių.",true);return}
+  update("Atnaujinta odontograma",patientId+":"+toothNumber,s=>{
+    const i=s.findings.findIndex(x=>x.patientId===patientId&&Number(x.toothNumber)===toothNumber);
+    if(i>=0)finding.id=s.findings[i].id;
+    if(i>=0)s.findings[i]=finding;else s.findings.push(finding);
+  });notify("Danties duomenys išsaugoti.");
+}
+function savePlan(){
+  const v=stringValues(formData("plan-form"));
+  if(!v.title?.trim()||!v.patientId){notify("Įrašykite plano pavadinimą ir pacientą.",true);return}
+  const p=db.patients.find(x=>x.id===v.patientId),cid=(ui.clinic!=="all"&&p.clinicIds.includes(ui.clinic))?ui.clinic:p.clinicIds[0];
+  const plan={id:uid("plan"),patientId:v.patientId,clinicId:cid,title:v.title.trim(),status:v.status,items:[]};
+  update("Sukurtas gydymo planas",plan.id,s=>s.plans.push(plan));
+  ui.patient=v.patientId;ui.selectedPlan=plan.id;ui.modal=null;ui.route="plans";render();notify("Gydymo planas sukurtas.");
+}
+function savePlanItem(){
+  const f=stringValues(formData("plan-item-form")),p=db.plans.find(p=>p.id===(ui.selectedPlan||db.plans.find(p=>p.patientId===ui.patient)?.id));
+  if(!p)return;
+  const qty=Number(f.qty),price=Number(f.price);
+  if(!Number.isInteger(qty)||qty<1||qty>20||!Number.isFinite(price)||price<0){notify("Neteisingas kiekis ar kaina.",true);return}
+  const item={id:uid("item"),serviceId:f.serviceId,description:f.description?.trim()||service(f.serviceId),tooth:f.tooth?.trim()||"",qty,price,done:false};
+  update("Į planą pridėta procedūra",p.id,s=>s.plans.find(x=>x.id===p.id).items.push(item));
+  ui.selectedPlan=p.id;render();notify("Procedūra pridėta.");
+}
+function saveNote(){
+  const v=stringValues(formData("note-form"));
+  if(!validDate(v.date)||!v.text?.trim()){notify("Nurodykite datą ir klinikinį įrašą.",true);return}
+  const note={id:uid("note"),patientId:ui.patient,date:v.date,authorId:v.authorId||"",appointmentId:v.appointmentId||"",
+    text:v.text.trim(),createdAt:new Date().toISOString()};
+  update("Sukurtas klinikinis įrašas",note.id,s=>s.clinicalNotes.push(note));notify("Įrašas išsaugotas.");
+}
+function saveService(){
+  const v=stringValues(formData("service-form")),duration=Number(v.duration),price=Number(v.price),old=db.services.find(s=>s.id===ui.modal.id);
+  if(!v.name?.trim()||!v.category?.trim()||!Number.isInteger(duration)||duration<15||duration>240||duration%15!==0||!Number.isFinite(price)||price<0){
+    notify("Užpildykite paslaugos laukus. Trukmė turi būti 15 min. kartotinė.",true);return}
+  const s={id:old?.id||uid("s"),name:v.name.trim(),category:v.category.trim(),duration,price,active:v.active==="on"};
+  update(old?"Atnaujinta paslauga":"Sukurta paslauga",s.id,db=>{
+    const i=db.services.findIndex(x=>x.id===s.id);
+    if(i>=0)db.services[i]=s;else db.services.push(s);
+  });
+  ui.modal=null;render();notify("Paslauga išsaugota.");
+}
+function saveInvoice(){
+  const v=stringValues(formData("invoice-form")),qty=Number(v.qty),price=Number(v.price);
+  if(!v.clinicId||!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(v.clinicId))||!db.services.some(s=>s.id===v.serviceId)||
+     !Number.isInteger(qty)||qty<1||qty>100||!Number.isFinite(price)||price<0||!validDate(v.date)){
+    notify("Neteisingi sąskaitos duomenys.",true);return}
+  const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,
+    items:[{id:uid("line"),description:service(v.serviceId),serviceId:v.serviceId,price,qty}],payments:[]};
+  update("Sukurta demonstracinė sąskaita",invoice.id,s=>s.invoices.push(invoice));
+  ui.modal={kind:"invoice",id:invoice.id};render();notify("Sąskaita sukurta.");
+}
+function savePayment(){
+  const invoice=db.invoices.find(i=>i.id===ui.modal.id);
+  if(!invoice)return;
+  const v=stringValues(formData("payment-form")),amount=Number(v.amount),balance=invoiceTotal(invoice)-(invoice.payments||[]).reduce((s,p)=>s+Number(p.amount),0);
+  if(!Number.isFinite(amount)||amount<=0||amount>balance+0.001){notify("Mokėjimo suma turi neviršyti likučio.",true);return}
+  update("Registruotas demonstracinis mokėjimas",invoice.id,s=>s.invoices.find(i=>i.id===invoice.id).payments.push({
+    id:uid("pay"),date:isoDate(),amount,method:v.method
+  }));notify("Demonstracinis mokėjimas įrašytas.");
+}
+function downloadJson(){
+  const blob=new Blob([repository.export()],{type:"application/json;charset=utf-8"});
+  const url=URL.createObjectURL(blob),link=document.createElement("a");
+  link.href=url;link.download="dentalpro-demo-"+isoDate()+".json";link.click();URL.revokeObjectURL(url);
+}
+function switchAppointmentClinic(cid){
+  $("appt-chair").innerHTML=opt(db.chairs.filter(c=>c.clinicId===cid).map(c=>[c.id,c.name]),"");
+  $("appt-patient").innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(cid)).map(p=>[p.id,name(p.id)]),"");
+  $("appt-doctor").innerHTML='<option value="">Pasirinkite gydytoją</option>'+opt(db.staff.filter(s=>s.clinicIds.includes(cid)).map(s=>[s.id,s.name]),"");
+}
+function switchInvoiceClinic(cid){
+  $("invoice-patient").innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(cid)).map(p=>[p.id,name(p.id)]),"");
+}
+function removeFinding(){
+  if(!confirm("Ištrinti šio danties radinį?"))return;
+  update("Ištrintas danties radinys",ui.patient+":"+ui.tooth,s=>{
+    s.findings=s.findings.filter(f=>!(f.patientId===ui.patient&&Number(f.toothNumber)===ui.tooth));
+  });notify("Radinys ištrintas.");
+}
+function handleAction(target,event){
+  const act=target.dataset.action,id=target.dataset.id;
+  switch(act){
+    case "route":route(target.dataset.route);break;
+    case "go-calendar":route("calendar");break;
+    case "close-modal":case "backdrop":if(act==="backdrop"&&event.target!==target)break;ui.modal=null;render();break;
+    case "new-appt":modal("appointment","",{});break;
+    case "new-on-day":modal("appointment","",{preset:{date:target.dataset.date}});break;
+    case "slot":modal("appointment","",{preset:{date:ui.day,time:target.dataset.time,chairId:target.dataset.chair,clinicId:db.chairs.find(c=>c.id===target.dataset.chair)?.clinicId}});break;
+    case "edit-appt":modal("appointment",id);break;
+    case "set-view":ui.view=target.dataset.view;render();break;
+    case "cal-prev":calendarMove(-1);break;
+    case "cal-next":calendarMove(1);break;
+    case "cal-today":ui.day=isoDate();render();break;
+    case "save-appt":saveAppointment();break;
+    case "delete-appt":if(confirm("Ar tikrai ištrinti šį demonstracinį vizitą?")){
+        update("Ištrintas vizitas",ui.modal.id,s=>s.appointments=s.appointments.filter(a=>a.id!==ui.modal.id));
+        ui.modal=null;render();notify("Vizitas ištrintas.");
+      }break;
+    case "appointment-patient":{
+      const a=db.appointments.find(a=>a.id===ui.modal.id);if(!a)break;
+      ui.patient=a.patientId;ui.modal=null;route("patients");break;
+    }
+    case "new-patient":modal("patient");break;
+    case "edit-patient":modal("patient",id);break;
+    case "save-patient":savePatient();break;
+    case "select-patient":ui.patient=id;ui.patientTab="overview";render();break;
+    case "patient-tab":ui.patientTab=target.dataset.tab;render();break;
+    case "patient-odontogram":route("odontogram");break;
+    case "patient-notes":route("notes");break;
+    case "patient-plans":route("plans");break;
+    case "new-doctor":modal("doctor");break;
+    case "save-doctor":saveDoctor();break;
+    case "select-doctor":ui.selectedDoctor=id;render();break;
+    case "save-schedule":saveSchedule();break;
+    case "tooth":ui.tooth=Number(target.dataset.tooth);render();break;
+    case "save-finding":saveFinding();break;
+    case "delete-finding":removeFinding();break;
+    case "new-plan":modal("plan");break;
+    case "save-plan":savePlan();break;
+    case "select-plan":ui.selectedPlan=id;render();break;
+    case "save-plan-item":savePlanItem();break;
+    case "save-note":saveNote();break;
+    case "new-service":modal("service");break;
+    case "edit-service":modal("service",id);break;
+    case "save-service":saveService();break;
+    case "new-invoice":modal("invoice");break;
+    case "open-invoice":modal("invoice",id);break;
+    case "save-invoice":saveInvoice();break;
+    case "save-payment":savePayment();break;
+    case "export":downloadJson();notify("Demo JSON paruoštas.");break;
+    case "reset":if(confirm("Atkurti pradinius demonstracinius duomenis? Dabartiniai v2 demonstraciniai pakeitimai bus ištrinti.")){
+      db=repository.reset();ui.modal=null;ui.patient="p-0-0";ui.day=isoDate();ui.selectedPlan="";render();notify("Demonstraciniai duomenys atkurti.");
+    }break;
+  }
+}
+function handleChange(target){
+  const act=target.dataset.change;
+  if(act==="day"){if(validDate(target.value)){ui.day=target.value;render()}return}
+  if(act==="doctor-filter"){ui.doctor=target.value;render();return}
+  if(act==="chair-filter"){ui.chair=target.value;render();return}
+  if(act==="service-filter"){ui.service=target.value;render();return}
+  if(act==="status-filter"){ui.status=target.value;render();return}
+  if(act==="patient"){ui.patient=target.value;ui.selectedPlan="";render();return}
+  if(act==="plan-status"){
+    const plan=db.plans.find(p=>p.id===(ui.selectedPlan||db.plans.find(p=>p.patientId===ui.patient)?.id));
+    if(!plan)return;
+    update("Atnaujinta gydymo plano būsena",plan.id,s=>s.plans.find(p=>p.id===plan.id).status=target.value);
+    notify("Plano būsena atnaujinta.");return
+  }
+  if(act==="plan-done"){
+    const planId=target.dataset.plan,itemId=target.dataset.id,done=target.checked;
+    update("Pakeista plano procedūros būsena",planId,s=>{
+      const item=s.plans.find(p=>p.id===planId)?.items.find(i=>i.id===itemId);if(item)item.done=done;
+    });return
+  }
+  if(target.id==="appt-clinic"){switchAppointmentClinic(target.value);return}
+  if(target.id==="appt-service"&&!ui.modal?.id){
+    const d=db.services.find(s=>s.id===target.value)?.duration;
+    if(d&&$("appt-duration").querySelector('option[value="'+d+'"]'))$("appt-duration").value=String(d);
+    return
+  }
+  if(target.id==="invoice-clinic"){switchInvoiceClinic(target.value);return}
+  if(target.id==="invoice-service"){$("invoice-price").value=db.services.find(s=>s.id===target.value)?.price||0;return}
+  if(target.closest("#plan-item-form")&&target.name==="serviceId"){
+    const price=db.services.find(s=>s.id===target.value)?.price||0;
+    $("plan-item-form").querySelector('[name="price"]').value=price;
+  }
+}
+function start(){
+  $("app").innerHTML='<div class="app"><aside class="sidebar"><div class="brand"><div class="brand-icon">✚</div><div><strong>DentalPro</strong><small>Klinikų valdymas 2.0</small></div></div>'+
+    [
+      ["overview","▦","Apžvalga","DARBO VIETA"],
+      ["calendar","▤","Registracijos kalendorius",""],
+      ["patients","♙","Pacientai","KLINIKA"],
+      ["doctors","▥","Gydytojų grafikai",""],
+      ["odontogram","◇","Odontograma",""],
+      ["plans","☷","Gydymo planai",""],
+      ["notes","▧","Klinikiniai įrašai",""],
+      ["finances","€","Finansai","VALDYMAS"],
+      ["services","☰","Paslaugos",""],
+      ["vlk","◈","VLK / PSDF",""],
+      ["admin","⚙","Administravimas",""]
+    ].map(([id,icon,label,group])=>(group?'<div class="nav-group">'+group+'</div>':"")+
+      '<button type="button" class="nav-btn" data-action="route" data-route="'+id+'"><span class="nav-symbol">'+icon+'</span><span class="nav-title">'+label+'</span></button>').join("")+
+    '<div class="sidebar-bottom"><span class="status-dot"></span> Demonstracinis režimas<br>Tik sintetiniai duomenys. Jokios realios pacientų informacijos.</div></aside>'+
+    '<div class="work"><header class="topbar"><div class="breadcrumbs">DentalPro / <b id="section-name">Apžvalga</b></div>'+
+    '<div class="top-right"><div class="clinic-select"><select id="global-clinic" aria-label="Pasirinkti kliniką">'+opt([["akm","Naujoji Akmenė"],["kur","Kuršėnai"],["all","Abi klinikos (demo)"]],ui.clinic)+'</select></div>'+
+    '<div class="user-avatar" title="Demonstracinis naudotojas">DP</div></div></header><main class="workspace" id="page"></main></div></div><div id="drawer-root"></div>';
+  $("global-clinic").addEventListener("change",e=>selectClinic(e.target.value));
+  document.addEventListener("click",e=>{const target=e.target.closest("[data-action]");if(target)handleAction(target,e)});
+  document.addEventListener("change",e=>handleChange(e.target));
+  document.addEventListener("submit",e=>e.preventDefault());
+  document.addEventListener("input",e=>{
+    if(e.target.id!=="patient-search")return;
+    const value=e.target.value,start=e.target.selectionStart;
+    ui.search=value;render();
+    const field=$("patient-search");field?.focus();field?.setSelectionRange(start,start);
+  });
+  document.addEventListener("dragstart",e=>{
+    const el=e.target.closest(".sch-event");
+    if(el&&e.dataTransfer){e.dataTransfer.setData("text/plain",el.dataset.id);e.dataTransfer.effectAllowed="move"}
+  });
+  document.addEventListener("dragover",e=>{if(e.target.closest(".sch-slot"))e.preventDefault()});
+  document.addEventListener("drop",e=>{
+    const target=e.target.closest(".sch-slot"),id=e.dataTransfer?.getData("text/plain");
+    if(!target||!id)return;
+    e.preventDefault();
+    const a=db.appointments.find(x=>x.id===id);if(!a)return;
+    const proposed={...a,clinicId:db.chairs.find(c=>c.id===target.dataset.chair)?.clinicId||a.clinicId,chairId:target.dataset.chair,date:ui.day,time:target.dataset.time};
+    const issues=appointmentIssues(db,proposed);
+    if(issues.length){notify(issues.join(" "),true);return}
+    update("Perkeltas vizitas kalendoriuje",id,s=>Object.assign(s.appointments.find(x=>x.id===id),proposed));
+    notify("Vizitas perkeltas.");
+  });
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ui.modal){ui.modal=null;render()}});
+  if(!repository.storageAvailable())notify("Naršyklės saugykla neprieinama: pakeitimai neišliks atnaujinus puslapį.",true);
+  render();
+}
+start();
+
+</script></body></html>
