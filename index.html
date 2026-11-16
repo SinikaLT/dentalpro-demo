@@ -267,7 +267,7 @@ el("tab-calendar").classList.add("active");
 drawCalendar();
 }
 
-let calendarView="resourceDay";
+let calendarView="timeGridWeek";
 let fullCalendar=null;
 function conflictFor(a){
 const start=Number(a.time.slice(0,2))*60+Number(a.time.slice(3));
@@ -280,7 +280,7 @@ const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
 return start<bs+Number(b.duration)&&bs<end;
 });
 }
-function switchCalendarView(v){calendarView=v;editingId=null;pendingSlot=null;drawCalendar()}
+function switchCalendarView(v){if(fullCalendar&&v!=="resourceDay"&&calendarView!=="resourceDay"){calendarView=v;fullCalendar.changeView(v);return}calendarView=v;editingId=null;pendingSlot=null;drawCalendar()}
 function fullCalendarView(){
 const date=localDate(currentDate);
 const available=typeof FullCalendar!=="undefined";
@@ -303,7 +303,7 @@ return;
 const events=appointments.filter(a=>a.clinic===clinic).map(a=>({
 id:a.id,title:a.patient+" · "+a.doctor,
 start:a.date+"T"+a.time,
-end:new Date(new Date(a.date+"T"+a.time).getTime()+Number(a.duration)*60000).toISOString().slice(0,10)+"T"+localTimeAfter(a.date,a.time,Number(a.duration)),
+end:(()=>{const d=new Date(a.date+"T"+a.time);d.setMinutes(d.getMinutes()+Number(a.duration));return localDate(d)+"T"+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")})(),
 backgroundColor:a.status==="Atšauktas"?"#d9a2a2":a.status==="Atliktas"?"#70b78a":a.status==="Atvykęs"?"#d4b35a":"#087e8b",
 borderColor:"transparent",
 extendedProps:{doctor:a.doctor,status:a.status}
@@ -315,7 +315,7 @@ buttonText:{today:"Šiandien"},height:"auto",allDaySlot:false,
 slotMinTime:"08:00:00",slotMaxTime:"19:00:00",slotDuration:"00:30:00",
 nowIndicator:true,editable:true,selectable:true,selectMirror:true,
 eventDisplay:"block",events,
-datesSet(info){currentDate=new Date(info.view.currentStart.getTime());},
+datesSet(info){currentDate=new Date(info.view.calendar.getDate().getTime());},
 select(info){
 const d=info.startStr.slice(0,10),t=info.startStr.slice(11,16)||"09:00";
 editingId=null;pendingSlot={date:d,time:t};drawForm();
