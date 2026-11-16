@@ -18,7 +18,7 @@ const service=id=>serviceName(db,id);
 const activeServices=()=>db.services.filter(s=>s.active);
 const primaryService=()=>activeServices()[0]||db.services[0];
 const serviceChoices=(selected="")=>{const groups=new Map();for(const s of activeServices()){if(!groups.has(s.category))groups.set(s.category,[]);groups.get(s.category).push(s)}const historic=db.services.find(s=>s.id===selected&&!s.active);let html=historic?opt([[historic.id,historic.name+" (archyvinė)"]],selected):"";for(const [label,items] of groups)html+='<optgroup label="'+esc(label)+'">'+opt(items.map(s=>[s.id,s.name+" · "+(s.priceLabel||money(s.price))]),selected)+"</optgroup>";return html};
-const pricePicker=(serviceId,selected)=>{const s=db.services.find(x=>x.id===serviceId);const values=priceOptions(s);return values.length?'<select name="price" id="plan-item-price">'+opt(values.map(v=>[v,money(v)]),selected??values[0])+"</select>":'<input name="price" id="plan-item-price" type="number" min="0" step="0.01" value="'+esc(selected??s?.price??0)+'" required>'};
+const pricePicker=(serviceId,selected)=>{const s=db.services.find(x=>x.id===serviceId);const values=priceOptions(s);return values.length?'<select name="price" id="plan-item-price">'+opt(values.map(v=>[v,money(v)]),selected??values[0])+"</select>":'<input name="price" id="plan-item-price" type="number" min="0" step="0.01" value="'+esc(selected??(s?.priceMin==null?"":s?.price??0))+'" required>'};
 const clinic=id=>db.clinics.find(x=>x.id===id)?.name||"—";
 const chair=id=>db.chairs.find(x=>x.id===id)?.name||"—";
 const pill=s=>{let cls="";if(["Atšauktas","Neatvyko"].includes(s))cls="danger";else if(["Atvykęs","Atliekamas"].includes(s))cls="warning";else if(["Registruotas","Juodraštis","Neaktyvi"].includes(s))cls="grey";return '<span class="pill '+cls+'">'+esc(s)+'</span>';};
@@ -496,7 +496,8 @@ function saveService(){
   const v=stringValues(formData("service-form")),duration=Number(v.duration),price=Number(v.price),old=db.services.find(s=>s.id===ui.modal.id);
   if(!v.name?.trim()||!v.category?.trim()||!Number.isInteger(duration)||duration<15||duration>240||duration%15!==0||!Number.isFinite(price)||price<0){
     notify("Užpildykite paslaugos laukus. Trukmė turi būti 15 min. kartotinė.",true);return}
-  const s={...old,id:old?.id||uid("s"),name:v.name.trim(),category:v.category.trim(),duration,price,active:v.active==="on",priceMin:price,priceMax:price,priceLabel:money(price),source:old?.source||"custom"};
+  const preserve=old&&Number(old.price)===price;
+  const s={...old,id:old?.id||uid("s"),name:v.name.trim(),category:v.category.trim(),duration,price,active:v.active==="on",priceMin:preserve?old.priceMin:price,priceMax:preserve?old.priceMax:price,priceLabel:preserve?(old.priceLabel||money(price)):money(price),source:old?.source||"custom"};
   update(old?"Atnaujinta paslauga":"Sukurta paslauga",s.id,db=>{
     const i=db.services.findIndex(x=>x.id===s.id);
     if(i>=0)db.services[i]=s;else db.services.push(s);
