@@ -260,6 +260,38 @@ return names[c];
 function patientOptions(c,selected){
 return selectedPatients(c).map(n=>'<option'+(n===selected?" selected":"")+">"+safe(n)+"</option>").join("");
 }
+function clinicDoctors(c){
+let saved=[];
+try{const parsed=JSON.parse(localStorage.getItem("dentalpro_doctors_"+c)||"[]");if(Array.isArray(parsed))saved=parsed}catch(e){}
+return [...new Set([...saved,...appointments.filter(a=>a.clinic===c).map(a=>a.doctor)].filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim()))].sort((a,b)=>a.localeCompare(b,"lt"));
+}
+function doctorOptions(c,selected){
+const doctors=clinicDoctors(c);
+if(selected&&!doctors.includes(selected))doctors.push(selected);
+return '<option value="">Pasirinkite gydytoją</option>'+options(doctors,selected);
+}
+function addDoctorFromForm(){
+const name=prompt("Naujo gydytojo vardas ir pavardė:");
+if(!name||!name.trim())return;
+const normalized=name.trim();
+const doctors=clinicDoctors(clinic);
+if(doctors.some(d=>d.toLocaleLowerCase("lt")===normalized.toLocaleLowerCase("lt"))){
+alert("Toks gydytojas jau yra sąraše.");
+return;
+}
+const form=el("calEditor");
+const current=editingId;
+const fields=["calPatient","calDate","calTime","calDuration","calService","calStatus","calNotes","calRoom"];
+const snapshot={};
+for(const id of fields){const node=el(id);if(node)snapshot[id]=node.value}
+const saved=[];
+try{const parsed=JSON.parse(localStorage.getItem("dentalpro_doctors_"+clinic)||"[]");if(Array.isArray(parsed))saved.push(...parsed)}catch(e){}
+saved.push(normalized);
+localStorage.setItem("dentalpro_doctors_"+clinic,JSON.stringify([...new Set(saved)]));
+drawForm();
+for(const id of fields){const node=el(id);if(node&&Object.prototype.hasOwnProperty.call(snapshot,id))node.value=snapshot[id]}
+el("calDoctor").value=normalized;
+}
 function navigateCalendar(){
 tab="calendar";
 document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
@@ -439,7 +471,7 @@ el("calEditor").innerHTML=`
 <div><label>Pacientas</label>
 <select id="calPatient">${patientOptions(c,patientName)}</select></div>
 <div><label>Gydytojas</label>
-<input id="calDoctor" value="${safe(a?.doctor||pendingSlot?.doctor||"")}" placeholder="Gydytojo vardas, pavardė"></div>
+<select id="calDoctor" required>${doctorOptions(c,a?.doctor||pendingSlot?.doctor||"")}</select><button type="button" onclick="DentalCalendar.addDoctorFromForm()">+ Pridėti gydytoją</button></div>
 <div><label>Kabinetas</label>
 <input id="calRoom" list="calRoomOptions" value="${safe(a?.room||"")}" placeholder="Pvz., 1 kabinetas">
 <datalist id="calRoomOptions"><option value="1 kabinetas"><option value="2 kabinetas"><option value="3 kabinetas"></datalist></div>
@@ -512,6 +544,7 @@ drawCalendar();
 window.DentalCalendar={
 open:navigateCalendar,
 view:switchCalendarView,
+addDoctorFromForm,
 doctor:selectCalendarDoctor,
 prev(){currentDate=addDays(currentDate,-1);editingId=null;pendingSlot=null;drawCalendar()},
 next(){currentDate=addDays(currentDate,1);editingId=null;pendingSlot=null;drawCalendar()},
