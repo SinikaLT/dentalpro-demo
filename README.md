@@ -9,6 +9,18 @@
 - Principai: integruotas klinikos darbo srautas, originalus dizainas ir kodas, ne konkrečių komercinių produktų kopija
 - Specifikacija: [docs/DENTALPRO_2_SPEC.md](docs/DENTALPRO_2_SPEC.md)
 
+## Vieno failo demonstracija – patogiausias išbandymas
+
+**[Atsisiųsti `demo-standalone.html`](demo-standalone.html)**: GitHub puslapyje pasirinkite **Raw / Download raw file**, išsaugokite ir atverkite HTML failą naršyklėje. Ši versija veikia per `file://`, be serverio, ir taip pat naudoja tik vietinę naršyklės saugyklą.
+
+Po kodo pakeitimų atnaujinti vieno failo versiją:
+
+```bash
+npm run build
+```
+
+CI taip pat pateikia failą kaip **dentalpro-standalone-demo** artefaktą, kurį galima atsisiųsti iš sėkmingo GitHub Actions vykdymo.
+
 ## Paleidimas
 
 ES moduliai naršyklėje reikalauja HTTP, todėl nevykdykite naujos versijos per `file://`.
@@ -25,7 +37,7 @@ Testai su Node.js 20+:
 npm run verify
 ```
 
-Jei GitHub Pages tinkamai aktyvuotas ir leidžiamas šioje saugykloje, po pakeitimų prijungimo prie `main` puslapis publikuojamas per [GitHub Pages workflow](.github/workflows/pages.yml). **Nevertinkite nuorodos kaip veikiančios, kol nepatvirtintas deployment statusas.**
+GitHub Pages šiame privačiame projekte dar nėra aktyvuotas. [Publikavimo veiksmą](.github/workflows/pages.yml) galima paleisti rankiniu būdu **tik** aktyvavus Pages saugyklos nustatymuose; iki to laiko viešo adresu pasiekiamo demonstravimo nepatvirtiname.
 
 Ankstesnę veikiančią demonstraciją rasite [legacy.html](legacy.html). Nauja sistema perkelia senųjų demonstracinių įrašų `localStorage` struktūras į v2 duomenų saugyklą, jų neištrindama.
 
