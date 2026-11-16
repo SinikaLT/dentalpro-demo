@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p public/src
           cp index.html public/index.html
-          cp src/domain.mjs src/pricelist.mjs src/store.mjs src/views.mjs src/styles.css public/src/
+          cp src/domain.mjs src/pricelist.mjs src/forms.mjs src/store.mjs src/views.mjs src/styles.css public/src/
           echo 'User-agent: *' > public/robots.txt
           echo 'Disallow: /' >> public/robots.txt
       - uses: actions/configure-pages@v5
