@@ -1,6 +1,6 @@
 # DentalPro 2.0 – odontologijos klinikų valdymas (DEMO)
 
-**Statusas: demonstracinė programa, tik sintetiniams duomenims. NE naudoti tikriems pacientams.**
+**Statusas: išplėsta, tik sintetiniams duomenims skirta demonstracinė odontologijos sistema. NENAUDOTI tikriems pacientams.**\n\n**[Atidaryti DentalPro 2.0 internete](https://sinikalt.github.io/dentalpro-demo/)**
 
 - Klinikos: **Naujoji Akmenė** ir **Kuršėnai**
 - Kiekvienoje klinikoje – **2 kėdės**
@@ -37,9 +37,9 @@ Testai su Node.js 20+:
 npm run verify
 ```
 
-GitHub Pages šiame privačiame projekte dar nėra aktyvuotas. [Publikavimo veiksmą](.github/workflows/pages.yml) galima paleisti rankiniu būdu **tik** aktyvavus Pages saugyklos nustatymuose; iki to laiko viešo adresu pasiekiamo demonstravimo nepatvirtiname.
+GitHub Pages automatiškai publikuoja [DentalPro 2.0 demonstraciją](https://sinikalt.github.io/dentalpro-demo/) per [GitHub Actions](.github/workflows/pages.yml). Ši statinė svetainė neturi saugaus backend ar tikro elektroninio parašo.
 
-Ankstesnę veikiančią demonstraciją rasite [legacy.html](legacy.html). Nauja sistema perkelia senųjų demonstracinių įrašų `localStorage` struktūras į v2 duomenų saugyklą, jų neištrindama.
+**V3 demonstracinių duomenų izoliacija:** sistema naudoja atskirą `dentalpro_v3_synthetic_only` saugyklą. Senieji `localStorage` įrašai, net ir likę toje pačioje naršyklėje, **automatiškai neperkeliami**. Nauja versija pradeda tik su sintetiniais pavyzdžiais.
 
 ## Įgyvendinta (demonstracinis režimas)
 
@@ -52,10 +52,10 @@ Ankstesnę veikiančią demonstraciją rasite [legacy.html](legacy.html). Nauja 
 | Odontograma | FDI 32 nuolatinių ir 20 pieninių dantų numeriai, būklė, paviršiai, pastabos, radinių saugojimas |
 | Gydymo planai | Planai, būsenos, paslaugų eilutės, numatoma kaina, atliktų procedūrų žymėjimas |
 | Klinikiniai įrašai | Data, pacientas, gydytojas, susijęs vizitas, tekstas ir istorija |
-| Paslaugos | Kainynas, trukmės, kategorijos, redagavimas ir aktyvumo būsena |
+| Paslaugos | MK odontologijos kainynas (~130 paslaugų), kategorijos, trukmės, 10 € kainos intervalo pasirinkimas gydymo plane |
 | Finansai | Demonstracinės sąskaitos, eilutės, likučiai, demonstraciniai mokėjimai |
-| Administravimas | Demo JSON eksportas, duomenų atkūrimas, demonstracinis veiksmų žurnalas |
-| Senos sistemos išsaugojimas | Originali sistema prieinama `legacy.html`, senieji demo duomenys vienkartinai migruojami |
+| Paciento dokumentai | Keturi atskiri įrašai: sutartis, BDAR informavimas, sveikatos anketa ir invazinės procedūros sutikimas / atsisakymas; kiekvienam piešiamas paciento demonstracinis parašas |\n| Ataskaitos | Vizitų skaičiai, paslaugų dažniai, finansų suvestinė, CSV eksportas |\n| Administravimas | Demo JSON eksportas, duomenų atkūrimas, demonstracinis veiksmų žurnalas |
+| Duomenų izoliacija | V3 veikia atskirai, nepasiima ankstesnių pacientų įrašų |
 
 ## Architektūra
 
@@ -76,3 +76,4 @@ Prieš naudojant medicininius asmens duomenis reikės saugaus API, DB, prieigos 
 ## Duomenų demonstravimas
 
 Vardai, gydytojai, laikai ir mokėjimai yra išgalvoti. Pirmą kartą atidarius naują versiją automatiškai generuojami demonstraciniai duomenys. **Administravimas → Atkurti demo įrašus** iš naujo sukuria tik sintetinius pavyzdžius.
+\n## Teisinės formos\n\n**[Pacientų formų teisinis pagrindas ir naudojimo ribos](docs/PACIENTU_FORMOS_TEISE.md)**. Tai peržiūrai skirti pavyzdžiai, ne klinikos vadovo patvirtinti dokumentai. Piešinys ekrane yra tik demonstracinis parašas – **ne patikimas ar kvalifikuotas elektroninis parašas**. Tikros sveikatos anketos, invazinės procedūros sutikimai ir paciento tapatybės / atstovavimo patikra turi būti įgyvendinami saugioje infrastruktūroje, su teisinės atitikties vertinimu.\n
