@@ -336,16 +336,16 @@ function formDrawer(d){
  if(d.kind==="signed-form"){
   const form=(db.forms||[]).find(x=>x.id===d.id),type=FORM_TYPES.find(t=>t.id===form?.type);
   if(!form)return '<div class="notice warn">Dokumentas nerastas.</div>';
-  return '<div role="dialog" aria-modal="true" class="drawer"><div class="drawer-header"><h2>'+esc(type?.name)+'</h2>'+btn("✕","close-modal","btn small ghost")+'</div>'+
+  return '<div class="drawer-shade" data-action="backdrop"><aside role="dialog" aria-modal="true" class="drawer"><div class="drawer-title"><h2>'+esc(type?.name)+'</h2>'+btn("✕","close-modal","btn small ghost")+'</div>'+
   '<section class="panel"><div class="notice">Demonstracinis įrašas. Parašas nepatvirtina tapatybės ir nėra kvalifikuotas e. parašas.</div>'+
   '<p>Pacientas: '+esc(name(form.patientId))+' · Pasirašyta: '+esc(new Date(form.signedAt).toLocaleString("lt-LT"))+'</p>'+
   Object.entries(form.answers).map(([k,v])=>'<div class="detail-item"><small>'+esc(k)+'</small><b>'+esc(v)+'</b></div>').join("")+
   '<p>Demo parašas:</p><img alt="Demonstracinis ranka nupieštas parašas" style="max-width:100%;border:1px solid #ddd" src="'+esc(form.signature)+'">'+
-  '<div class="drawer-footer">'+btn("Uždaryti","close-modal","btn primary")+'</div></section></div>';
+  '<div class="drawer-footer">'+btn("Uždaryti","close-modal","btn primary")+'</div></section></aside></div>';
  }
  const type=FORM_TYPES.find(t=>t.id===d.formType),p=db.patients.find(p=>p.id===ui.patient);
  if(!type||!p)return '<div class="notice warn">Dokumentas nepasiekiamas.</div>';
- return '<div class="drawer" role="dialog" aria-modal="true"><div class="drawer-header"><h2>'+esc(type.name)+'</h2>'+btn("✕","close-modal","btn small ghost")+'</div>'+
+ return '<div class="drawer-shade" data-action="backdrop"><aside class="drawer" role="dialog" aria-modal="true"><div class="drawer-title"><h2>'+esc(type.name)+'</h2>'+btn("✕","close-modal","btn small ghost")+'</div>'+
    '<div class="drawer-body"><div class="notice warn">Tik demonstracija su išgalvotais duomenimis. Toks pieštas parašas nėra kvalifikuotas elektroninis parašas. Formą realiai klinikai turi patvirtinti vadovas / teisininkas.</div>'+
    '<p><b>Pacientas:</b> '+esc(name(p.id))+' · <b>Forma:</b> '+FORM_VERSION+'</p>'+
    '<form id="registration-form"><div class="field-grid">'+formFields(type.id,p)+'</div>'+
@@ -353,7 +353,7 @@ function formDrawer(d){
    '<canvas id="form-signature" width="600" height="170" aria-label="Demonstracinio parašo laukelis" style="width:100%;height:170px;background:white;border:2px solid #cad5d8;border-radius:8px;touch-action:none"></canvas>'+
    '<small class="help">Brėžkite laukelyje. Parašas išsaugomas tik šios naršyklės demonstracinėje saugykloje.</small>'+
    btn("Išvalyti parašą","clear-signature","btn small ghost")+'</div>'+
-   '<div class="drawer-footer">'+btn("Pasirašyti ir išsaugoti (DEMO)","save-registration-form","btn primary")+'</div></form></div></div>';
+   '<div class="drawer-footer">'+btn("Pasirašyti ir išsaugoti (DEMO)","save-registration-form","btn primary")+'</div></form></div></aside></div>';
 }
 function setupSignatureCanvas(){
  const canvas=document.querySelector("#form-signature");
