@@ -159,5 +159,245 @@ document.getElementById("content").innerHTML=html;
 }
 render();
 </script>
+
+<style>
+.cal-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:15px}
+.cal-toolbar input,.cal-toolbar select{width:auto}
+.cal-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal-day{background:#f8fafc;border:1px solid #dbe3eb;border-radius:9px;padding:8px;min-height:150px;overflow-wrap:anywhere}
+.cal-day.today{border:2px solid #087e8b}
+.cal-date{font-weight:bold;margin-bottom:10px}
+.cal-event{display:block;width:100%;font-size:12px;text-align:left;padding:7px;margin:5px 0;border-radius:6px;background:#d9f0ff;border:1px solid #9fc9e8}
+.cal-event.done{background:#d9f5df;border-color:#91c99d}
+.cal-event.cancelled{background:#fee2e2;border-color:#e5aaaa}
+.cal-event.arrived{background:#fff1c5;border-color:#e9d18a}
+.cal-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cal-form label{margin-top:0}
+.cal-form .wide{grid-column:1/-1}
+.cal-small{font-size:12px;color:#64748b}
+@media(max-width:850px){
+.cal-week{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:500px){
+.cal-week,.cal-form{grid-template-columns:1fr}
+}
+</style>
+
+<script>
+(function(){
+"use strict";
+
+const STORAGE="dentalpro_calendar_v1";
+const weekdays=["Sekm.","Pirm.","Antr.","Treč.","Ketv.","Penkt.","Šešt."];
+const clinicNames=["Naujoji Akmenė","Kuršėnai"];
+const statuses=["Registruotas","Atvykęs","Atliktas","Neatvyko","Atšauktas"];
+const services=[
+"Konsultacija su siuntimu",
+"Dantų protezavimo konsultacija",
+"Dantų protezavimas – suaugusieji",
+"Dantų protezavimas – vaikai",
+"Kontrolinis vizitas",
+"Kita paslauga"
+];
+
+let appointments=[];
+try{
+const stored=JSON.parse(localStorage.getItem(STORAGE)||"[]");
+if(Array.isArray(stored))appointments=stored;
+}catch(e){}
+
+let currentDate=new Date();
+let editingId=null;
+
+function localDate(d){
+return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function parseDate(s){return new Date(s+"T12:00:00")}
+function addDays(d,n){
+const x=new Date(d);
+x.setDate(x.getDate()+n);
+return x;
+}
+function monday(d){
+const x=new Date(d);
+x.setDate(x.getDate()-(x.getDay()+6)%7);
+return x;
+}
+function safe(s){
+return String(s??"").replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+}
+function persist(){
+localStorage.setItem(STORAGE,JSON.stringify(appointments));
+}
+function el(id){return document.getElementById(id)}
+function options(items,selected){
+return items.map(v=>'<option value="'+safe(v)+'"'+(v===selected?" selected":"")+">"+safe(v)+"</option>").join("");
+}
+function calendarClinic(){
+return Number(el("calClinic").value);
+}
+function selectedPatients(c){
+return names[c];
+}
+function patientOptions(c,selected){
+return selectedPatients(c).map(n=>'<option'+(n===selected?" selected":"")+">"+safe(n)+"</option>").join("");
+}
+function navigateCalendar(){
+tab="calendar";
+document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+el("tab-calendar").classList.add("active");
+drawCalendar();
+}
+function drawCalendar(){
+const start=monday(currentDate);
+const end=addDays(start,6);
+const selectedClinic=clinic;
+const rows=appointments.filter(a=>a.clinic===selectedClinic);
+let html=`
+<div class="card">
+<h2>Vizitų registracijos kalendorius</h2>
+<div class="cal-toolbar">
+<button onclick="DentalCalendar.prev()">← Ankstesnė savaitė</button>
+<button onclick="DentalCalendar.today()">Šiandien</button>
+<button onclick="DentalCalendar.next()">Kita savaitė →</button>
+<strong>${safe(localDate(start))} – ${safe(localDate(end))}</strong>
+</div>
+<div class="cal-toolbar">
+<label for="calClinic">Klinika</label>
+<select id="calClinic" onchange="DentalCalendar.clinic(this.value)">
+<option value="0"${selectedClinic===0?" selected":""}>Naujoji Akmenė</option>
+<option value="1"${selectedClinic===1?" selected":""}>Kuršėnai</option>
+</select>
+</div>
+<div class="cal-week">`;
+for(let i=0;i<7;i++){
+const day=addDays(start,i);
+const date=localDate(day);
+const events=rows.filter(a=>a.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+html+=`<div class="cal-day ${date===localDate(new Date())?"today":""}">
+<div class="cal-date">${weekdays[day.getDay()]} ${date.slice(5)}</div>`;
+for(const a of events){
+const cls=a.status==="Atliktas"?"done":a.status==="Atšauktas"?"cancelled":a.status==="Atvykęs"?"arrived":"";
+html+=`<button class="cal-event ${cls}" onclick="DentalCalendar.edit('${safe(a.id)}')">
+<strong>${safe(a.time)}</strong> (${safe(a.duration)} min.)
+<div>${safe(a.patient)}</div>
+<div>${safe(a.doctor)}</div>
+<div class="cal-small">${safe(a.status)}</div>
+</button>`;
+}
+html+=`<button onclick="DentalCalendar.newOn('${date}')">+ Vizitas</button></div>`;
+}
+html+=`</div>
+<p class="cal-small">Paspauskite vizitą, jei norite jį redaguoti. Naujas vizitas pridedamas pasirinktos dienos mygtuku.</p>
+</div>
+<div class="card" id="calEditor"></div>`;
+el("content").innerHTML=html;
+drawForm();
+}
+function drawForm(){
+const a=appointments.find(x=>x.id===editingId);
+const c=clinic;
+const date=a?.date||localDate(currentDate);
+const patientName=a?.patient||names[c][patient];
+el("calEditor").innerHTML=`
+<h3>${a?"Redaguoti vizitą":"Naujas vizitas"}</h3>
+<div class="cal-form">
+<div><label>Pacientas</label>
+<select id="calPatient">${patientOptions(c,patientName)}</select></div>
+<div><label>Gydytojas</label>
+<input id="calDoctor" value="${safe(a?.doctor||"")}" placeholder="Gydytojo vardas, pavardė"></div>
+<div><label>Data</label>
+<input id="calDate" type="date" value="${safe(date)}"></div>
+<div><label>Laikas</label>
+<input id="calTime" type="time" value="${safe(a?.time||"09:00")}"></div>
+<div><label>Trukmė (min.)</label>
+<select id="calDuration">${options(["15","30","45","60","90","120"],a?.duration||"30")}</select></div>
+<div><label>Paslauga</label>
+<select id="calService">${options(services,a?.service||services[0])}</select></div>
+<div><label>Būsena</label>
+<select id="calStatus">${options(statuses,a?.status||statuses[0])}</select></div>
+<div class="wide"><label>Pastabos</label>
+<textarea id="calNotes" placeholder="Tik demonstracinė informacija">${safe(a?.notes||"")}</textarea></div>
+</div>
+<p class="row">
+<button class="primary" onclick="DentalCalendar.save()">Išsaugoti vizitą</button>
+${a?'<button onclick="DentalCalendar.remove()">Ištrinti vizitą</button>':""}
+<button onclick="DentalCalendar.clear()">Išvalyti formą</button>
+</p>
+<p class="cal-small">Sistema tikrina, ar toje pačioje klinikoje gydytojui nepersidengia vizitų laikai.</p>`;
+}
+function saveVisit(){
+const a={
+id:editingId||"v"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+clinic,
+patient:el("calPatient").value,
+doctor:el("calDoctor").value.trim(),
+date:el("calDate").value,
+time:el("calTime").value,
+duration:el("calDuration").value,
+service:el("calService").value,
+status:el("calStatus").value,
+notes:el("calNotes").value.trim()
+};
+if(!a.patient||!a.doctor||!a.date||!a.time){
+alert("Užpildykite pacientą, gydytoją, datą ir laiką.");
+return;
+}
+const start=Number(a.time.slice(0,2))*60+Number(a.time.slice(3));
+const end=start+Number(a.duration);
+if(end>1440){
+alert("Vizitas negali tęstis po vidurnakčio.");
+return;
+}
+const conflict=appointments.some(b=>{
+if(b.id===a.id||b.clinic!==a.clinic||b.date!==a.date)return false;
+if(b.doctor.toLowerCase()!==a.doctor.toLowerCase())return false;
+if(b.status==="Atšauktas"||a.status==="Atšauktas")return false;
+const bs=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));
+return start<bs+Number(b.duration)&&bs<end;
+});
+if(conflict){
+alert("Šis gydytojas tuo metu jau turi kitą vizitą. Pasirinkite kitą laiką.");
+return;
+}
+const index=appointments.findIndex(x=>x.id===a.id);
+if(index>=0)appointments[index]=a;
+else appointments.push(a);
+persist();
+editingId=null;
+currentDate=parseDate(a.date);
+drawCalendar();
+}
+window.DentalCalendar={
+open:navigateCalendar,
+prev(){currentDate=addDays(currentDate,-7);editingId=null;drawCalendar()},
+next(){currentDate=addDays(currentDate,7);editingId=null;drawCalendar()},
+today(){currentDate=new Date();editingId=null;drawCalendar()},
+clinic(v){
+clinic=Number(v);
+patient=0;
+el("clinic").selectedIndex=clinic;
+editingId=null;
+drawCalendar();
+},
+newOn(date){editingId=null;currentDate=parseDate(date);drawCalendar()},
+edit(id){editingId=id;drawForm();el("calEditor").scrollIntoView({behavior:"smooth"})},
+clear(){editingId=null;drawForm()},
+save:saveVisit,
+remove(){
+if(!editingId||!confirm("Tikrai ištrinti vizitą?"))return;
+appointments=appointments.filter(a=>a.id!==editingId);
+persist();editingId=null;drawCalendar();
+}
+};
+const btn=document.createElement("button");
+btn.id="tab-calendar";
+btn.textContent="📅 Registracijos kalendorius";
+btn.onclick=navigateCalendar;
+document.querySelector("nav").appendChild(btn);
+})();
+</script>
 </body>
 </html>
