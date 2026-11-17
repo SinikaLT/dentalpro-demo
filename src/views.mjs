@@ -6,7 +6,7 @@ import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,regis
 import {invoiceCosts,salaryAccruals,salarySummary,validCost,parseLaboratoryCsv,roundEuro,DEFAULT_USAGE_FEES,usageFeeSnapshot,validUsageFee} from "./compensation.mjs";
 import {VLK_CATEGORIES,VLK_SOURCE_DATE,vlkCategory,vlkAmountIssues,vlkCaseIssues,vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "./vlk.mjs";
 import {PAYMENT_METHODS,paymentMethod,isConfirmed,paidAmount,pendingAmount,invoiceOutstanding,paymentEvents,cashRounded,cashDifference,invoiceCashRounding,advanceRemaining,patientAdvanceBalance,settlementDaySummary} from "./payments.mjs";
-import {sourceInvoice,duplicateInvoiceIssues,planItemBillingState,appointmentIntake,labVisitWarnings,vlkContributionInvoiceIssues} from "./billing.mjs";
+import {sourceInvoice,duplicateInvoiceIssues,suspectedRepeatInvoices,planItemBillingState,appointmentIntake,labVisitWarnings,vlkContributionInvoiceIssues} from "./billing.mjs";
 import {searchPatients,duplicatePatients,receptionistDashboard,LAB_ORDER_STATUSES,TASK_STATUSES,WAITLIST_STATUSES} from "./workflows.mjs";
 
 const labNames=()=>[...new Set((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>x.laboratory).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"lt"));
@@ -1283,12 +1283,17 @@ function saveInvoice(){
     (c.planItemId===match.id||(!c.planItemId&&c.planId===match.planId&&db.plans.find(p=>p.id===match.planId)?.items.length===1)))){
     notify("Šis gydymo planas susietas su VLK atveju. Paciento priemoka registruojama tik per VLK atvejį, kad sąnaudos nesidubliuotų.",true);return
   }
+  if(match&&(db.vlkCases||[]).some(c=>c.status!=="Atmestas"&&c.planId===match.planId&&!c.planItemId)&&
+    !confirm("Šis gydymo planas turi bendrą VLK atvejį be konkrečios procedūros sąsajos. Patikrinkite, ar ši paslauga tikrai apmokama privačiai, ir tik tada tęskite."))return;
   if(!doc&&!confirm("Sąskaitai nepriskirtas gydytojas. Gydytojo atlyginimas nebus skaičiuojamas. Tikrai tęsti?"))return;
   const percent=doc?(Number.isFinite(Number(doc.salaryPercent))?Number(doc.salaryPercent):35):null;
   const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,planItemId:match?.id||"",planId:match?.planId||"",appointmentId:ui.modal?.appointmentId||"",doctorId:doc?.id||"",doctorPercent:percent,usage:usageFeeSnapshot({materials:v.usageMaterials==="on",surgicalMaterials:v.usageSurgical==="on"},db.usageFees),costs:{laboratory:[],materials:[]},
     items:[{id:uid("line"),description:service(v.serviceId),serviceId:v.serviceId,price,qty}],payments:[]};
   const problems=duplicateInvoiceIssues(db.invoices,invoice);
   if(problems.length){notify(problems.join(" "),true);return}
+  const possible=suspectedRepeatInvoices(db.invoices,invoice);
+  if(possible.length&&!confirm("Panaši sąskaita tam pačiam pacientui, paslaugai ir datai jau išrašyta: "+
+    possible.map(x=>x.number).join(", ")+". Ar tikrai tai kita, atskirai atlikta procedūra?"))return;
   update("Sukurta demonstracinė sąskaita",invoice.id,s=>{
     const conflicts=duplicateInvoiceIssues(s.invoices,invoice);
     if(conflicts.length)throw new Error(conflicts.join(" "));
