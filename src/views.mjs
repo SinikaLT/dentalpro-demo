@@ -356,7 +356,7 @@ function formDrawer(d){
   '<p>Pacientas: '+esc(name(form.patientId))+' · Pasirašyta: '+esc(new Date(form.signedAt).toLocaleString("lt-LT"))+'</p>'+
   Object.entries(form.answers).map(([k,v])=>'<div class="detail-item"><small>'+esc(k)+'</small><b>'+esc(v)+'</b></div>').join("")+
   '<p>Demo parašas:</p><img alt="Demonstracinis ranka nupieštas parašas" style="max-width:100%;border:1px solid #ddd" src="'+esc(form.signature)+'">'+
-  '<div class="drawer-footer">'+btn("Uždaryti","close-modal","btn primary")+'</div></section></aside></div>';
+  '<div class="drawer-footer">'+btn("Spausdinti / išsaugoti PDF","print-form","btn primary","data-id=\'"+esc(form.id)+"\'")+btn("Uždaryti","close-modal","btn small")+'</div></section></aside></div>';
  }
  const type=FORM_TYPES.find(t=>t.id===d.formType),p=db.patients.find(p=>p.id===ui.patient);
  if(!type||!p)return '<div class="notice warn">Dokumentas nepasiekiamas.</div>';
@@ -369,6 +369,31 @@ function formDrawer(d){
    '<small class="help">Brėžkite laukelyje. Parašas išsaugomas tik šios naršyklės demonstracinėje saugykloje.</small>'+
    btn("Išvalyti parašą","clear-signature","btn small ghost")+'</div>'+
    '<div class="drawer-footer">'+btn("Pasirašyti ir išsaugoti (DEMO)","save-registration-form","btn primary")+'</div></form></div></aside></div>';
+}
+function printSignedForm(id){
+ const doc=(db.forms||[]).find(f=>f.id===id&&f.demo===true);
+ if(!doc){notify("Dokumentas nerastas.",true);return}
+ const title=FORM_TYPES.find(f=>f.id===doc.type)?.name||"Paciento dokumentas";
+ // Tik demonstracinė, spausdinimui skirta kopija iš jau išsaugoto įrašo.
+ const lines=Object.entries(doc.answers||{}).map(([key,value])=>
+   '<div class="answer"><strong>'+esc(key)+'</strong><p>'+esc(value)+'</p></div>').join("");
+ const html='<!doctype html><html lang="lt"><head><meta charset="utf-8"><title>'+esc(title)+' – DEMO</title>'+
+   '<style>body{font:15px Arial,sans-serif;color:#182d3b;max-width:780px;margin:35px auto;padding:0 18px}'+
+   'h1{font-size:24px}.banner{background:#fff2cb;border:1px solid #d6a633;padding:12px;font-weight:bold}'+
+   '.answer{border-bottom:1px solid #ddd;padding:8px 0;break-inside:avoid}.answer strong{font-size:12px;color:#527081}'+
+   '.answer p{margin:7px 0;white-space:pre-wrap;overflow-wrap:anywhere}.sign{max-width:450px;max-height:140px;object-fit:contain}'+
+   '@media print{body{margin:0;max-width:none}.banner{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>'+
+   '<div class="banner">TIK DEMONSTRACIJA • NETINKA REALIEMS PACIENTŲ DOKUMENTAMS • PARAŠAS NĖRA TAPATYBĖS PATVIRTINIMAS</div>'+
+   '<h1>'+esc(title)+'</h1><p><b>Pacientas (demo):</b> '+esc(name(doc.patientId))+'</p>'+
+   '<p><b>Dokumento versija:</b> '+esc(doc.version)+'<br><b>Pasirašyta:</b> '+esc(new Date(doc.signedAt).toLocaleString("lt-LT"))+'</p>'+
+   (doc.planItemId?'<p><b>Susietas gydymo plano procedūros ID:</b> '+esc(doc.planItemId)+'</p>':"")+
+   lines+'<h2>Demonstracinis parašas</h2><img class="sign" alt="Demonstracinis parašas" src="'+esc(doc.signature)+'">'+
+   '<p><small>DentalPro 2.0 • tik sintetiniai duomenys • spausdinta kopija</small></p></body></html>';
+ const win=window.open("","_blank");
+ if(!win){notify("Naršyklė neleido atidaryti spausdinimo lango. Leiskite iššokančius langus.",true);return}
+ win.document.open();win.document.write(html);win.document.close();
+ win.focus();
+ win.addEventListener("load",()=>win.print(),{once:true});
 }
 function setupSignatureCanvas(){
  const canvas=document.querySelector("#form-signature");
@@ -730,7 +755,7 @@ function handleAction(target,event){
       modal("registration-form","",{formType:"invasive",planId:plan.id,planItemId:item.id,procedureName:item.description,signature:"",signatureDrawn:false});
       break;
     }
-    case "view-form":modal("signed-form",id);break;
+    case "view-form":modal("signed-form",id);break;\n    case "print-form":printSignedForm(id);break;
     case "save-registration-form":saveRegistrationForm();break;
     case "clear-signature":if(ui.modal?.kind==="registration-form"){
       ui.modal.signature="";ui.modal.signatureDrawn=false;
