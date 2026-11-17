@@ -463,7 +463,7 @@ function viewCompensation(){
  '<div class="stat"><small>Įmokų įrašai</small><strong>'+summary.rows.length+'</strong></div></div>'+
  '<h3>Pagal gydytojus</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Gydytojas</th><th>Pacientų įmokos</th><th>Priskaičiuotas atlygis</th></tr></thead><tbody>'+
  summary.doctors.map(x=>'<tr><td>'+esc(doctor(x.doctorId))+'</td><td>'+money(x.received)+'</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
- '<h3 style="margin-top:18px">Įmokų detalizacija</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Gydytojas</th><th>Sąskaita</th><th>Gauta</th><th>Laboratorija (viso)</th><th>Detalės (viso)</th><th>Medžiagos 5 €</th><th>Chirurginės 20 €</th><th>%</th><th>Atlygis nuo įmokos</th></tr></thead><tbody>'+
+ '<h3 style="margin-top:18px">Įmokų detalizacija</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Gydytojas</th><th>Sąskaita</th><th>Gauta</th><th>Laboratorija (viso)</th><th>Detalės (viso)</th><th>Medžiagos (fiks.)</th><th>Chirurginės (fiks.)</th><th>%</th><th>Atlygis nuo įmokos</th></tr></thead><tbody>'+
  summary.rows.map(x=>'<tr><td>'+fmt(x.date)+'</td><td>'+esc(doctor(x.doctorId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+money(x.paymentAmount)+'</td><td>'+money(x.lab)+'</td><td>'+money(x.materials)+'</td><td>'+money(x.standard)+'</td><td>'+money(x.surgical)+'</td><td>'+x.doctorPercent+' %</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
  (!summary.rows.length?empty("Nėra įmokų","Sukurkite demo sąskaitą, priskirkite gydytoją ir užregistruokite mokėjimą."):"")+'</section>';
 }
