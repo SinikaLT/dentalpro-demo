@@ -109,6 +109,14 @@ function viewOverview(){
  '<div class="field"><label>Pageidaujamas gydytojas</label><select name="doctorId"><option value="">Bet kuris</option>'+opt(listDoctors().map(d=>[d.id,d.name]),"")+'</select></div>'+
  '<div class="field full"><label>Pageidavimas</label><input name="reason" maxlength="250" placeholder="Pvz., kuo anksčiau ryte"></div></div>'+
  '<p>'+btn("Įtraukti į sąrašą","add-waitlist","btn small primary")+'</p></form></section></div>'+
+ '<section class="panel"><h2>Rytojaus vizitų priminimai (rankinis sąrašas)</h2>'+
+ '<p class="help">Tai nėra automatinis SMS ar el. pašto siuntimas. Registratorė susisiekia su pacientu atskirai, o čia pažymi atliktą priminimą.</p>'+
+ '<div class="table-wrap"><table class="data-table"><thead><tr><th>Pacientas</th><th>Laikas</th><th>Gydytojas</th><th>Veiksmai</th></tr></thead><tbody>'+
+ d.reminders.map(a=>'<tr><td>'+esc(name(a.patientId))+'</td><td>'+esc(a.time)+'</td><td>'+esc(doctor(a.staffId))+'</td><td>'+
+ btn("Atidaryti","edit-appt","btn small","data-id=\'"+esc(a.id)+"\'")+
+ btn("Priminta telefonu","mark-reminder","btn small","data-id=\'"+esc(a.id)+"\'")+'</td></tr>').join("")+
+ '</tbody></table></div>'+
+ (!d.reminders.length?'<p class="help">Rytojaus priminimų eilė tuščia.</p>':"")+'</section>'+
  '<section class="panel"><h2>Reikia dėmesio</h2>'+
  '<p><b>Neapmokėta:</b> '+money(d.outstanding)+' · <b>Vėluojantys laboratorijos darbai:</b> '+d.lateOrders.length+' · <b>Dokumentų trūksta:</b> '+d.documents.length+'</p>'+
  '<p class="help">Priminimus galima pasižymėti ranka prie vizito. Sistema nesiunčia tikrų SMS ar el. laiškų.</p></section>';
@@ -1477,6 +1485,13 @@ function handleAction(target,event){
     }
     case "add-desk-task":addDeskTask();break;
     case "finish-task":finishTask(id);break;
+    case "mark-reminder":{
+      const appt=db.appointments.find(a=>a.id===id);if(!appt)break;
+      update("Rankiniu būdu pažymėtas priminimas pacientui",id,state=>{
+        const item=state.appointments.find(a=>a.id===id);
+        item.reminderStatus="Priminta telefonu";item.reminderAt=new Date().toISOString();
+      });notify("Priminimas pažymėtas. Sistema jokio pranešimo nesiuntė.");break;
+    }
     case "add-waitlist":addWaitlist();break;
     case "wait-register":waitlistAction(id,true);break;
     case "wait-cancel":waitlistAction(id,false);break;
