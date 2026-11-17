@@ -46,6 +46,20 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   }
   hooks.modal("invoice");
   assert.match(node("drawer-root").innerHTML,/usageMaterials/);
+  const invoiceNew=node("drawer-root").innerHTML;
+  assert.ok(invoiceNew.includes('usageMaterials'));
+  hooks.route("vlk");
+  const vlkForm=node("page").innerHTML;
+  assert.ok(vlkForm.indexOf('id="vlk-laboratory"')<vlkForm.indexOf('id="vlk-lab-choice"'),"VLK laboratory selection should precede its works");
+  hooks.db.invoices.push({id:"test-invoice",number:"DP-TEST",date:"2026-11-17",clinicId:"akm",patientId:"p-0-0",
+    doctorId:"",doctorPercent:null,items:[{id:"t",price:100,qty:1,description:"Demo"}],payments:[],costs:{laboratory:[],materials:[]}});
+  hooks.modal("invoice","test-invoice");
+  const invoiceDrawer=node("drawer-root").innerHTML;
+  assert.ok(invoiceDrawer.indexOf('id="invoice-laboratory"')<invoiceDrawer.indexOf('id="invoice-lab-work"'),
+    "Laboratory selection should precede work selection");
+  assert.match(invoiceDrawer,/id="payment-method"/);
+  assert.match(invoiceDrawer,/option value="cash" selected/);
+
   for(const view of ["day","week","month","list"]){
     hooks.ui.view=view;hooks.route("calendar");
     assert.ok(node("page").innerHTML.length>800,view+" should render");
