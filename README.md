@@ -83,3 +83,17 @@ Vardai, gydytojai, laikai ir mokėjimai yra išgalvoti. Pirmą kartą atidarius 
 - **Invazinio gydymo sutikimas nėra automatinis reikalavimas kiekvienai registracijai.** Jis susiejamas su pasirinkta gydymo plano procedūra paspaudžiant „Sutikimas“ prie konkrečios procedūros. Sprendimas „Atsisakau“ rodomas kaip atsisakymas, ne kaip leidimas atlikti procedūrą.
 - Pasirašytų demonstracinių formų lange yra „Spausdinti / išsaugoti PDF“: naršyklės spausdinimo dialoge galima pasirinkti išsaugojimą PDF. Kopijoje pateikiamas dokumento versijos tekstas, atsakymai, demonstracinis parašas ir data. Tai nėra kvalifikuotas elektroninis parašas.
 - Pasirašyto dokumento tekstas užfiksuojamas jo sukūrimo metu; pakeitus vėlesnį formos šabloną, senasis įrašas išlieka toks, koks buvo. Visi dokumentai saugomi tik atskirtoje sintetinių duomenų naršyklės saugykloje.
+
+## Laboratorijos savikaina ir gydytojų atlygis (DEMO)
+
+Atidarykite **Laboratorija ir atlygis (DEMO)** meniu – čia galima kiekvienam demonstraciniam gydytojui nustatyti atskirą atlygio procentą, pridėti laboratorijos darbą su įkainiu, koreguoti jį ar importuoti darbų sąrašą iš **CSV** (`Laboratorija;Darbas;Kaina`). „Excel“ kainyną pirmiausia išsaugokite kaip CSV; tiesioginio `.xlsx` importo nėra.
+
+**Finansai → Nauja sąskaita**: priskirkite gydytoją, jei reikia – gydymo plano procedūrą. Sukūrus sąskaitą ir ją atidarius, galima pridėti atskirus **laboratorijos darbus** (iš kainyno arba ranka) ir **medžiagas / detales** (pavadinimas, kaina, kiekis) – pvz., multiunitą ar stiklo pluošto kaištį. Kainos išsaugomos sąskaitoje ir **neperskaičiuojamos pakeitus katalogo įkainius**. Po pirmojo mokėjimo savikaina užrakinama.
+
+Sukuriant sąskaitą užfiksuojamas individualus gydytojo atlygio procentas. Pagal realiai demo sąskaitai įvestas įmokas skaičiuojamas atlygis:
+
+`max(0, gauta iš paciento − laboratorijos darbai − medžiagos ir detalės) × gydytojo % / 100`.
+
+Mokant dalimis atlygis apskaitomas pagal kiekvienos įmokos datą ir apskaičiuojamas **kumuliacinio atlygio pokyčiu**, kad jau priskaičiuota suma kitą mėnesį nesidubliuotų. Mėnesio ataskaita rodo gydytojų sumas ir įmokų detales. Tai yra **demonstracinė atlygio bazės apskaita, o ne oficialus darbo užmokestis ar neto išmoka**.
+
+**PRIVATUMAS:** ši vieša GitHub Pages demonstracija **neturi saugaus savininko / administratoriaus autentifikavimo ir negali uždrausti kitiems peržiūrėti atlygio modulį**. Jokios realios atlygio sumos, darbo sutartys, tikri pacientai, laboratorijos sąskaitos ir darbuotojų duomenys čia neįvedami. Prieš realų naudojimą būtina atskira autentifikuota serverinė sistema su griežta savininko / administratoriaus role ir serveriniu leidimų tikrinimu; vien paslėpti meniu negana.
