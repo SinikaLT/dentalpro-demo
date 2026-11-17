@@ -429,6 +429,7 @@ function saveRegistrationForm(){
 }
 function viewCompensation(){
  const catalog=db.laboratoryCatalog||[],summary=salarySummary(db.invoices,ui.salaryMonth,ui.clinic);
+ const vlkRows=vlkSalaryRows(db.vlkCases||[],ui.salaryMonth,ui.clinic),vlkTotal=vlkSalaryTotal(db.vlkCases||[],ui.salaryMonth,ui.clinic);
  const registered=(db.invoices||[]).filter(i=>i.doctorId&&(ui.clinic==="all"||ui.clinic===i.clinicId));
  const percent=doctor=>Number.isFinite(Number(doctor.salaryPercent))?doctor.salaryPercent:35;
  return page("Laboratorija ir gydytojų atlygis","Tik sintetinė savininko ataskaitos demonstracija")+
@@ -466,7 +467,16 @@ function viewCompensation(){
  summary.doctors.map(x=>'<tr><td>'+esc(doctor(x.doctorId))+'</td><td>'+money(x.received)+'</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
  '<h3 style="margin-top:18px">Įmokų detalizacija</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Gydytojas</th><th>Sąskaita</th><th>Gauta</th><th>Laboratorija (viso)</th><th>Detalės (viso)</th><th>Medžiagos (fiks.)</th><th>Chirurginės (fiks.)</th><th>%</th><th>Atlygis nuo įmokos</th></tr></thead><tbody>'+
  summary.rows.map(x=>'<tr><td>'+fmt(x.date)+'</td><td>'+esc(doctor(x.doctorId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+money(x.paymentAmount)+'</td><td>'+money(x.lab)+'</td><td>'+money(x.materials)+'</td><td>'+money(x.standard)+'</td><td>'+money(x.surgical)+'</td><td>'+x.doctorPercent+' %</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
- (!summary.rows.length?empty("Nėra įmokų","Sukurkite demo sąskaitą, priskirkite gydytoją ir užregistruokite mokėjimą."):"")+'</section>';
+ (!summary.rows.length?empty("Nėra įmokų","Sukurkite demo sąskaitą, priskirkite gydytoją ir užregistruokite mokėjimą."):"")+'</section>'+
+ '<section class="panel"><h2>VLK / PSDF atlygis – tik BAIGTI atvejai (DEMO)</h2>'+
+ '<p class="help">VLK dalies atlygis priskiriamas atvejo užbaigimo mėnesiui. Skaičiuojama nuo faktinės PSDF sumos, ne kompensacijos lubų. Atskaičiuojami laboratorijos darbai, detalės, fiksuotos medžiagos ir taikomas individualus gydytojo procentas. Paciento priemoka atskirai neįskaičiuojama į VLK atlygio dalį. Faktinės VLK įmokos šioje demonstracijoje netikrinamos.</p>'+
+ '<div class="stat-grid"><div class="stat"><small>VLK atlygis</small><strong>'+money(vlkTotal)+'</strong></div>'+
+ '<div class="stat"><small>Privatus atlygis</small><strong>'+money(summary.total)+'</strong></div>'+
+ '<div class="stat"><small>Viso (DEMO)</small><strong>'+money(roundEuro(vlkTotal+summary.total))+'</strong></div>'+
+ '<div class="stat"><small>Baigti VLK atvejai</small><strong>'+vlkRows.length+'</strong></div></div>'+
+ '<div class="table-wrap"><table class="data-table"><thead><tr><th>Užbaigta</th><th>Gydytojas</th><th>Atvejis</th><th>Faktinė PSDF suma</th><th>Laboratorija</th><th>Detalės</th><th>Medžiagos</th><th>Chirurginės</th><th>%</th><th>Atlygis</th></tr></thead><tbody>'+
+ vlkRows.map(x=>'<tr><td>'+fmt(x.date)+'</td><td>'+esc(doctor(x.doctorId))+'</td><td>'+esc(x.caseNumber)+'</td><td>'+money(x.claimedAmount)+'</td><td>'+money(x.costs.lab)+'</td><td>'+money(x.costs.materials)+'</td><td>'+money(x.costs.standard)+'</td><td>'+money(x.costs.surgical)+'</td><td>'+x.doctorPercent+' %</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
+ (!vlkRows.length?empty("Baigtų VLK atvejų nėra","Nebaigti atvejai atlygio nesukuria."):"")+'</section>';
 }
 function viewReports(){
   const visits=db.appointments.filter(a=>ui.clinic==="all"||a.clinicId===ui.clinic);
