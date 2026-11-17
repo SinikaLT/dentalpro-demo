@@ -455,3 +455,17 @@ test("demo saugyklos įrašymo nesėkmė neištrina ankstesnės patvirtintos bū
 test("laboratorijos užsakymų būsenų sąrašas leidžia sekti darbų eigą",()=>{
  assert.deepEqual(LAB_ORDER_STATUSES,["Užsakyta","Gaminama","Gauta","Atiduota","Atšaukta"]);
 });
+
+test("demo auditas išsaugo saugius laukų pokyčius prieš ir po, ne pacientų medicininį turinį",()=>{
+ const map=new Map(),storage={getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)};
+ const repo=openRepository(storage),before=repo.get().appointments[0];
+ repo.transaction("Pakeista vizito būsena",before.id,state=>{
+   state.appointments.find(a=>a.id===before.id).status="Atliktas";
+ });
+ const audit=repo.get().audit[0];
+ assert.equal(audit.entity,before.id);
+ assert.equal(audit.changes.status.before,before.status);
+ assert.equal(audit.changes.status.after,"Atliktas");
+ assert.ok(!Object.hasOwn(audit.changes,"notes"));
+ assert.match(audit.actor,/Demonstracinis/);
+});
