@@ -969,14 +969,131 @@ function saveInvoiceUsage(){
  });
  notify("Medžiagų atskaitymai išsaugoti.");
 }
+function manualPaymentValues(formId,max){
+ const form=$(formId);if(!form)return {error:"Mokėjimo forma nerasta."};
+ const v=stringValues(new FormData(form));
+ const amount=roundEuro(Number(v.amount)),method=paymentMethod(v.method);
+ if(!v.amount||!Number.isFinite(amount)||amount<=0||amount>max+0.001)return {error:"Mokėjimo suma turi būti teigiama ir neviršyti likučio."};
+ if(!["cash","card","transfer"].includes(method))return {error:"Neteisingas mokėjimo būdas."};
+ const date=v.date||isoDate();
+ if(!validDate(date))return {error:"Neteisinga mokėjimo data."};
+ const status=method==="transfer"?"pending":(v.status==="pending"?"pending":"confirmed");
+ const reference=String(v.reference||"").trim().slice(0,120);
+ if(method==="card"&&status==="confirmed"&&!reference)return {error:"Patvirtintai kortelės operacijai būtina terminalo kvito nuoroda."};
+ const cashAmount=method==="cash"?cashRounded(amount):0;
+ const given=String(v.cashReceived||"").trim()?Number(v.cashReceived):cashAmount;
+ if(method==="cash"&&(!Number.isFinite(given)||given<cashAmount||given>100000))return {error:"Įteikta grynųjų suma negali būti mažesnė už apvalintą mokėjimą."};
+ return {amount,method,date,status,reference,cashAmount,
+   cashReceived:method==="cash"?roundEuro(given):0,change:method==="cash"?roundEuro(given-cashAmount):0,
+   confirmedDate:status==="confirmed"?date:"",demo:true};
+}
 function savePayment(){
-  const invoice=db.invoices.find(i=>i.id===ui.modal.id);
-  if(!invoice)return;
-  const v=stringValues(formData("payment-form")),amount=Number(v.amount),balance=invoiceTotal(invoice)-(invoice.payments||[]).reduce((s,p)=>s+Number(p.amount),0);
-  if(!Number.isFinite(amount)||amount<=0||amount>balance+0.001){notify("Mokėjimo suma turi neviršyti likučio.",true);return}
-  update("Registruotas demonstracinis mokėjimas",invoice.id,s=>s.invoices.find(i=>i.id===invoice.id).payments.push({
-    id:uid("pay"),date:isoDate(),amount,method:v.method
-  }));notify("Demonstracinis mokėjimas įrašytas.");
+ const invoice=db.invoices.find(i=>i.id===ui.modal?.id);if(!invoice)return;
+ const max=Math.max(0,roundEuro(invoiceOutstanding(invoice,invoiceTotal(invoice))-pendingAmount(invoice)));
+ const result=manualPaymentValues("payment-form",max);
+ if(result.error){notify(result.error,true);return}
+ const entry={...result,id:uid("pay"),status:result.status};
+ update("Įrašytas demonstracinis "+(entry.status==="pending"?"laukiantis":"patvirtintas")+" mokėjimas",invoice.id,state=>{
+   state.invoices.find(i=>i.id===invoice.id).payments.push(entry);
+ });
+ notify(entry.status==="pending"?"Mokėjimas laukia rankinio patvirtinimo.":"Mokėjimas patvirtintas (demo)."+(entry.method==="cash"?" Grąža: "+money(entry.change):""));
+}
+function confirmPayment(invoiceId,paymentId,confirmIt){
+ const invoice=db.invoices.find(i=>i.id===invoiceId),payment=invoice?.payments?.find(p=>p.id===paymentId&&p.status==="pending");
+ if(!payment)return;
+ if(confirmIt){
+   if(!confirm("Patvirtinate, kad patikrinote išorinį terminalo kvitą arba banko išrašą ir mokėjimas realiai gautas? (Tik demo)"))return;
+   if(!String(payment.reference||"").trim()){
+     const ref=prompt("Įveskite banko išrašo ar terminalo kvito operacijos numerį (tik demo):","");
+     if(!ref?.trim()){notify("Patvirtinimui būtina išorinio dokumento nuoroda.",true);return}
+     payment.reference=ref.trim().slice(0,120);
+   }
+ }
+ update(confirmIt?"Patvirtintas mokėjimas pagal išorinį dokumentą":"Atmestas nepatvirtintas mokėjimas",invoiceId,state=>{
+   const target=state.invoices.find(i=>i.id===invoiceId).payments.find(p=>p.id===paymentId);
+   target.status=confirmIt?"confirmed":"cancelled";
+   if(confirmIt){target.confirmedDate=isoDate();target.reference=payment.reference}
+ });
+ notify(confirmIt?"Mokėjimas rankiniu būdu patvirtintas.":"Laukiantis mokėjimas atmestas.");
+}
+function refundInvoicePayment(){
+ const invoice=db.invoices.find(i=>i.id===ui.modal?.id);
+ if(!invoice)return;
+ const form=$("invoice-refund-form");if(!form)return;
+ const v=stringValues(new FormData(form)),amount=roundEuro(Number(v.amount)),available=paidAmount(invoice);
+ if(!v.amount||!Number.isFinite(amount)||amount<=0||amount>available+0.001){notify("Grąžinama suma turi neviršyti patvirtintų mokėjimų likučio.",true);return}
+ const method=paymentMethod(v.method);
+ if(!["cash","card","transfer"].includes(method)||!String(v.reason||"").trim()){notify("Pasirinkite grąžinimo būdą ir nurodykite priežastį.",true);return}
+ if(!confirm("Patvirtinate, kad pinigai jau grąžinti išoriniu būdu? Ši demonstracija neatlieka mokėjimų."))return;
+ const record={id:uid("refund"),date:isoDate(),amount,method,reason:String(v.reason).trim().slice(0,250),
+   reference:String(v.reference||"").trim().slice(0,120),cashAmount:method==="cash"?cashRounded(amount):0,demo:true};
+ update("Atliktas grąžinimas (demo, nekoreguojant ankstesnio įrašo)",invoice.id,state=>{
+   const item=state.invoices.find(i=>i.id===invoice.id);
+   item.refunds??=[];item.refunds.push(record);
+ });
+ notify("Grąžinimas užregistruotas; atlygis perskaičiuojamas pagal grąžinimo datą.");
+}
+function saveAdvance(){
+ const form=$("advance-form");if(!form)return;
+ const v=stringValues(new FormData(form)),method=paymentMethod(v.method),amount=roundEuro(Number(v.amount));
+ if(!v.amount||!Number.isFinite(amount)||amount<=0||amount>100000||
+    !db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(v.clinicId))||
+    !["cash","card","transfer"].includes(method)||!validDate(v.date)){notify("Patikrinkite avanso įrašą.",true);return}
+ const reference=String(v.reference||"").trim().slice(0,120);
+ const status=method==="transfer"?"pending":"confirmed";
+ if(method==="card"&&!reference){notify("Kortelės avansui įveskite terminalo kvito numerį.",true);return}
+ const entry={id:uid("adv"),patientId:v.patientId,clinicId:v.clinicId,date:v.date,method,
+   amount,status,reference,confirmedDate:status==="confirmed"?v.date:"",
+   cashAmount:method==="cash"?cashRounded(amount):0,allocations:[],refunds:[],demo:true};
+ update("Registruotas "+(status==="pending"?"laukiantis":"patvirtintas")+" demonstracinis avansas",entry.id,state=>{
+   state.advances??=[];state.advances.push(entry);
+ });
+ notify(status==="pending"?"Pavedimo avansas laukia banko išrašo patvirtinimo.":"Avansas užregistruotas (demo).");
+}
+function confirmAdvance(id,accepted){
+ const item=(db.advances||[]).find(a=>a.id===id&&a.status==="pending");if(!item)return;
+ if(accepted&&!confirm("Patvirtinate, kad įmoka rasta banko išraše / kvite? (Demo)"))return;
+ if(accepted&&!item.reference){
+   const ref=prompt("Įveskite išorinę mokėjimo nuorodą:","");
+   if(!ref?.trim())return;
+   item.reference=ref.trim().slice(0,120);
+ }
+ update(accepted?"Patvirtintas avansas":"Atmestas avansas",id,state=>{
+   const target=state.advances.find(a=>a.id===id);
+   target.status=accepted?"confirmed":"cancelled";
+   if(accepted){target.confirmedDate=isoDate();target.reference=item.reference}
+ });notify(accepted?"Avansas patvirtintas.":"Avansas atmestas.");
+}
+function allocateAdvance(){
+ const invoice=db.invoices.find(i=>i.id===ui.modal?.id),form=$("advance-allocation-form");
+ if(!invoice||!form)return;
+ const v=stringValues(new FormData(form)),a=(db.advances||[]).find(x=>x.id===v.advanceId),amount=roundEuro(Number(v.amount));
+ const available=Math.max(0,roundEuro(invoiceOutstanding(invoice,invoiceTotal(invoice))-pendingAmount(invoice)));
+ if(!a||a.patientId!==invoice.patientId||a.clinicId!==invoice.clinicId||!isConfirmed(a)||
+    !v.amount||!Number.isFinite(amount)||amount<=0||amount>available+0.001||amount>advanceRemaining(a)+0.001){
+   notify("Avanso likutis arba priskiriama suma neteisinga.",true);return
+ }
+ const paymentId=uid("pay"),now=isoDate();
+ update("Avansas priskirtas paciento sąskaitai (be pakartotinės įplaukos)",invoice.id,state=>{
+   state.advances.find(x=>x.id===a.id).allocations.push({id:uid("alloc"),invoiceId:invoice.id,paymentId,amount,date:now});
+   state.invoices.find(x=>x.id===invoice.id).payments.push({id:paymentId,date:now,confirmedDate:now,method:"advance",
+     amount,status:"confirmed",reference:"Avansas "+a.id,advanceId:a.id,demo:true});
+ });notify("Avansas priskirtas sąskaitai; pakartotinio pinigų gavimo neįrašyta.");
+}
+function refundAdvance(){
+ const entry=(db.advances||[]).find(a=>a.id===ui.modal?.id),form=$("advance-refund-form");
+ if(!entry||!form)return;
+ const v=stringValues(new FormData(form)),amount=roundEuro(Number(v.amount)),method=paymentMethod(v.method);
+ if(!v.amount||!Number.isFinite(amount)||amount<=0||amount>advanceRemaining(entry)+0.001||
+   !["cash","card","transfer"].includes(method)||!String(v.reason||"").trim()){notify("Neteisinga grąžinimo suma arba priežastis.",true);return}
+ if(!confirm("Patvirtinkite, kad avanso grąžinimas atliktas už programos ribų."))return;
+ const record={id:uid("ar"),date:isoDate(),amount,method,reason:v.reason.trim().slice(0,250),
+   reference:String(v.reference||"").trim().slice(0,120),cashAmount:method==="cash"?cashRounded(amount):0,demo:true};
+ update("Grąžintas nepanaudotas avansas",entry.id,state=>{
+   const advance=state.advances.find(a=>a.id===entry.id);
+   advance.refunds??=[];advance.refunds.push(record);
+ });
+ ui.modal=null;render();notify("Avanso grąžinimas įrašytas.");
 }
 function saveUsageFees(){
  const form=$("usage-fees-form");if(!form)return;
