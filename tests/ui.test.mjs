@@ -39,6 +39,13 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   hooks.route("vlk");
   assert.match(node("page").innerHTML,/Faktinė kompensuojama suma/);
   assert.match(node("page").innerHTML,/PSDF atvejai ir būsenos/);
+  hooks.route("finances");
+  const finance=node("page").innerHTML;
+  for(const phrase of ["Grynaisiais","Kortele","Pavedimu","VLK (baigti atvejai)","Banko pavedimų suderinimas","Pacientų avansai","Dienos kasos uždarymas","Eksportuoti dienos CSV"]){
+    assert.ok(finance.includes(phrase),phrase+" must appear in the daily settlement UI");
+  }
+  hooks.modal("invoice");
+  assert.match(node("drawer-root").innerHTML,/usageMaterials/);
   for(const view of ["day","week","month","list"]){
     hooks.ui.view=view;hooks.route("calendar");
     assert.ok(node("page").innerHTML.length>800,view+" should render");
