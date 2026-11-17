@@ -291,7 +291,22 @@ function viewFinances(){
     cash.rows.map(x=>'<tr><td>'+esc(({invoice:"Mokėjimas",refund:"Grąžinimas",deposit:"Avansas","advance-refund":"Avanso grąžinimas"})[x.kind]||x.kind)+'</td><td>'+esc(name(x.patientId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+esc(PAYMENT_METHODS.find(m=>m.id===x.method)?.label||x.method)+'</td><td>'+money(x.method==="cash"?x.cashAmount:x.amount)+'</td><td>'+esc(x.reference||"—")+'</td></tr>').join("")+
     cash.vlkCases.map(x=>'<tr><td>Baigtas VLK atvejis</td><td>'+esc(name(x.patientId))+'</td><td>'+esc(x.caseNumber)+'</td><td>VLK / PSDF (ne kasos įplauka)</td><td>'+money(x.claimedAmount)+'</td><td>'+esc(x.evisReference||"—")+'</td></tr>').join("")+
     '</tbody></table></div>'+
-    btn("Eksportuoti dienos CSV","export-cash-day","btn small")+'</section>'+
+    btn("Eksportuoti dienos CSV","export-cash-day","btn small")+
+    '<h3 style="margin-top:16px">Dienos kasos uždarymas ir suderinimas (DEMO)</h3>'+
+    '<p class="help">Atskirai patikrinkite faktinius grynuosius, terminalo suvestinę ir banko išrašą. Programa jų negali nuskaityti automatiškai.</p>'+
+    '<form id="cash-close-form"><div class="field-grid">'+
+    '<div class="field"><label>Klinika</label><select name="clinicId">'+opt(db.clinics.map(c=>[c.id,c.name]),ui.clinic==="all"?"akm":ui.clinic)+'</select></div>'+
+    '<div class="field"><label>Faktiškai suskaičiuota grynųjų (€)</label><input type="number" name="countedCash" step="0.01" min="-100000" max="100000" required></div>'+
+    '<div class="field"><label>Pagal terminalo suvestinę kortelių (€)</label><input type="number" name="countedCard" step="0.01" min="-100000" max="100000" required></div>'+
+    '<div class="field"><label>Banko išraše patvirtinta pavedimų (€)</label><input type="number" name="countedTransfer" step="0.01" min="-100000" max="100000" required></div>'+
+    '<div class="field full"><label>Pastabos</label><input name="notes" maxlength="400" placeholder="Grynųjų / terminalo neatitikimų paaiškinimai"></div></div>'+
+    '<p>'+btn("Išsaugoti dienos suderinimą","close-cash-day","btn small primary")+'</p></form>'+
+    '<h3>Uždarymų istorija</h3>'+
+    (db.cashClosings||[]).filter(x=>x.date===ui.cashDay&&(ui.clinic==="all"||x.clinicId===ui.clinic)).map(x=>
+      '<div class="segment">'+esc(clinic(x.clinicId))+' · '+fmt(x.date)+' · '+esc(new Date(x.createdAt).toLocaleString("lt-LT"))+
+      ' · grynųjų skirtumas '+money(x.difference.cash)+' · kortelių skirtumas '+money(x.difference.card)+
+      ' · pavedimų skirtumas '+money(x.difference.transfer)+(x.notes?' · '+esc(x.notes):"")+'</div>').join("")+
+    '</section>'+
     '<section class="panel"><h2>Sąskaitos ir daliniai / mišrūs mokėjimai</h2>'+
     '<div class="table-wrap"><table class="data-table"><thead><tr><th>Numeris</th><th>Data</th><th>Pacientas</th><th>Klinika</th><th>Suma</th><th>Patvirtinta</th><th>Likutis</th><th></th></tr></thead><tbody>'+
     invoices.map(i=>'<tr><td>'+esc(i.number)+'</td><td>'+fmt(i.date)+'</td><td>'+esc(name(i.patientId))+'</td><td>'+esc(clinic(i.clinicId))+'</td><td>'+money(invoiceTotal(i))+'</td><td>'+money(paidAmount(i))+'</td><td>'+money(invoiceOutstanding(i,invoiceTotal(i)))+'</td>'+
