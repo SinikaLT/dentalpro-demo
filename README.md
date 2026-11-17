@@ -77,3 +77,9 @@ Prieš naudojant medicininius asmens duomenis reikės saugaus API, DB, prieigos 
 
 Vardai, gydytojai, laikai ir mokėjimai yra išgalvoti. Pirmą kartą atidarius naują versiją automatiškai generuojami demonstraciniai duomenys. **Administravimas → Atkurti demo įrašus** iš naujo sukuria tik sintetinius pavyzdžius.
 \n## Teisinės formos\n\n**[Pacientų formų teisinis pagrindas ir naudojimo ribos](docs/PACIENTU_FORMOS_TEISE.md)**. Tai peržiūrai skirti pavyzdžiai, ne klinikos vadovo patvirtinti dokumentai. Piešinys ekrane yra tik demonstracinis parašas – **ne patikimas ar kvalifikuotas elektroninis parašas**. Tikros sveikatos anketos, invazinės procedūros sutikimai ir paciento tapatybės / atstovavimo patikra turi būti įgyvendinami saugioje infrastruktūroje, su teisinės atitikties vertinimu.\n
+## Vystymo etapas: registracijos dokumentų kontrolė (2026-11-17)
+
+- Paciento kortelėje automatiškai matoma 3 registracijos dokumentų būsena: paciento sutartis, BDAR informavimas ir sveikatos anketa. Kiekviena pasirašoma atskirai ir turi savo istoriją.
+- **Invazinio gydymo sutikimas nėra automatinis reikalavimas kiekvienai registracijai.** Jis susiejamas su pasirinkta gydymo plano procedūra paspaudžiant „Sutikimas“ prie konkrečios procedūros. Sprendimas „Atsisakau“ rodomas kaip atsisakymas, ne kaip leidimas atlikti procedūrą.
+- Pasirašytų demonstracinių formų lange yra „Spausdinti / išsaugoti PDF“: naršyklės spausdinimo dialoge galima pasirinkti išsaugojimą PDF. Kopijoje pateikiamas dokumento versijos tekstas, atsakymai, demonstracinis parašas ir data. Tai nėra kvalifikuotas elektroninis parašas.
+- Pasirašyto dokumento tekstas užfiksuojamas jo sukūrimo metu; pakeitus vėlesnį formos šabloną, senasis įrašas išlieka toks, koks buvo. Visi dokumentai saugomi tik atskirtoje sintetinių duomenų naršyklės saugykloje.
