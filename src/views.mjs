@@ -5,7 +5,8 @@ import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
 import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,registrationChecklist,invasiveConsentForItem,FORM_DISCLOSURES} from "./forms.mjs";
 import {invoiceCosts,salaryAccruals,salarySummary,validCost,parseLaboratoryCsv,roundEuro,DEFAULT_USAGE_FEES,usageFeeSnapshot,validUsageFee} from "./compensation.mjs";
 import {VLK_CATEGORIES,VLK_SOURCE_DATE,vlkCategory,vlkAmountIssues,vlkCaseIssues,vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "./vlk.mjs";
-import {PAYMENT_METHODS,paymentMethod,isConfirmed,paidAmount,pendingAmount,invoiceOutstanding,paymentEvents,cashRounded,cashDifference,advanceRemaining,patientAdvanceBalance,settlementDaySummary} from "./payments.mjs";
+import {PAYMENT_METHODS,paymentMethod,isConfirmed,paidAmount,pendingAmount,invoiceOutstanding,paymentEvents,cashRounded,cashDifference,invoiceCashRounding,advanceRemaining,patientAdvanceBalance,settlementDaySummary} from "./payments.mjs";
+import {sourceInvoice,duplicateInvoiceIssues,planItemBillingState,appointmentIntake,labVisitWarnings,vlkContributionInvoiceIssues} from "./billing.mjs";
 import {searchPatients,duplicatePatients,receptionistDashboard,LAB_ORDER_STATUSES,TASK_STATUSES,WAITLIST_STATUSES} from "./workflows.mjs";
 
 const labNames=()=>[...new Set((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>x.laboratory).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"lt"));
@@ -84,7 +85,7 @@ function viewOverview(){
   const checklist=registrationChecklist(db.forms,a.patientId),signed=checklist.filter(x=>x.signed).length;
   return '<tr><td>'+esc(a.time)+'</td><td>'+esc(name(a.patientId))+'</td><td>'+esc(doctor(a.staffId))+'</td><td>'+pill(a.status)+'</td>'+
    '<td>'+signed+'/3'+(signed<3?' <span class="pill danger">Trūksta</span>':' <span class="pill">Gerai</span>')+'</td>'+
-   '<td>'+btn("Vizitas","edit-appt","btn small","data-id=\'"+esc(a.id)+"\'")+
+   '<td>'+btn("Priimti","open-intake","btn small primary","data-id=\'"+esc(a.id)+"\'")+btn("Vizitas","edit-appt","btn small","data-id=\'"+esc(a.id)+"\'")+
    btn("Pacientas","work-patient","btn small","data-id=\'"+esc(a.patientId)+"\'")+
    (signed<3?btn("Dokumentai","work-documents","btn small","data-id=\'"+esc(a.patientId)+"\'"):"")+
    btn("Atsiskaitymas","work-payment","btn small","data-id=\'"+esc(a.patientId)+"\'")+'</td></tr>';
@@ -300,15 +301,15 @@ function planDetails(p){
  '<span class="pill">'+p.items.filter(x=>x.done).length+'/'+p.items.length+' procedūrų atlikta</span></div>'+
  '<div class="table-wrap"><table class="data-table"><thead><tr><th>Dantis</th><th>Procedūra / etapas</th><th>Terminas</th><th>Suma</th><th>Veiksmai</th></tr></thead><tbody>'+
  p.items.map(i=>{
-   const form=invasiveConsentForItem(db.forms,patientId,p.id,i.id);
+   const form=invasiveConsentForItem(db.forms,patientId,p.id,i.id),billing=planItemBillingState(db,p.id,i.id);
    return '<tr><td>'+esc(i.tooth||"—")+'</td><td><b>'+esc(i.description)+'</b><small style="display:block">'+esc(i.stage||"Procedūra")+'</small>'+
-     '<label style="display:block"><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'> Atlikta</label></td>'+
+     '<label style="display:block"><span class="pill">'+esc(billing.status)+'</span></label>'+ '<label style="display:block"><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'> Atlikta</label></td>'+
      '<td>'+fmt(i.targetDate)+(i.targetDate&&!i.done&&i.targetDate<isoDate()?' <span class="pill danger">Vėluoja</span>':"")+'</td>'+
      '<td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
      '<td>'+(form?'<span class="pill">Sutikimas: '+esc(form.answers?.decision||"")+'</span>':'<span class="pill grey">Invazinis sutikimas (jei taikoma): nėra</span>')+
      btn("Sutikimas","consent-plan-item","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+
      btn("Kitas vizitas","plan-next-appointment","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+
-     btn("Sąskaita","plan-invoice","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+
+     (billing.invoice?btn("Atidaryti sąskaitą","open-invoice","btn small","data-id=\'"+esc(billing.invoice.id)+"\'"):billing.vlkCase?'<span class="pill grey">VLK atvejis</span>':btn("Sąskaita","plan-invoice","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'"))+
      btn("Pašalinti","delete-plan-item","btn small ghost","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+'</td></tr>';
  }).join("")+'</tbody></table></div>'+
  '<h3 style="margin-top:16px">Susieti laboratorijos užsakymai</h3>'+
