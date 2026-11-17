@@ -9,6 +9,13 @@ export const DEFAULT_LAB_WORK=[
 ];
 export const STANDARD_MATERIALS_FEE=5;
 export const SURGICAL_MATERIALS_FEE=20;
+export const DEFAULT_USAGE_FEES={materials:STANDARD_MATERIALS_FEE,surgicalMaterials:SURGICAL_MATERIALS_FEE};
+export function validUsageFee(value){return value!==''&&value!==null&&value!==undefined&&Number.isFinite(Number(value))&&Number(value)>=0&&Number(value)<=1000;}
+export function usageFeeSnapshot(checked,configured=DEFAULT_USAGE_FEES){return {
+ materials:checked?.materials===true, surgicalMaterials:checked?.surgicalMaterials===true,
+ materialsFee:validUsageFee(configured?.materials)?roundEuro(Number(configured.materials)):STANDARD_MATERIALS_FEE,
+ surgicalMaterialsFee:validUsageFee(configured?.surgicalMaterials)?roundEuro(Number(configured.surgicalMaterials)):SURGICAL_MATERIALS_FEE
+};}
 export const roundEuro=value=>Math.round((Number(value)+Number.EPSILON)*100)/100;
 export function validCost(name,price,quantity=1){
  return !!String(name||"").trim()&&String(name).length<=160&&Number.isFinite(Number(price))&&
@@ -17,8 +24,8 @@ export function validCost(name,price,quantity=1){
 export function invoiceCosts(invoice){
  const costs=invoice?.costs||{};
  const total=rows=>(rows||[]).reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||1),0);
- const standard=invoice?.usage?.materials===true?STANDARD_MATERIALS_FEE:0;
- const surgical=invoice?.usage?.surgicalMaterials===true?SURGICAL_MATERIALS_FEE:0;
+ const standard=invoice?.usage?.materials===true?(validUsageFee(invoice.usage.materialsFee)?Number(invoice.usage.materialsFee):STANDARD_MATERIALS_FEE):0;
+ const surgical=invoice?.usage?.surgicalMaterials===true?(validUsageFee(invoice.usage.surgicalMaterialsFee)?Number(invoice.usage.surgicalMaterialsFee):SURGICAL_MATERIALS_FEE):0;
  return {lab:roundEuro(total(costs.laboratory)),materials:roundEuro(total(costs.materials)),standard,surgical};
 }
 export function salaryEntitlement(received,costs,percentage){
