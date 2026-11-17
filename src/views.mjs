@@ -335,7 +335,7 @@ function formFields(kind,p){
    HEALTH_QUESTIONS.map(([key,label])=>'<div class="field"><label>'+esc(label)+' *</label><select name="q_'+key+'" required><option value="">Pasirinkite</option><option>Ne</option><option>Taip</option><option>Nežinau</option></select></div>').join("")+
    formInput("Paaiškinimai apie vaistus, alergijas, ligas","details",false)+rep;
  if(kind==="invasive")return '<p><b>Konkrečios procedūros sutikimas arba atsisakymas.</b> Gydytojas turi individualiai įvardyti procedūrą, jos alternatyvas, tikslus, komplikacijas ir atsisakymo padarinius. Bendro pobūdžio tekstas negali atstoti gydytojo paaiškinimo.</p>'+
-   formInput("Konkreti chirurginė / invazinė / intervencinė procedūra","procedure",true,ui.modal?.procedureName||"")+
+   '<div class="field"><label>Konkreti chirurginė / invazinė / intervencinė procedūra *</label><textarea name="procedure" rows="2" required>'+esc(ui.modal?.procedureName||"")+'</textarea></div>'+
    formInput("Procedūros esmė, pobūdis ir tikslai","purpose")+
    formInput("Alternatyvos ir jų ypatumai","alternatives")+
    formInput("Dažnos komplikacijos","risksCommon")+
