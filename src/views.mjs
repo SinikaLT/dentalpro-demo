@@ -179,7 +179,7 @@ function patientDetail(p){
     out+='<div class="detail-grid">'+[["Gimimo data",p.birthDate?fmt(p.birthDate):"Nenurodyta"],["Telefonas",p.phone||"Nenurodyta"],["El. paštas",p.email||"Nenurodyta"],["Klinikos",p.clinicIds.map(clinic).join(", ")]].map(([k,v])=>'<div class="detail-item"><small>'+k+'</small><b>'+esc(v)+'</b></div>').join("")+'</div>'+
       (p.alerts?'<div class="notice warn" style="margin-top:14px">'+esc(p.alerts)+'</div>':"")+
        registrationBanner(p.id)+
-      '<hr class="section-divider"><div class="actions">'+btn("Odontograma","patient-odontogram","btn small")+btn("Klinikiniai įrašai","patient-notes","btn small")+btn("Dokumentai ir parašai","patient-documents","btn small")+btn("+ Vizitas","new-appt","btn primary small")+'</div><h3 style="margin-top:24px">Apsilankymų istorija</h3>'+eventRows(items.slice(0,5));
+      '<hr class="section-divider"><div class="actions">'+btn("Odontograma","patient-odontogram","btn small")+btn("Klinikiniai įrašai","patient-notes","btn small")+btn("Dokumentai ir parašai","patient-documents","btn small")+btn("VLK / PSDF","patient-vlk","btn small")+btn("+ Vizitas","new-appt","btn primary small")+'</div><h3 style="margin-top:24px">Apsilankymų istorija</h3>'+eventRows(items.slice(0,5));
   }else if(ui.patientTab==="history"){
     out+=eventRows(items);
     const notes=db.clinicalNotes.filter(n=>n.patientId===p.id);
@@ -1067,6 +1067,7 @@ function handleAction(target,event){
     case "patient-odontogram":route("odontogram");break;
     case "patient-notes":route("notes");break;
     case "patient-documents":route("forms");break;
+    case "patient-vlk":route("vlk");break;
     case "patient-plans":route("plans");break;
     case "new-doctor":modal("doctor");break;
     case "save-doctor":saveDoctor();break;
