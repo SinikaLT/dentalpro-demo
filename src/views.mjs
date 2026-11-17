@@ -63,21 +63,55 @@ function eventRows(items){
     '<div class="hide-mobile">'+esc(doctor(a.staffId))+'</div><div class="hide-mobile">'+esc(chair(a.chairId))+'</div>'+pill(a.status)+'</button>').join("")+'</div>';
 }
 function viewOverview(){
-  const today=appts().filter(a=>a.date===ui.day&&a.status!=="Atšauktas");
-  const invoices=db.invoices.filter(i=>ui.clinic==="all"||i.clinicId===ui.clinic);
-  const debt=invoices.reduce((n,i)=>n+invoiceOutstanding(i,invoiceTotal(i)),0);
-  const activePlans=db.plans.filter(p=>(ui.clinic==="all"||p.clinicId===ui.clinic)&&!["Užbaigtas","Atšauktas"].includes(p.status));
-  return page("Darbo vietos apžvalga","Dvi klinikos · keturios odontologinės kėdės · demonstraciniai duomenys",btn("+ Naujas vizitas","new-appt","btn primary"))+
-    '<div class="stat-grid"><div class="stat"><small>Dienos vizitai</small><strong>'+today.length+'</strong><em>'+today.filter(a=>a.status==="Atliktas").length+' atlikti</em></div>'+
-    '<div class="stat"><small>Pacientai</small><strong>'+listPatients().length+'</strong><em>Visi duomenys sintetiniai</em></div>'+
-    '<div class="stat"><small>Aktyvūs gydymo planai</small><strong>'+activePlans.length+'</strong><em>Planuojamos procedūros</em></div>'+
-    '<div class="stat"><small>Neapmokėta (demo)</small><strong>'+money(debt)+'</strong><em>Be realių mokėjimų</em></div></div>'+
-    '<div class="two-cols"><section class="panel"><div class="panel-title"><h2>Vizitai</h2>'+btn("Kalendorius","go-calendar","btn small")+'</div>'+
-    '<div class="toolbar" style="margin-bottom:14px"><input type="date" data-change="day" value="'+esc(ui.day)+'" aria-label="Apžvalgos data"></div>'+eventRows(today)+'</section>'+
-    '<section class="panel"><h2>Kėdžių užimtumas</h2>'+listChairs().map(c=>{
-      const filtered=today.filter(a=>a.chairId===c.id),duration=filtered.reduce((n,a)=>n+Number(a.duration),0);
-      return '<div class="kpi-bar"><div style="width:150px"><b>'+esc(c.name)+'</b><small class="muted" style="display:block">'+esc(clinic(c.clinicId))+'</small></div><div class="kpi-track"><div class="kpi-fill" style="width:'+Math.round(Math.min(100,duration/600*100))+'%"></div></div><small>'+filtered.length+' viz.</small></div>';
-    }).join("")+'<hr class="section-divider"><div class="notice">Ši sistema veikia tik demonstraciniu režimu; duomenys saugomi naršyklėje.</div></section></div>';
+ const d=receptionistDashboard(db,ui.day,ui.clinic);
+ const rows=d.appointments;
+ const taskRows=(db.tasks||[]).filter(t=>(ui.clinic==="all"||t.clinicId===ui.clinic)&&t.status!=="Atlikta").sort((a,b)=>(a.dueDate||"").localeCompare(b.dueDate||""));
+ const waitRows=(db.waitlist||[]).filter(w=>(ui.clinic==="all"||w.clinicId===ui.clinic)&&w.status==="Laukia");
+ return page("Registratūros darbo vieta","Dienos pacientai, dokumentai, užduotys ir mokėjimai – DEMO",
+   btn("+ Vizitas","new-appt","btn primary")+btn("+ Pacientas","new-patient","btn small"))+
+ '<section class="panel"><div class="toolbar space-between"><h2>Dienos darbai · '+fmt(ui.day)+'</h2><input type="date" aria-label="Darbo diena" data-change="day" value="'+esc(ui.day)+'"></div>'+
+ '<div class="stat-grid">'+[
+  ["Dienos vizitai",rows.length],["Laukia patvirtinimo",d.awaiting.length],
+  ["Trūksta registracijos dokumentų",d.documents.length],["Neapmokėtos sąskaitos",d.debts.length],
+  ["Neatliktos užduotys",d.overdueTasks.length],["Gauti laboratorijos darbai",d.readyOrders.length]
+ ].map(([label,count])=>'<div class="stat"><small>'+esc(label)+'</small><strong>'+count+'</strong></div>').join("")+'</div>'+
+ '<div class="actions">'+btn("Atidaryti kalendorių","go-calendar","btn small")+
+ btn("Nauja sąskaita","new-invoice","btn small")+btn("Dienos atsiskaitymai","go-finances","btn small")+
+ btn("Laboratorijų užsakymai","go-laborders","btn small")+'</div></section>'+
+ '<section class="panel"><div class="panel-title"><h2>Šiandienos pacientai</h2><span class="pill">'+rows.length+' viz.</span></div>'+
+ '<div class="table-wrap"><table class="data-table"><thead><tr><th>Laikas</th><th>Pacientas</th><th>Gydytojas</th><th>Būsena</th><th>Dokumentai</th><th>Veiksmai</th></tr></thead><tbody>'+
+ rows.map(a=>{
+  const checklist=registrationChecklist(db.forms,a.patientId),signed=checklist.filter(x=>x.signed).length;
+  return '<tr><td>'+esc(a.time)+'</td><td>'+esc(name(a.patientId))+'</td><td>'+esc(doctor(a.staffId))+'</td><td>'+pill(a.status)+'</td>'+
+   '<td>'+signed+'/3'+(signed<3?' <span class="pill danger">Trūksta</span>':' <span class="pill">Gerai</span>')+'</td>'+
+   '<td>'+btn("Vizitas","edit-appt","btn small","data-id=\'"+esc(a.id)+"\'")+
+   btn("Pacientas","work-patient","btn small","data-id=\'"+esc(a.patientId)+"\'")+
+   (signed<3?btn("Dokumentai","work-documents","btn small","data-id=\'"+esc(a.patientId)+"\'"):"")+
+   btn("Atsiskaitymas","work-payment","btn small","data-id=\'"+esc(a.patientId)+"\'")+'</td></tr>';
+ }).join("")+'</tbody></table></div>'+
+ (!rows.length?empty("Šiandien vizitų nėra","Peržiūrėkite kalendorių arba registruokite pacientą."):"")+'</section>'+
+ '<div class="two-cols"><section class="panel"><h2>Neatliktos užduotys</h2>'+
+ taskRows.slice(0,15).map(t=>'<div class="segment"><b>'+esc(t.title)+'</b><small style="display:block">'+fmt(t.dueDate)+' · '+esc(t.patientId?name(t.patientId):clinic(t.clinicId))+'</small>'+
+ btn("Atlikta","finish-task","btn small","data-id=\'"+esc(t.id)+"\'")+'</div>').join("")+
+ (!taskRows.length?'<p class="help">Atvirų užduočių nėra.</p>':"")+
+ '<form id="desk-task-form"><h3>Pridėti užduotį</h3><div class="field-grid">'+
+ '<div class="field"><label>Užduotis</label><input name="title" maxlength="160" required placeholder="Pvz., paskambinti pacientui"></div>'+
+ '<div class="field"><label>Iki datos</label><input type="date" name="dueDate" value="'+isoDate()+'" required></div>'+
+ '<div class="field full"><label>Pacientas (nebūtina)</label><select name="patientId"><option value="">Bendroji klinikos užduotis</option>'+opt(listPatients().map(p=>[p.id,name(p.id)]),"")+'</select></div></div>'+
+ '<p>'+btn("Pridėti užduotį","add-desk-task","btn small primary")+'</p></form></section>'+
+ '<section class="panel"><h2>Laukiančiųjų sąrašas</h2>'+
+ waitRows.map(w=>'<div class="segment"><b>'+esc(name(w.patientId))+'</b><small style="display:block">'+esc(w.reason||"Laukia vizito")+' · '+esc(w.preferredDoctorId?doctor(w.preferredDoctorId):"Bet kuris gydytojas")+'</small>'+
+ btn("Registruoti","wait-register","btn small","data-id=\'"+esc(w.id)+"\'")+
+ btn("Pašalinti iš laukiančių","wait-cancel","btn small ghost","data-id=\'"+esc(w.id)+"\'")+'</div>').join("")+
+ (!waitRows.length?'<p class="help">Laukiančiųjų nėra.</p>':"")+
+ '<form id="waitlist-form"><h3>Įrašyti į laukiančiųjų sąrašą</h3><div class="field-grid">'+
+ '<div class="field"><label>Pacientas</label><select name="patientId">'+opt(listPatients().map(p=>[p.id,name(p.id)]),ui.patient)+'</select></div>'+
+ '<div class="field"><label>Pageidaujamas gydytojas</label><select name="doctorId"><option value="">Bet kuris</option>'+opt(listDoctors().map(d=>[d.id,d.name]),"")+'</select></div>'+
+ '<div class="field full"><label>Pageidavimas</label><input name="reason" maxlength="250" placeholder="Pvz., kuo anksčiau ryte"></div></div>'+
+ '<p>'+btn("Įtraukti į sąrašą","add-waitlist","btn small primary")+'</p></form></section></div>'+
+ '<section class="panel"><h2>Reikia dėmesio</h2>'+
+ '<p><b>Neapmokėta:</b> '+money(d.outstanding)+' · <b>Vėluojantys laboratorijos darbai:</b> '+d.lateOrders.length+' · <b>Dokumentų trūksta:</b> '+d.documents.length+'</p>'+
+ '<p class="help">Priminimus galima pasižymėti ranka prie vizito. Sistema nesiunčia tikrų SMS ar el. laiškų.</p></section>';
 }
 const doctorPalette=["#07818a","#5f72c4","#a46b39","#26875f","#b55d83","#8b61b5","#317d91","#ab8b24"];
 function colorForDoctor(staffId,clinicId){
