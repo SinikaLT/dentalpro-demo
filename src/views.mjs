@@ -1214,10 +1214,22 @@ function saveInvoice(){
   if(v.planItemId&&!match){notify("Pasirinkta procedūra nepriklauso pacientui ar klinikai.",true);return}
   const doc=db.staff.find(d=>d.id===v.doctorId&&d.clinicIds.includes(v.clinicId));
   if(v.doctorId&&!doc){notify("Gydytojas turi dirbti pasirinktoje klinikoje.",true);return}
+  const existing=sourceInvoice(db.invoices,{appointmentId:ui.modal?.appointmentId||"",planItemId:match?.id||""});
+  if(existing){notify("Už šį vizitą arba plano procedūrą sąskaita jau išrašyta: "+existing.number,true);modal("invoice",existing.id);return}
+  if(match&&(db.vlkCases||[]).some(c=>c.planId===match.planId&&c.status!=="Atmestas")){
+    notify("Šis gydymo planas susietas su VLK atveju. Paciento priemoka registruojama tik per VLK atvejį, kad sąnaudos nesidubliuotų.",true);return
+  }
+  if(!doc&&!confirm("Sąskaitai nepriskirtas gydytojas. Gydytojo atlyginimas nebus skaičiuojamas. Tikrai tęsti?"))return;
   const percent=doc?(Number.isFinite(Number(doc.salaryPercent))?Number(doc.salaryPercent):35):null;
   const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,planItemId:match?.id||"",planId:match?.planId||"",appointmentId:ui.modal?.appointmentId||"",doctorId:doc?.id||"",doctorPercent:percent,usage:usageFeeSnapshot({materials:v.usageMaterials==="on",surgicalMaterials:v.usageSurgical==="on"},db.usageFees),costs:{laboratory:[],materials:[]},
     items:[{id:uid("line"),description:service(v.serviceId),serviceId:v.serviceId,price,qty}],payments:[]};
-  update("Sukurta demonstracinė sąskaita",invoice.id,s=>s.invoices.push(invoice));
+  const problems=duplicateInvoiceIssues(db.invoices,invoice);
+  if(problems.length){notify(problems.join(" "),true);return}
+  update("Sukurta demonstracinė sąskaita",invoice.id,s=>{
+    const conflicts=duplicateInvoiceIssues(s.invoices,invoice);
+    if(conflicts.length)throw new Error(conflicts.join(" "));
+    s.invoices.push(invoice);
+  });
   ui.modal={kind:"invoice",id:invoice.id};render();notify("Sąskaita sukurta.");
 }
 function saveInvoiceUsage(){
@@ -1577,6 +1589,8 @@ function handleAction(target,event){
     }
     case "appointment-invoice":{
       const a=db.appointments.find(x=>x.id===ui.modal?.id);if(!a)break;
+      const previous=sourceInvoice(db.invoices,{appointmentId:a.id});
+      if(previous){modal("invoice",previous.id);notify("Šiam vizitui sąskaita jau išrašyta.");break}
       ui.patient=a.patientId;
       modal("invoice","",{clinicId:a.clinicId,appointmentId:a.id,doctorId:a.staffId,serviceId:a.serviceId});
       break;
@@ -1628,6 +1642,10 @@ function handleAction(target,event){
     case "plan-invoice":{
       const plan=db.plans.find(p=>p.id===target.dataset.plan),item=plan?.items.find(x=>x.id===id);
       if(!plan||!item)break;
+      const billed=planItemBillingState(db,plan.id,item.id);
+      if(billed.invoice){modal("invoice",billed.invoice.id);notify("Procedūra jau apmokestinta.");break}
+      if(billed.vlkCase){notify("Šis gydymo planas priklauso VLK atvejui. Priemoka apskaitoma per VLK.",true);break}
+      if(!item.done&&!confirm("Procedūra dar nepažymėta atlikta. Ar tikrai jau norite paruošti sąskaitą?"))break;
       ui.patient=plan.patientId;
       modal("invoice","",{planItemId:item.id,planId:plan.id,clinicId:plan.clinicId});
       break;
