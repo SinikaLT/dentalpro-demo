@@ -39,3 +39,18 @@ export function validateForm(type,answers,signature){
  return [...new Set(issues)];
 }
 export function statusOfForm(record){return record?.signedAt?"Pasirašyta (demo)":"Nepasirašyta"}
+
+/** Formalūs dokumentai naujai registracijai; invazinis sutikimas tik konkrečiai procedūrai. */
+export const REGISTRATION_FORMS=["agreement","privacy","health"];
+export function latestSignedForm(forms,patientId,type){
+ return (forms||[]).filter(f=>f?.patientId===patientId&&f.type===type&&f.signedAt&&f.demo===true)
+   .sort((a,b)=>String(b.signedAt).localeCompare(String(a.signedAt)))[0]||null;
+}
+export function registrationChecklist(forms,patientId){
+ return REGISTRATION_FORMS.map(type=>({type,signed:!!latestSignedForm(forms,patientId,type)}));
+}
+export function invasiveConsentForItem(forms,patientId,planId,itemId){
+ return (forms||[]).filter(f=>f?.patientId===patientId&&f.type==="invasive"&&
+   f.planId===planId&&f.planItemId===itemId&&f.signedAt&&f.demo===true)
+   .sort((a,b)=>String(b.signedAt).localeCompare(String(a.signedAt)))[0]||null;
+}
