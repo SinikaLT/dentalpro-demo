@@ -570,6 +570,22 @@ function viewDrawer(){
         '<div class="detail-item"><small>Data</small><b>'+fmt(invoice.date)+'</b></div>'+
         '<div class="detail-item"><small>Suma</small><b>'+money(total)+'</b></div><div class="detail-item"><small>Likutis</small><b>'+money(remaining)+'</b></div></div>'+
         '<h3 style="margin-top:24px">Paslaugos</h3>'+invoice.items.map(x=>'<div class="segment">'+esc(x.description)+' · '+money(x.price)+'</div>').join("")+
+        '<h3 style="margin-top:18px">Atlikęs gydytojas ir savikaina</h3>'+ 
+        (invoice.doctorId?'<div class="notice">Gydytojas: <b>'+esc(doctor(invoice.doctorId))+'</b> · Užfiksuotas atlygio tarifas: <b>'+Number(invoice.doctorPercent)+' %</b></div>':'<div class="notice warn">Sąskaita nepriskirta gydytojui, todėl neįtraukiama į atlygio skaičiavimą.</div>')+
+        '<p class="help">Sąskaitos savikaina turi būti suvestinė prieš pirmąjį mokėjimą. Užregistravus mokėjimą savikainos eilutės užrakinamos, kad nekeistų ankstesnių atlygio skaičiavimų.</p>'+
+        '<h3>Laboratorijos darbai ('+money(invoiceCosts(invoice).lab)+')</h3>'+
+        (invoice.costs?.laboratory||[]).map(x=>'<div class="segment">'+esc(x.description)+' · '+esc(x.laboratory||"")+' · '+Number(x.qty||1)+' × '+money(x.price)+(paid===0?btn("Pašalinti","remove-invoice-cost","btn small ghost","data-type=\'laboratory\' data-id=\'"+esc(x.id)+"\'"):"")+'</div>').join("")+
+        (paid===0?'<form id="invoice-lab-cost-form"><div class="field-grid"><div class="field full"><label>Techniko laboratorijos darbas</label><select id="invoice-lab-work" name="labWorkId"><option value="">Rankinis įrašas</option>'+opt((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>[x.id,x.laboratory+" – "+x.name+" · "+money(x.price)]),"")+'</select></div>'+
+        '<div class="field"><label>Laboratorija (demo)</label><input name="laboratory" maxlength="160" placeholder="Laboratorija A"></div><div class="field"><label>Darbo pavadinimas</label><input name="description" maxlength="160" placeholder="Pvz., cirkonio vainikėlis"></div>'+
+        '<div class="field"><label>Vieneto įkainis (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" value="0"></div>'+
+        '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div></div>'+
+        '<p>'+btn("+ Pridėti laboratorijos darbą","add-invoice-lab","btn small")+'</p></form>':"")+
+        '<h3>Medžiagos ir detalės ('+money(invoiceCosts(invoice).materials)+')</h3>'+
+        (invoice.costs?.materials||[]).map(x=>'<div class="segment">'+esc(x.description)+' · '+Number(x.qty||1)+' × '+money(x.price)+(paid===0?btn("Pašalinti","remove-invoice-cost","btn small ghost","data-type=\'materials\' data-id=\'"+esc(x.id)+"\'"):"")+'</div>').join("")+
+        (paid===0?'<form id="invoice-material-form"><div class="field-grid"><div class="field"><label>Detalė / medžiaga</label><input name="description" maxlength="160" required placeholder="Pvz., multiunitas, stiklo pluošto kaištis"></div>'+
+        '<div class="field"><label>Kaina (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" required></div>'+
+        '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div></div>'+
+        '<p>'+btn("+ Pridėti detalę / medžiagą","add-invoice-material","btn small")+'</p></form>':"")+
         '<h3 style="margin-top:22px">Demonstraciniai mokėjimai</h3>'+(invoice.payments||[]).map(p=>'<div class="segment">'+fmt(p.date)+' · '+esc(p.method)+' · '+money(p.amount)+'</div>').join("")+
         (remaining>0?'<form id="payment-form" style="margin-top:18px"><div class="field-grid"><div class="field"><label>Suma (€)</label><input type="number" name="amount" min=".01" max="'+remaining.toFixed(2)+'" step=".01" value="'+remaining.toFixed(2)+'"></div>'+
         '<div class="field"><label>Būdas</label><select name="method">'+simple(["Grynieji (demo)","Kortelė (demo)","Pavedimas (demo)"],"Kortelė (demo)")+'</select></div></div>'+
@@ -581,7 +597,8 @@ function viewDrawer(){
       '<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
       '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div>'+
       '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(primaryService()?.price||0)+'"></div>'+
-      '<div class="field full"><label>Data</label><input name="date" type="date" value="'+isoDate()+'"></div></div>'+
+      '<div class="field full"><label>Gydytojas, kuriam priskiriama procedūra</label><select name="doctorId" id="invoice-doctor"><option value="">Nepriskirti (atlygis nebus skaičiuojamas)</option>'+opt(db.staff.filter(d=>d.clinicIds.includes(clinicId)).map(d=>[d.id,d.name]),"")+'</select></div>'+
+       '<div class="field full"><label>Data</label><input name="date" type="date" value="'+isoDate()+'"></div></div>'+
       '<div class="drawer-footer">'+btn("Sukurti sąskaitą","save-invoice","btn primary")+'</div></form>');
   }
   return wrap("Veiksmas",empty("Nepasiekiama","Pabandykite dar kartą."));
@@ -718,7 +735,10 @@ function saveInvoice(){
   if(!v.clinicId||!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(v.clinicId))||!db.services.some(s=>s.id===v.serviceId)||
      !Number.isInteger(qty)||qty<1||qty>100||!Number.isFinite(price)||price<0||!validDate(v.date)){
     notify("Neteisingi sąskaitos duomenys.",true);return}
-  const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,
+  const doc=db.staff.find(d=>d.id===v.doctorId&&d.clinicIds.includes(v.clinicId));
+  if(v.doctorId&&!doc){notify("Gydytojas turi dirbti pasirinktoje klinikoje.",true);return}
+  const percent=doc?(Number.isFinite(Number(doc.salaryPercent))?Number(doc.salaryPercent):35):null;
+  const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,doctorId:doc?.id||"",doctorPercent:percent,costs:{laboratory:[],materials:[]},
     items:[{id:uid("line"),description:service(v.serviceId),serviceId:v.serviceId,price,qty}],payments:[]};
   update("Sukurta demonstracinė sąskaita",invoice.id,s=>s.invoices.push(invoice));
   ui.modal={kind:"invoice",id:invoice.id};render();notify("Sąskaita sukurta.");
@@ -755,6 +775,7 @@ function switchAppointmentClinic(cid){
 }
 function switchInvoiceClinic(cid){
   $("invoice-patient").innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(cid)).map(p=>[p.id,name(p.id)]),"");
+  $("invoice-doctor").innerHTML='<option value="">Nepriskirti (atlygis nebus skaičiuojamas)</option>'+opt(db.staff.filter(d=>d.clinicIds.includes(cid)).map(d=>[d.id,d.name]),"");
 }
 function removeFinding(){
   if(!confirm("Ištrinti šio danties radinį?"))return;
