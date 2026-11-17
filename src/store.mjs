@@ -56,6 +56,32 @@ export function seedData(today=isoDate()){
     findings:[],clinicalNotes:[],plans:[],invoices:[],advances:[],cashClosings:[],tasks:[],labOrders:[],waitlist:[],forms:[],vlkCases:[],vlkContracts:{akm:{prosthetics:false,consultation:false},kur:{prosthetics:false,consultation:false}},laboratoryCatalog:JSONclone(DEFAULT_LAB_WORK),usageFees:JSONclone(DEFAULT_USAGE_FEES),audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
   };
 }
+// Minimalus vietinis audito skirtumų pavyzdys; ne serverinis, nepatikimas realiam naudojimui.
+// Asmens, medicininių įrašų ir parašų turinio į veiksmų žurnalą nekopijuojame.
+const AUDIT_FIELDS=["status","date","time","duration","doctorId","doctorPercent","staffId","clinicId",
+ "chairId","serviceId","reminderStatus","healthReviewRequired","dueDate","sentDate",
+ "claimedAmount","patientContribution","amount","price","categoryId","completedAt"];
+function auditSnapshot(state,id){
+ for(const field of ["appointments","patients","plans","invoices","advances","cashClosings",
+   "vlkCases","labOrders","tasks","waitlist","staff","laboratoryCatalog","forms"]){
+  const record=(state[field]||[]).find(x=>x.id===id);
+  if(!record)continue;
+  const result={type:field};
+  for(const key of AUDIT_FIELDS)if(record[key]!==undefined&&["string","number","boolean"].includes(typeof record[key]))result[key]=record[key];
+  if(field==="invoices"){result.paymentsCount=record.payments?.length||0;result.refundsCount=record.refunds?.length||0;result.labCostsCount=record.costs?.laboratory?.length||0;result.materialCostsCount=record.costs?.materials?.length||0;}
+  if(field==="plans"){result.itemsCount=record.items?.length||0;result.completedCount=record.items?.filter(x=>x.done).length||0;}
+  if(field==="advances"){result.allocationsCount=record.allocations?.length||0;result.refundsCount=record.refunds?.length||0;}
+  return result;
+ }
+ return null;
+}
+function auditDiff(before,after){
+ const keys=new Set([...Object.keys(before||{}),...Object.keys(after||{})]);
+ const changes={};
+ for(const key of keys)if(key!=="type"&&(before?.[key]??null)!==(after?.[key]??null))
+  changes[key]={before:before?.[key]??null,after:after?.[key]??null};
+ return changes;
+}
 function parse(storage,key,defaultValue){
   try{const raw=storage?.getItem(key);return raw?JSON.parse(raw):defaultValue}catch{return defaultValue}
 }
@@ -85,9 +111,12 @@ export function openRepository(storage=globalThis.localStorage){
   return {
     get(){return JSONclone(current)},
     transaction(action,entity,update){
+      const before=auditSnapshot(current,entity);
       const copy=JSONclone(current);
       const result=update(copy);
-      copy.audit.unshift({id:uid("audit"),at:new Date().toISOString(),action,entity:String(entity||""),actor:"Demonstracinis naudotojas"});
+      const after=auditSnapshot(copy,entity);
+      copy.audit.unshift({id:uid("audit"),at:new Date().toISOString(),action,entity:String(entity||""),
+        actor:"Demonstracinis naudotojas (nepatvirtinta tapatybė)",changes:auditDiff(before,after)});
       copy.audit=copy.audit.slice(0,250);
       if(!persist(copy))throw new Error("Nepavyko išsaugoti naršyklėje. Duomenys nepakeisti; patikrinkite saugyklos vietą arba teises.");
       current=copy;return result;
