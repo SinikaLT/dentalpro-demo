@@ -16,6 +16,13 @@ export function paidAmount(invoice){
 export function pendingAmount(invoice){
  return roundCents((invoice?.payments||[]).filter(p=>p.status==="pending").reduce((n,p)=>n+Number(p.amount||0),0));
 }
+export function invoiceCashRounding(invoice){
+ const cash=(invoice?.payments||[]).filter(isConfirmed).filter(p=>paymentMethod(p.method)==="cash")
+  .reduce((n,p)=>n+Number(p.cashAmount??cashRounded(p.amount))-Number(p.amount||0),0);
+ const refunds=(invoice?.refunds||[]).filter(r=>paymentMethod(r.method)==="cash")
+  .reduce((n,r)=>n-(Number(r.cashAmount??cashRounded(r.amount))-Number(r.amount||0)),0);
+ return roundCents(cash+refunds);
+}
 export function invoiceOutstanding(invoice,total){
  return Math.max(0,roundCents(Number(total)-paidAmount(invoice)));
 }
@@ -25,11 +32,11 @@ export function paymentEvents(invoice){
    if(!isConfirmed(p))continue;
    const date=p.confirmedDate||p.date;
    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date)))continue;
-   events.push({id:p.id,date,amount:Number(p.amount||0),method:paymentMethod(p.method),kind:"payment"});
+   events.push({id:p.id,date,amount:paymentMethod(p.method)==="cash"?Number(p.cashAmount??cashRounded(p.amount)):Number(p.amount||0),nominalAmount:Number(p.amount||0),method:paymentMethod(p.method),kind:"payment"});
  }
  for(const r of invoice?.refunds||[]){
    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(r.date)))continue;
-   events.push({id:r.id,date:r.date,amount:-Number(r.amount||0),method:paymentMethod(r.method),kind:"refund"});
+   events.push({id:r.id,date:r.date,amount:paymentMethod(r.method)==="cash"?-Number(r.cashAmount??cashRounded(r.amount)):-Number(r.amount||0),nominalAmount:-Number(r.amount||0),method:paymentMethod(r.method),kind:"refund"});
  }
  return events.filter(e=>Number.isFinite(e.amount)&&e.amount!==0)
    .sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
@@ -52,7 +59,7 @@ export function cashDaySummary(invoices,advances,date,clinicId="all"){
    for(const p of invoice.payments||[]){
      if(!isConfirmed(p)||paymentMethod(p.method)==="advance"||(p.confirmedDate||p.date)!==date)continue;
      const method=paymentMethod(p.method);
-     rows.push({kind:"invoice",direction:"in",invoiceNumber:invoice.number,method,amount:Number(p.amount),cashAmount:method==="cash"?Number(p.cashAmount??cashRounded(p.amount)):0,reference:p.reference||"",patientId:invoice.patientId});
+     rows.push({kind:"invoice",direction:"in",invoiceNumber:invoice.number,method,amount:Number(p.amount),cashAmount:method==="cash"?Number(p.cashAmount??cashRounded(p.amount)):0,rounding:method==="cash"?roundCents(Number(p.cashAmount??cashRounded(p.amount))-Number(p.amount)):0,reference:p.reference||"",patientId:invoice.patientId});
    }
    for(const r of invoice.refunds||[])if(r.date===date){
      const method=paymentMethod(r.method);
