@@ -236,7 +236,8 @@ function viewPlans(){
     '<section>'+(plan?planDetails(plan):empty("Planas nepasirinktas","Pradėkite nuo naujo gydymo plano."))+'</section></div></div>';
 }
 function planDetails(p){
-  const patientId=p.patientId;\n  return '<h3>'+esc(p.title)+'</h3><div class="flex"><label>Būsena</label><select id="plan-status" data-change="plan-status" style="max-width:230px">'+simple(PLAN_STATUSES,p.status)+'</select><span class="pill">Sąmata '+money(planTotal(p))+'</span></div>'+
+  const patientId=p.patientId;
+  return '<h3>'+esc(p.title)+'</h3><div class="flex"><label>Būsena</label><select id="plan-status" data-change="plan-status" style="max-width:230px">'+simple(PLAN_STATUSES,p.status)+'</select><span class="pill">Sąmata '+money(planTotal(p))+'</span></div>'+
     '<div class="table-wrap"><table class="data-table"><thead><tr><th>Dantis</th><th>Procedūra</th><th>Suma</th><th>Atlikta</th></tr></thead><tbody>'+
     p.items.map(i=>'<tr><td>'+esc(i.tooth||"—")+'</td><td>'+esc(i.description)+'</td><td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
     '<td><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'>'+(invasiveConsentForItem(db.forms,patientId,p.id,i.id)
@@ -755,7 +756,8 @@ function handleAction(target,event){
       modal("registration-form","",{formType:"invasive",planId:plan.id,planItemId:item.id,procedureName:item.description,signature:"",signatureDrawn:false});
       break;
     }
-    case "view-form":modal("signed-form",id);break;\n    case "print-form":printSignedForm(id);break;
+    case "view-form":modal("signed-form",id);break;
+    case "print-form":printSignedForm(id);break;
     case "save-registration-form":saveRegistrationForm();break;
     case "clear-signature":if(ui.modal?.kind==="registration-form"){
       ui.modal.signature="";ui.modal.signatureDrawn=false;
