@@ -2,7 +2,7 @@
 import {CLINICS,CHAIRS,STATUSES,PLAN_STATUSES,WEEKDAYS,PERMANENT,PRIMARY,CONDITIONS,SURFACES,uid,isoDate,shiftDate,validDate,weekday,minutes,timeString,overlaps,money,appointmentIssues,patientName,doctorName,serviceName,invoiceTotal,planTotal} from "./domain.mjs";
 import {openRepository,defaultAvailability,defaultBreaks} from "./store.mjs";
 import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
-import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm} from "./forms.mjs";
+import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,registrationChecklist,invasiveConsentForItem} from "./forms.mjs";
 
 const repository=openRepository();
 let db=repository.get();
@@ -160,6 +160,14 @@ function viewPatients(){
     patients.map(p=>'<button class="person-card '+(ui.patient===p.id?"selected":"")+'" data-action="select-patient" data-id="'+esc(p.id)+'"><span class="person-dot">'+esc(p.firstName[0]+p.lastName[0])+'</span><span><b>'+esc(name(p.id))+'</b><small>'+esc(p.id)+' · '+esc(p.clinicIds.map(clinic).join(", "))+'</small></span></button>').join("")+'</div></section>'+
     '<section class="panel">'+(p?patientDetail(p):empty("Paciento nėra","Sukurkite naują demonstracinį įrašą."))+'</section></div>';
 }
+function registrationBanner(patientId){
+  const status=registrationChecklist(db.forms,patientId),ready=status.every(x=>x.signed);
+  return '<div class="notice '+(ready?"":"warn")+'" style="margin-top:14px"><b>Registracijos dokumentai: '+status.filter(x=>x.signed).length+'/3 (demo)</b>'+
+    '<div class="actions" style="margin-top:10px">'+status.map(x=>'<span class="pill '+(x.signed?"":"grey")+'">'+
+    esc(FORM_TYPES.find(f=>f.id===x.type)?.short||x.type)+': '+(x.signed?"Pasirašyta":"Trūksta")+'</span>').join("")+'</div>'+
+    '<p class="help">Invazinės procedūros sutikimas pildomas atskirai konkrečiai procedūrai; jis nėra būtinas kiekvienai registracijai.</p>'+
+    (!ready?btn("Užpildyti dokumentus","patient-documents","btn primary small"):"")+'</div>';
+}
 function patientDetail(p){
   const items=db.appointments.filter(a=>a.patientId===p.id).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
   let out='<div class="panel-title"><div><h2>'+esc(name(p.id))+'</h2><small class="muted">Nr. '+esc(p.id)+' · Demonstracinis pacientas</small></div>'+btn("Redaguoti","edit-patient","btn small","data-id='"+esc(p.id)+"'")+'</div>'+
@@ -167,6 +175,7 @@ function patientDetail(p){
   if(ui.patientTab==="overview"){
     out+='<div class="detail-grid">'+[["Gimimo data",p.birthDate?fmt(p.birthDate):"Nenurodyta"],["Telefonas",p.phone||"Nenurodyta"],["El. paštas",p.email||"Nenurodyta"],["Klinikos",p.clinicIds.map(clinic).join(", ")]].map(([k,v])=>'<div class="detail-item"><small>'+k+'</small><b>'+esc(v)+'</b></div>').join("")+'</div>'+
       (p.alerts?'<div class="notice warn" style="margin-top:14px">'+esc(p.alerts)+'</div>':"")+
+       registrationBanner(p.id)+
       '<hr class="section-divider"><div class="actions">'+btn("Odontograma","patient-odontogram","btn small")+btn("Klinikiniai įrašai","patient-notes","btn small")+btn("Dokumentai ir parašai","patient-documents","btn small")+btn("+ Vizitas","new-appt","btn primary small")+'</div><h3 style="margin-top:24px">Apsilankymų istorija</h3>'+eventRows(items.slice(0,5));
   }else if(ui.patientTab==="history"){
     out+=eventRows(items);
@@ -227,10 +236,13 @@ function viewPlans(){
     '<section>'+(plan?planDetails(plan):empty("Planas nepasirinktas","Pradėkite nuo naujo gydymo plano."))+'</section></div></div>';
 }
 function planDetails(p){
-  return '<h3>'+esc(p.title)+'</h3><div class="flex"><label>Būsena</label><select id="plan-status" data-change="plan-status" style="max-width:230px">'+simple(PLAN_STATUSES,p.status)+'</select><span class="pill">Sąmata '+money(planTotal(p))+'</span></div>'+
+  const patientId=p.patientId;\n  return '<h3>'+esc(p.title)+'</h3><div class="flex"><label>Būsena</label><select id="plan-status" data-change="plan-status" style="max-width:230px">'+simple(PLAN_STATUSES,p.status)+'</select><span class="pill">Sąmata '+money(planTotal(p))+'</span></div>'+
     '<div class="table-wrap"><table class="data-table"><thead><tr><th>Dantis</th><th>Procedūra</th><th>Suma</th><th>Atlikta</th></tr></thead><tbody>'+
     p.items.map(i=>'<tr><td>'+esc(i.tooth||"—")+'</td><td>'+esc(i.description)+'</td><td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
-    '<td><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'>'+btn("Pašalinti","delete-plan-item","btn small ghost","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
+    '<td><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'>'+(invasiveConsentForItem(db.forms,patientId,p.id,i.id)
+     ?'<span class="pill">Sutikimas (demo): '+esc(invasiveConsentForItem(db.forms,patientId,p.id,i.id).answers?.decision||"")+'</span>'
+     :'<span class="pill grey">Invazinis sutikimas nesusietas</span>')+
+     btn("Sutikimas","consent-plan-item","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+btn("Pašalinti","delete-plan-item","btn small ghost","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
     '<h3 style="margin-top:20px">Pridėti procedūrą</h3><form id="plan-item-form"><div class="field-grid"><div class="field"><label>Paslauga</label><select name="serviceId" id="plan-item-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
     '<div class="field"><label>Dantis</label><input name="tooth" placeholder="Pvz., 16"></div><div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="20" value="1"></div>'+
     '<div class="field"><label>Pasirenkama kaina (€)</label><div id="plan-price-container">'+pricePicker(primaryService()?.id)+'</div><small class="help">Intervalai: 10 € žingsniu ir tiksli intervalo pabaiga. „Nuo“ kainos tikslinamos.</small></div>'+
@@ -290,7 +302,7 @@ function viewForms(){
      (latest?btn("Peržiūrėti","view-form","btn small","data-id=\'"+esc(latest.id)+"\'"):"")+'</div></div>';
  });
  return page("Paciento dokumentai","Keturi atskiri dokumentai su demonstraciniu paciento parašu")+
-   '<div class="panel"><div class="search-line">'+patientPicker()+'</div><p class="help">Pacientas: <b>'+esc(name(p.id))+
+   '<div class="panel"><div class="search-line">'+patientPicker()+'</div><div class="notice">Registracijos dokumentai: <b>'+checklist.filter(x=>x.signed).length+'/3</b> pasirašyti (demo). Invazinės procedūros sutikimas – tik konkrečiam gydymui.</div><p class="help">Pacientas: <b>'+esc(name(p.id))+
    '</b>. Dokumentai išsaugomi tik šios naršyklės demonstracinėje saugykloje. Nėra asmens tapatybės patvirtinimo ar kvalifikuoto elektroninio parašo.</p>'+
    '<div class="notice warn">NEVESTI realių pacientų sveikatos duomenų, tikrus parašus ar tapatybės informaciją. Klinikos vadovas turi patvirtinti realias formas ir jų versijas prieš naudojimą.</div>'+
    items.join("")+'</div><section class="panel"><h2>Pasirašymo istorija</h2>'+
@@ -321,7 +333,7 @@ function formFields(kind,p){
    HEALTH_QUESTIONS.map(([key,label])=>'<div class="field"><label>'+esc(label)+' *</label><select name="q_'+key+'" required><option value="">Pasirinkite</option><option>Ne</option><option>Taip</option><option>Nežinau</option></select></div>').join("")+
    formInput("Paaiškinimai apie vaistus, alergijas, ligas","details",false)+rep;
  if(kind==="invasive")return '<p><b>Konkrečios procedūros sutikimas arba atsisakymas.</b> Gydytojas turi individualiai įvardyti procedūrą, jos alternatyvas, tikslus, komplikacijas ir atsisakymo padarinius. Bendro pobūdžio tekstas negali atstoti gydytojo paaiškinimo.</p>'+
-   formInput("Konkreti chirurginė / invazinė / intervencinė procedūra","procedure")+
+   formInput("Konkreti chirurginė / invazinė / intervencinė procedūra","procedure",true,ui.modal?.procedureName||"")+
    formInput("Procedūros esmė, pobūdis ir tikslai","purpose")+
    formInput("Alternatyvos ir jų ypatumai","alternatives")+
    formInput("Dažnos komplikacijos","risksCommon")+
@@ -711,9 +723,20 @@ function handleAction(target,event){
     }
     case "new-patient":modal("patient");break;
     case "new-form":modal("registration-form","",{formType:target.dataset.kind,signature:"",signatureDrawn:false});break;
+    case "consent-plan-item":{
+      const plan=db.plans.find(p=>p.id===target.dataset.plan),item=plan?.items.find(i=>i.id===id);
+      if(!plan||!item)break;
+      ui.patient=plan.patientId;
+      modal("registration-form","",{formType:"invasive",planId:plan.id,planItemId:item.id,procedureName:item.description,signature:"",signatureDrawn:false});
+      break;
+    }
     case "view-form":modal("signed-form",id);break;
     case "save-registration-form":saveRegistrationForm();break;
-    case "clear-signature":if(ui.modal?.kind==="registration-form"){ui.modal.signature="";ui.modal.signatureDrawn=false;render()}break;
+    case "clear-signature":if(ui.modal?.kind==="registration-form"){
+      ui.modal.signature="";ui.modal.signatureDrawn=false;
+      const canvas=document.querySelector("#form-signature");
+      canvas?.getContext("2d")?.clearRect(0,0,canvas.width,canvas.height);
+    }break;
     case "edit-patient":modal("patient",id);break;
     case "save-patient":savePatient();break;
     case "select-patient":ui.patient=id;ui.patientTab="overview";render();break;
