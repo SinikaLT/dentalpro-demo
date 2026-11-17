@@ -7,6 +7,8 @@ export const DEFAULT_LAB_WORK=[
   {id:"lab-4",laboratory:"Demonstracinė laboratorija B",name:"Laikinas vainikėlis",price:25,active:true,demo:true},
   {id:"lab-5",laboratory:"Demonstracinė laboratorija B",name:"Pilna išimama plokštelė",price:140,active:true,demo:true}
 ];
+export const STANDARD_MATERIALS_FEE=5;
+export const SURGICAL_MATERIALS_FEE=20;
 export const roundEuro=value=>Math.round((Number(value)+Number.EPSILON)*100)/100;
 export function validCost(name,price,quantity=1){
  return !!String(name||"").trim()&&String(name).length<=160&&Number.isFinite(Number(price))&&
@@ -15,13 +17,15 @@ export function validCost(name,price,quantity=1){
 export function invoiceCosts(invoice){
  const costs=invoice?.costs||{};
  const total=rows=>(rows||[]).reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||1),0);
- return {lab:roundEuro(total(costs.laboratory)),materials:roundEuro(total(costs.materials))};
+ const standard=invoice?.usage?.materials===true?STANDARD_MATERIALS_FEE:0;
+ const surgical=invoice?.usage?.surgicalMaterials===true?SURGICAL_MATERIALS_FEE:0;
+ return {lab:roundEuro(total(costs.laboratory)),materials:roundEuro(total(costs.materials)),standard,surgical};
 }
 export function salaryEntitlement(received,costs,percentage){
  const paid=Math.max(0,Number(received)||0);
  const rate=Number(percentage);
  if(!Number.isFinite(rate)||rate<0||rate>100)return 0;
- return roundEuro(Math.max(0,paid-Number(costs.lab||0)-Number(costs.materials||0))*rate/100);
+ return roundEuro(Math.max(0,paid-Number(costs.lab||0)-Number(costs.materials||0)-Number(costs.standard||0)-Number(costs.surgical||0))*rate/100);
 }
 /** Apskaita pagal faktines demonstracines įmokas, o ne sąskaitos datą.
  * Savikaina išskaitoma iš pirmųjų įmokų; kol jos nepadengtos, atlygis 0.
@@ -45,7 +49,7 @@ export function salaryAccruals(invoices){
      rows.push({id:payment.id,invoiceId:invoice.id,invoiceNumber:invoice.number,date:payment.date,
        clinicId:invoice.clinicId,patientId:invoice.patientId,doctorId:invoice.doctorId,
        doctorPercent:Number(invoice.doctorPercent),paymentAmount:amount,receivedToDate:received,
-       lab:costs.lab,materials:costs.materials,earning:payout,earningToDate:earned,
+       lab:costs.lab,materials:costs.materials,standard:costs.standard,surgical:costs.surgical,earning:payout,earningToDate:earned,
        service:(invoice.items||[]).map(x=>x.description).join(", ")});
    }
  }
