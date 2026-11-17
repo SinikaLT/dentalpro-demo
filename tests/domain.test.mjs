@@ -199,3 +199,41 @@ test("invazinis sutikimas susiejamas tik su paciento plano konkrečia procedūra
  assert.equal(invasiveConsentForItem(records,"p2","plan-a","item-a"),null);
  assert.ok(Object.values(FORM_DISCLOSURES).every(text=>text.length>100));
 });
+
+import {DEFAULT_LAB_WORK,invoiceCosts,salaryEntitlement,salaryAccruals,salarySummary,parseLaboratoryCsv,validCost} from "../src/compensation.mjs";
+
+test("atlyginimas: gauta suma minus laboratorija minus medžiagos kart gydytojo procentas",()=>{
+ assert.equal(salaryEntitlement(600,{lab:120,materials:40},35),154);
+ assert.equal(salaryEntitlement(100,{lab:120,materials:40},35),0);
+ assert.equal(salaryEntitlement(600,{lab:120,materials:40},101),0);
+});
+test("mokėjimų dalimis apskaita išskaido atlyginimą pagal mokėjimo mėnesį be dubliavimo",()=>{
+ const invoice={id:"demo-invoice",number:"DP-1",doctorId:"dr-akm-1",doctorPercent:35,
+   clinicId:"akm",patientId:"p-0-0",items:[{description:"Protezavimas",price:600,qty:1}],
+   costs:{laboratory:[{description:"Cirkonio vainikėlis",price:120,qty:1}],materials:[{description:"Multiunitas",price:40,qty:1}]},
+   payments:[{id:"p1",date:"2026-11-10",amount:100},{id:"p2",date:"2026-11-21",amount:300},{id:"p3",date:"2026-12-04",amount:200}]};
+ assert.deepEqual(invoiceCosts(invoice),{lab:120,materials:40});
+ const entries=salaryAccruals([invoice]);
+ assert.deepEqual(entries.map(e=>e.earning),[0,84,70]);
+ assert.equal(salarySummary([invoice],"2026-11").total,84);
+ assert.equal(salarySummary([invoice],"2026-12").total,70);
+ assert.equal(salarySummary([invoice],"2026-12","kur").total,0);
+ assert.equal(salarySummary([invoice],"").total,154);
+});
+test("laboratorijos įkainiai į sąskaitą perkeliami kaip fiksuotos kopijos",()=>{
+ const source=DEFAULT_LAB_WORK[0],cost={description:source.name,price:source.price,qty:1};
+ const invoice={costs:{laboratory:[cost],materials:[]}};
+ assert.equal(invoiceCosts(invoice).lab,95);
+ source.price=95; // pakeistas kainynas neturėtų reikšmės esamai sąskaitai
+ assert.equal(invoiceCosts(invoice).lab,95);
+ assert.ok(validCost("Stiklo pluošto kaištis",20,2));
+ assert.equal(validCost("Multiunitas",-1,1),false);
+ assert.equal(validCost("Multiunitas",20,0),false);
+});
+test("CSV laboratorijos kainynas skaito Excel eksportą ir atmeta klaidas",()=>{
+ const parsed=parseLaboratoryCsv("Laboratorija;Darbas;Kaina\nDemo A;Cirkonio vainikėlis;95,50\nDemo B;E-MAX;110");
+ assert.equal(parsed.length,2);
+ assert.equal(parsed[0].price,95.5);
+ assert.equal(parsed[1].laboratory,"Demo B");
+ assert.throws(()=>parseLaboratoryCsv("Laboratorija;Darbas;Kaina\nDemo A;Testas;-5"));
+});
