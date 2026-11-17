@@ -564,7 +564,7 @@ function saveRegistrationForm(){
 }
 function viewCompensation(){
  const catalog=db.laboratoryCatalog||[],summary=salarySummary(db.invoices,ui.salaryMonth,ui.clinic);
- const vlkRows=vlkSalaryRows(db.vlkCases||[],ui.salaryMonth,ui.clinic),vlkTotal=vlkSalaryTotal(db.vlkCases||[],ui.salaryMonth,ui.clinic);
+ const vlkRows=vlkSalaryRows(db.vlkCases||[],ui.salaryMonth,ui.clinic,db.invoices),vlkTotal=vlkSalaryTotal(db.vlkCases||[],ui.salaryMonth,ui.clinic,db.invoices);
  const registered=(db.invoices||[]).filter(i=>i.doctorId&&(ui.clinic==="all"||ui.clinic===i.clinicId));
  const percent=doctor=>Number.isFinite(Number(doctor.salaryPercent))?doctor.salaryPercent:35;
  const doctorTotals=new Map();
@@ -690,6 +690,10 @@ function viewVlk(){
  btn("Redaguoti","vlk-edit","btn small","data-id=\'"+esc(c.id)+"\'")+
  btn("Baigti atvejį","vlk-complete","btn small primary","data-id=\'"+esc(c.id)+"\'")+
  btn("Atmesti","vlk-reject","btn small ghost","data-id=\'"+esc(c.id)+"\'"))+
+ (Number(c.patientContribution)>0?
+   (sourceInvoice(db.invoices,{vlkCaseId:c.id})?
+     btn("Priemokos sąskaita","open-invoice","btn small","data-id=\'"+esc(sourceInvoice(db.invoices,{vlkCaseId:c.id}).id)+"\'"):
+     btn("Išrašyti priemoką","new-vlk-copay","btn small","data-id=\'"+esc(c.id)+"\'")):"")+
  '</td></tr>').join("")+'</tbody></table></div>'+
  (!cases.length?empty("Atvejų nėra","Sukurkite pirmąjį demonstracinį PSDF atvejį."):"")+
  '<p class="help">Baigtos PSDF sumos nėra tikrų VLK gautų mokėjimų patvirtinimas. Šiame demo atlygis priskaičiuojamas tik pažymėjus atvejį „Baigtas“, tačiau VLK faktinio apmokėjimo duomenys negaunami.</p></section>';
@@ -848,11 +852,12 @@ function viewDrawer(){
   if(d.kind==="invoice"){
     const invoice=db.invoices.find(i=>i.id===d.id);
     if(invoice){
-      const costLocked=(invoice.payments||[]).length>0;
+      const costLocked=(invoice.payments||[]).length>0||!!invoice.vlkCaseId;
        const total=invoiceTotal(invoice),paid=paidAmount(invoice),remaining=invoiceOutstanding(invoice,total),reserved=pendingAmount(invoice),uncommitted=Math.max(0,roundEuro(remaining-reserved));
-      return wrap("Sąskaita "+invoice.number,'<div class="detail-grid"><div class="detail-item"><small>Pacientas</small><b>'+esc(name(invoice.patientId))+'</b></div>'+
+      return wrap((invoice.vlkCaseId?"VLK priemoka · ":"Sąskaita ")+invoice.number,'<div class="detail-grid"><div class="detail-item"><small>Pacientas</small><b>'+esc(name(invoice.patientId))+'</b></div>'+
         '<div class="detail-item"><small>Data</small><b>'+fmt(invoice.date)+'</b></div>'+
         '<div class="detail-item"><small>Suma</small><b>'+money(total)+'</b></div><div class="detail-item"><small>Likutis</small><b>'+money(remaining)+'</b></div></div>'+
+        (invoice.vlkCaseId?'<div class="notice">VLK priemokos sąskaita. Laboratorijos ir medžiagų savikaina skaičiuojama tik VLK atvejyje, o atlygis tik užbaigus atvejį.</div>':"")+
         '<h3 style="margin-top:24px">Paslaugos</h3>'+(invoice.planItemId?'<p class="help">Susieta su gydymo plano procedūra: '+esc(invoice.planItemId)+'</p>':"")+invoice.items.map(x=>'<div class="segment">'+esc(x.description)+' · '+money(x.price)+'</div>').join("")+
         '<h3 style="margin-top:18px">Vienkartiniai medžiagų atskaitymai nuo gydytojo apyvartos</h3>'+
          '<div class="segment">'+
@@ -1175,6 +1180,13 @@ function saveVlkCase(){
      materials:materialPrice>0?[{id:current?.costs?.materials?.[0]?.id||uid("vlk-mat"),description:materialName,price:roundEuro(materialPrice),qty:1}]:[]},
    usage,status:data.caseStatus==="Vykdomas"?"Vykdomas":"Planuojamas",completedAt:current?.completedAt||"",createdAt:current?.createdAt||new Date().toISOString(),demo:true
  };
+ if(current){
+  const copay=sourceInvoice(db.invoices,{vlkCaseId:current.id});
+  if(copay&&(current.patientId!==record.patientId||current.clinicId!==record.clinicId||
+     current.doctorId!==record.doctorId||Math.abs(Number(current.patientContribution)-Number(record.patientContribution))>0.001)){
+   notify("VLK priemokos sąskaita jau išrašyta; šių atvejo duomenų keisti negalima.",true);return
+  }
+ }
  const issues=vlkCaseIssues(record,db.vlkContracts,db.patients,db.staff);
  if(issues.length){notify(issues.join(" "),true);return}
  if(data.planId&&!db.plans.some(p=>p.id===data.planId&&p.patientId===data.patientId&&p.clinicId===data.clinicId)){
@@ -1235,7 +1247,7 @@ function saveInvoice(){
 function saveInvoiceUsage(){
  const invoice=db.invoices.find(i=>i.id===ui.modal?.id);
  if(!invoice)return;
- if((invoice.payments||[]).length){notify("Medžiagų žymų pakeisti po pirmojo mokėjimo negalima.",true);return}
+ if((invoice.payments||[]).length||invoice.vlkCaseId){notify("Medžiagų žymos užrakintos po mokėjimo arba VLK priemokai.",true);return}
  const materials=$("invoice-usage-materials")?.checked===true;
  const surgicalMaterials=$("invoice-usage-surgical")?.checked===true;
  update("Atnaujintos fiksuotos medžiagų savikainos žymos",invoice.id,state=>{
