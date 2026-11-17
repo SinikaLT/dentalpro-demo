@@ -2,7 +2,7 @@
 import {CLINICS,CHAIRS,STATUSES,PLAN_STATUSES,WEEKDAYS,PERMANENT,PRIMARY,CONDITIONS,SURFACES,uid,isoDate,shiftDate,validDate,weekday,minutes,timeString,overlaps,money,appointmentIssues,patientName,doctorName,serviceName,invoiceTotal,planTotal} from "./domain.mjs";
 import {openRepository,defaultAvailability,defaultBreaks} from "./store.mjs";
 import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
-import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,registrationChecklist,invasiveConsentForItem} from "./forms.mjs";
+import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,registrationChecklist,invasiveConsentForItem,FORM_DISCLOSURES} from "./forms.mjs";
 
 const repository=openRepository();
 let db=repository.get();
@@ -355,6 +355,7 @@ function formDrawer(d){
   return '<div class="drawer-shade" data-action="backdrop"><aside role="dialog" aria-modal="true" class="drawer"><div class="drawer-title"><h2>'+esc(type?.name)+'</h2>'+btn("✕","close-modal","btn small ghost")+'</div>'+
   '<section class="panel"><div class="notice">Demonstracinis įrašas. Parašas nepatvirtina tapatybės ir nėra kvalifikuotas e. parašas.</div>'+
   '<p>Pacientas: '+esc(name(form.patientId))+' · Pasirašyta: '+esc(new Date(form.signedAt).toLocaleString("lt-LT"))+'</p>'+
+  '<p style="white-space:pre-wrap">'+esc(form.documentText||FORM_DISCLOSURES[form.type]||"")+'</p>'+
   Object.entries(form.answers).map(([k,v])=>'<div class="detail-item"><small>'+esc(k)+'</small><b>'+esc(v)+'</b></div>').join("")+
   '<p>Demo parašas:</p><img alt="Demonstracinis ranka nupieštas parašas" style="max-width:100%;border:1px solid #ddd" src="'+esc(form.signature)+'">'+
   '<div class="drawer-footer">'+btn("Spausdinti / išsaugoti PDF","print-form","btn primary","data-id=\'"+esc(form.id)+"\'")+btn("Uždaryti","close-modal","btn small")+'</div></section></aside></div>';
@@ -387,6 +388,7 @@ function printSignedForm(id){
    '<div class="banner">TIK DEMONSTRACIJA • NETINKA REALIEMS PACIENTŲ DOKUMENTAMS • PARAŠAS NĖRA TAPATYBĖS PATVIRTINIMAS</div>'+
    '<h1>'+esc(title)+'</h1><p><b>Pacientas (demo):</b> '+esc(name(doc.patientId))+'</p>'+
    '<p><b>Dokumento versija:</b> '+esc(doc.version)+'<br><b>Pasirašyta:</b> '+esc(new Date(doc.signedAt).toLocaleString("lt-LT"))+'</p>'+
+   '<h2>Dokumento tekstas</h2><p style="white-space:pre-wrap">'+esc(doc.documentText||FORM_DISCLOSURES[doc.type]||"")+'</p>'+
    (doc.planItemId?'<p><b>Susietas gydymo plano procedūros ID:</b> '+esc(doc.planItemId)+'</p>':"")+
    lines+'<h2>Demonstracinis parašas</h2><img class="sign" alt="Demonstracinis parašas" src="'+esc(doc.signature)+'">'+
    '<p><small>DentalPro 2.0 • tik sintetiniai duomenys • spausdinta kopija</small></p></body></html>';
