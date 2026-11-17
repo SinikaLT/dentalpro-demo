@@ -315,10 +315,12 @@ function viewFinances(){
   const pendingOther=invoices.flatMap(invoice=>(invoice.payments||[]).filter(p=>p.status==="pending"&&paymentMethod(p.method)!=="transfer").map(p=>({invoice,p})));
   const advances=(db.advances||[]).filter(a=>ui.clinic==="all"||a.clinicId===ui.clinic);
   return page("Finansai","Rankinė grynųjų, kortelių, pavedimų ir PSDF apskaita – tik DEMO",btn("+ Nauja sąskaita","new-invoice","btn primary"))+
+    '<div class="tabs">'+[["payments","Pacientų atsiskaitymai"],["advances","Avansai ir grąžinimai"],["reconcile","Laukiantys mokėjimai"],["daily","Dienos kasa"]].map(([id,label])=>
+    '<button type="button" class="tab '+(ui.financeTab===id?"active":"")+'" data-action="finance-tab" data-tab="'+id+'">'+label+'</button>').join("")+'</div>'+
     '<div class="notice warn"><b>Be kasos aparato, kortelių terminalo ar banko integracijos.</b> Mokėjimą darbuotojas patvirtina ranka pagal kasos / terminalo kvitą arba banko išrašą. DentalPro įrašas nėra fiskalinis kvitas ir neįrodo realaus pervedimo. Tik sintetiniai duomenys.</div>'+
     '<div class="stat-grid"><div class="stat"><small>Sąskaitų</small><strong>'+invoices.length+'</strong></div><div class="stat"><small>Išrašyta</small><strong>'+money(total)+'</strong></div>'+
     '<div class="stat"><small>Patvirtinta, atėmus grąžinimus</small><strong>'+money(paid)+'</strong></div><div class="stat"><small>Sąskaitų likutis</small><strong>'+money(Math.max(0,total-paid))+'</strong></div></div>'+
-    '<section class="panel"><div class="panel-title"><h2>Dienos atsiskaitymų suvestinė pagal operacijas</h2><label>Data <input type="date" id="cash-day" value="'+esc(ui.cashDay)+'"></label></div>'+
+    '<section class="panel" style="'+(ui.financeTab==="daily"?"":"display:none")+'"><div class="panel-title"><h2>Dienos atsiskaitymų suvestinė pagal operacijas</h2><label>Data <input type="date" id="cash-day" value="'+esc(ui.cashDay)+'"></label></div>'+
     '<div class="stat-grid">'+[
       ["Grynaisiais",cash.totals.cash],["Kortele",cash.totals.card],["Pavedimu",cash.totals.transfer],["VLK (baigti atvejai)",cash.vlk]
     ].map(([label,value])=>'<div class="stat"><small>'+label+'</small><strong>'+money(value)+'</strong></div>').join("")+'</div>'+
@@ -345,12 +347,12 @@ function viewFinances(){
       ' · grynųjų skirtumas '+money(x.difference.cash)+' · kortelių skirtumas '+money(x.difference.card)+
       ' · pavedimų skirtumas '+money(x.difference.transfer)+(x.notes?' · '+esc(x.notes):"")+'</div>').join("")+
     '</section>'+
-    '<section class="panel"><h2>Sąskaitos ir daliniai / mišrūs mokėjimai</h2>'+
+    '<section class="panel" style="'+(ui.financeTab==="payments"?"":"display:none")+'"><h2>Sąskaitos ir daliniai / mišrūs mokėjimai</h2>'+
     '<div class="table-wrap"><table class="data-table"><thead><tr><th>Numeris</th><th>Data</th><th>Pacientas</th><th>Klinika</th><th>Suma</th><th>Patvirtinta</th><th>Likutis</th><th></th></tr></thead><tbody>'+
     invoices.map(i=>'<tr><td>'+esc(i.number)+'</td><td>'+fmt(i.date)+'</td><td>'+esc(name(i.patientId))+'</td><td>'+esc(clinic(i.clinicId))+'</td><td>'+money(invoiceTotal(i))+'</td><td>'+money(paidAmount(i))+'</td><td>'+money(invoiceOutstanding(i,invoiceTotal(i)))+'</td>'+
       '<td>'+btn("Atverti","open-invoice","btn small","data-id=\'"+esc(i.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
     (!invoices.length?empty("Sąskaitų nėra","Sukurkite demonstracinę sąskaitą."):"")+'</section>'+
-    '<section class="panel"><h2>Banko pavedimų suderinimas (rankinis)</h2>'+
+    '<section class="panel" style="'+(ui.financeTab==="reconcile"?"":"display:none")+'"><h2>Banko pavedimų suderinimas (rankinis)</h2>'+
     '<p class="help">Suderinkite pagal banko išrašą: patikrinkite datą, sumą, mokėjimo paskirtį ir tik tuomet patvirtinkite. Nėra automatinės banko API integracijos.</p>'+
     '<div class="table-wrap"><table class="data-table"><thead><tr><th>Sąskaita</th><th>Pacientas</th><th>Suma</th><th>Įvesta nuoroda</th><th></th></tr></thead><tbody>'+
     pendingTransfers.map(({invoice,p})=>'<tr><td>'+esc(invoice.number)+'</td><td>'+esc(name(invoice.patientId))+'</td><td>'+money(p.amount)+'</td><td>'+esc(p.reference||"—")+'</td><td>'+
@@ -361,7 +363,7 @@ function viewFinances(){
       '<div class="segment">'+esc(invoice.number)+' · '+esc(PAYMENT_METHODS.find(m=>m.id===paymentMethod(p.method))?.label||p.method)+' · '+money(p.amount)+
       btn("Patvirtinti","payment-confirm","btn small","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'")+
       btn("Atmesti","payment-cancel","btn small ghost","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'")+'</div>').join(""):"")+'</section>'+
-    '<section class="panel"><h2>Pacientų avansai</h2><p class="help">Avansas registruojamas atskirai ir nėra iš naujo laikomas kasos įplauka jį panaudojus sąskaitai. Gydytojo atlygis atsiranda tik avansą priskyrus sąskaitai.</p>'+
+    '<section class="panel" style="'+(ui.financeTab==="advances"?"":"display:none")+'"><h2>Pacientų avansai</h2><p class="help">Avansas registruojamas atskirai ir nėra iš naujo laikomas kasos įplauka jį panaudojus sąskaitai. Gydytojo atlygis atsiranda tik avansą priskyrus sąskaitai.</p>'+
     '<form id="advance-form"><div class="field-grid"><div class="field"><label>Klinika</label><select id="advance-clinic" name="clinicId">'+opt(db.clinics.map(c=>[c.id,c.name]),ui.clinic==="all"?"akm":ui.clinic)+'</select></div>'+
     '<div class="field"><label>Pacientas</label><select name="patientId" id="advance-patient">'+opt(db.patients.filter(p=>p.clinicIds.includes(ui.clinic==="all"?"akm":ui.clinic)).map(p=>[p.id,name(p.id)]),"")+'</select></div>'+
     '<div class="field"><label>Avanso suma (€)</label><input type="number" name="amount" min="0.01" step="0.01" required></div>'+
@@ -1394,6 +1396,7 @@ function handleAction(target,event){
     case "route":route(target.dataset.route);break;
     case "go-calendar":route("calendar");break;
     case "go-finances":ui.financeTab="daily";route("finances");break;
+    case "finance-tab":ui.financeTab=target.dataset.tab;render();break;
     case "go-laborders":route("laborders");break;
     case "work-patient":ui.patient=id;ui.patientTab="overview";route("patients");break;
     case "work-documents":ui.patient=id;route("forms");break;
