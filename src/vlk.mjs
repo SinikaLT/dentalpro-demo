@@ -2,6 +2,7 @@
 // Demonstracinė atvejų apskaita: negali tikrinti PSD/EVIS, sutarties ar realaus apmokėjimo.
 // Kategoriją ir teisę nustato įgaliotas specialistas pagal galiojančius dokumentus.
 import {invoiceCosts,salaryEntitlement,roundEuro} from "./compensation.mjs";
+import {vlkCombinedAccruals} from "./billing.mjs";
 export const VLK_SOURCE_DATE="2026-11-11";
 export const VLK_CATEGORIES=[
  {id:"adult-standard",label:"Suaugęs – įprastas protezavimas (atitinkant sąlygas)",kind:"prosthetics",limit:670.39},
@@ -35,20 +36,22 @@ export function vlkCaseIssues(record,contracts,patients,staff){
  if(record.doctorPercent===null||!Number.isFinite(pct)||pct<0||pct>100)issues.push("Netinkamas gydytojo procentas.");
  return issues;
 }
-export function vlkCaseEarning(record){
+export function vlkCaseEarning(record,invoices=[]){
  if(record?.status!=="Baigtas"||!record.completedAt||record.claimedAmount==null)return 0;
  if(vlkAmountIssues(record.categoryId,record.claimedAmount,record.patientContribution).length)return 0;
- // Kompensuojamoji suma nėra lygi jos ribai; atlygis tik nuo įrašytos faktinės sumos.
- return salaryEntitlement(Number(record.claimedAmount),invoiceCosts(record),record.doctorPercent);
+ return roundEuro(vlkCombinedAccruals(record,invoices).reduce((n,x)=>n+x.earning,0));
 }
-export function vlkSalaryRows(cases,month="",clinicId="all"){
+export function vlkSalaryRows(cases,month="",clinicId="all",invoices=[]){
  return (cases||[]).filter(c=>c.status==="Baigtas"&&c.completedAt&&
-  (!month||String(c.completedAt).startsWith(month))&&(clinicId==="all"||c.clinicId===clinicId))
-  .map(c=>({id:c.id,caseNumber:c.caseNumber,doctorId:c.doctorId,clinicId:c.clinicId,
-   date:c.completedAt.slice(0,10),categoryId:c.categoryId,claimedAmount:Number(c.claimedAmount),
-   patientContribution:Number(c.patientContribution||0),costs:invoiceCosts(c),
-   doctorPercent:Number(c.doctorPercent),earning:vlkCaseEarning(c)}));
+  (clinicId==="all"||c.clinicId===clinicId)&&
+  !vlkAmountIssues(c.categoryId,c.claimedAmount,c.patientContribution).length)
+  .flatMap(c=>vlkCombinedAccruals(c,invoices).filter(x=>!month||x.date.startsWith(month)).map(x=>({
+    id:x.id,caseId:c.id,caseNumber:c.caseNumber,doctorId:c.doctorId,clinicId:c.clinicId,
+    date:x.date,categoryId:c.categoryId,claimedAmount:x.claimedAmount,
+    patientContribution:Number(c.patientContribution||0),contributionReceived:x.contributionReceived,
+    costs:invoiceCosts(c),doctorPercent:Number(c.doctorPercent),earning:x.earning,kind:x.kind
+  })));
 }
-export function vlkSalaryTotal(cases,month="",clinicId="all"){
- return roundEuro(vlkSalaryRows(cases,month,clinicId).reduce((sum,row)=>sum+row.earning,0));
+export function vlkSalaryTotal(cases,month="",clinicId="all",invoices=[]){
+ return roundEuro(vlkSalaryRows(cases,month,clinicId,invoices).reduce((sum,row)=>sum+row.earning,0));
 }
