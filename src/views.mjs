@@ -46,11 +46,11 @@ function route(r){ui.route=r;ui.modal=null;render()}
 function render(){
   $("global-clinic").value=ui.clinic;
   document.querySelectorAll(".nav-btn").forEach(n=>n.classList.toggle("active",n.dataset.route===ui.route));
-  $("section-name").textContent=({overview:"Registratūros darbo vieta",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",compensation:"Laboratorija ir atlygis",reports:"Ataskaitos",forms:"Paciento dokumentai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
+  $("section-name").textContent=({overview:"Registratūros darbo vieta",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",compensation:"Laboratorija ir atlygis",reports:"Ataskaitos",laborders:"Laboratorijų užsakymai",forms:"Paciento dokumentai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
   $("page").innerHTML=({
     overview:viewOverview,calendar:viewCalendar,patients:viewPatients,doctors:viewDoctors,
     odontogram:viewOdontogram,plans:viewPlans,notes:viewNotes,finances:viewFinances,
-    services:viewServices,compensation:viewCompensation,reports:viewReports,forms:viewForms,vlk:viewVlk,admin:viewAdmin
+    services:viewServices,compensation:viewCompensation,reports:viewReports,laborders:viewLabOrders,forms:viewForms,vlk:viewVlk,admin:viewAdmin
   }[ui.route]||viewOverview)();
   $("drawer-root").innerHTML=ui.modal?((ui.modal.kind==="registration-form"||ui.modal.kind==="signed-form")?formDrawer(ui.modal):viewDrawer()):"";
   if(ui.modal?.kind==="registration-form")setupSignatureCanvas();
@@ -652,6 +652,30 @@ function viewVlk(){
  '</td></tr>').join("")+'</tbody></table></div>'+
  (!cases.length?empty("Atvejų nėra","Sukurkite pirmąjį demonstracinį PSDF atvejį."):"")+
  '<p class="help">Baigtos PSDF sumos nėra tikrų VLK gautų mokėjimų patvirtinimas. Šiame demo atlygis priskaičiuojamas tik pažymėjus atvejį „Baigtas“, tačiau VLK faktinio apmokėjimo duomenys negaunami.</p></section>';
+}
+function viewLabOrders(){
+ const orders=(db.labOrders||[]).filter(o=>ui.clinic==="all"||o.clinicId===ui.clinic);
+ const patientId=listPatients().some(p=>p.id===ui.patient)?ui.patient:listPatients()[0]?.id||"";
+ const selectedPlans=db.plans.filter(p=>p.patientId===patientId);
+ return page("Laboratorijų užsakymai","Užsakymo, gamybos, gavimo ir perdavimo sekimas – tik DEMO")+
+ '<section class="panel"><h2>Užsakymo eiga</h2><p class="help">Paciento galutinį protezavimo vizitą registruokite tik patikrinę, ar laboratorinis darbas jau gautas. Šis modulis nesusisiekia su laboratorijomis automatiškai.</p>'+
+ '<div class="table-wrap"><table class="data-table"><thead><tr><th>Pacientas</th><th>Laboratorija</th><th>Darbas</th><th>Išsiųsta</th><th>Terminas</th><th>Savikaina</th><th>Būsena</th><th>Veiksmai</th></tr></thead><tbody>'+
+ orders.map(o=>'<tr><td>'+esc(name(o.patientId))+'</td><td>'+esc(o.laboratory)+'</td><td>'+esc(o.description)+'</td><td>'+fmt(o.sentDate)+'</td><td>'+fmt(o.dueDate)+'</td><td>'+money(o.cost)+'</td><td>'+pill(o.status)+'</td><td>'+
+ (o.status!=="Atiduota"&&o.status!=="Atšaukta"?'<select data-change="lab-order-status" data-id="'+esc(o.id)+'">'+simple(LAB_ORDER_STATUSES,o.status)+'</select>':"")+
+ btn("Pacientas","work-patient","btn small","data-id=\'"+esc(o.patientId)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
+ (!orders.length?empty("Užsakymų nėra","Sukurkite pirmąjį demonstracinį laboratorijos užsakymą."):"")+'</section>'+
+ '<section class="panel"><h2>Pridėti laboratorijos užsakymą</h2>'+
+ '<form id="lab-order-form"><div class="field-grid">'+
+ '<div class="field"><label>Klinika</label><select name="clinicId" id="order-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),ui.clinic==="all"?"akm":ui.clinic)+'</select></div>'+
+ '<div class="field"><label>Pacientas</label><select name="patientId" id="order-patient">'+opt(listPatients().map(p=>[p.id,name(p.id)]),patientId)+'</select></div>'+
+ '<div class="field full"><label>Gydymo planas (nebūtina)</label><select name="planId" id="order-plan"><option value="">Nesusieta</option>'+opt(selectedPlans.map(p=>[p.id,p.title]),"")+'</select></div>'+
+ '<div class="field"><label>Laboratorija</label><select name="laboratory" id="order-lab">'+opt(labNames().map(x=>[x,x]),labNames()[0]||"")+'<option value="__manual">Kita (ranka)</option></select></div>'+
+ '<div class="field"><label>Kita laboratorija (jei reikia)</label><input name="manualLab" maxlength="160"></div>'+
+ '<div class="field"><label>Darbo pavadinimas</label><input name="description" maxlength="160" required></div>'+
+ '<div class="field"><label>Savikaina (€)</label><input type="number" name="cost" min="0" step="0.01" value="0" required></div>'+
+ '<div class="field"><label>Užsakyta / išsiųsta</label><input name="sentDate" type="date" value="'+isoDate()+'" required></div>'+
+ '<div class="field"><label>Planuojama gavimo data</label><input name="dueDate" type="date" value="'+shiftDate(isoDate(),7)+'" required></div></div>'+
+ '<p>'+btn("Pridėti užsakymą","add-lab-order","btn primary")+'</p></form></section>';
 }
 function viewAdmin(){
   return page("Administravimas","Duomenų eksportas, demonstracijos atkūrimas ir veiksmų istorija")+
@@ -1547,6 +1571,7 @@ function start(){
       ["doctors","▥","Gydytojų grafikai",""],
       ["odontogram","◇","Odontograma",""],
       ["plans","☷","Gydymo planai",""],
+       ["laborders","▧","Laboratorijų užsakymai",""],
       ["notes","▧","Klinikiniai įrašai",""],
       ["finances","€","Finansai","VALDYMAS"],
        ["compensation","▤","Laboratorija ir atlygis (DEMO)",""],
