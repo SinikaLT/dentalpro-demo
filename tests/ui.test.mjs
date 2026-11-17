@@ -41,7 +41,13 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   assert.match(node("page").innerHTML,/PSDF atvejai ir būsenos/);
   hooks.route("overview");
   assert.match(node("page").innerHTML,/Neatliktos užduotys/);
+  assert.match(node("page").innerHTML,/Pridėti užduotį/);
+  assert.match(node("page").innerHTML,/add-waitlist/);
+  assert.match(node("page").innerHTML,/work-payment/);
   assert.match(node("page").innerHTML,/Laukiančiųjų sąrašas/);
+  hooks.route("laborders");
+  assert.match(node("page").innerHTML,/Pridėti laboratorijos užsakymą/);
+  assert.match(node("page").innerHTML,/lab-order-form/);
   hooks.route("finances");
   const finance=node("page").innerHTML;
   for(const phrase of ["Grynaisiais","Kortele","Pavedimu","VLK (baigti atvejai)","Banko pavedimų suderinimas","Pacientų avansai","Dienos kasos uždarymas","Eksportuoti dienos CSV"]){
@@ -49,6 +55,11 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   }
   hooks.modal("invoice");
   assert.match(node("drawer-root").innerHTML,/usageMaterials/);
+  assert.match(node("drawer-root").innerHTML,/selectedLaboratory/);
+  hooks.modal("appointment");
+  assert.match(node("drawer-root").innerHTML,/suggest-appt-slot/);
+  assert.match(node("drawer-root").innerHTML,/new-patient-from-appt/);
+  assert.match(node("drawer-root").innerHTML,/reminderStatus/);
   const invoiceNew=node("drawer-root").innerHTML;
   assert.ok(invoiceNew.includes('usageMaterials'));
   hooks.route("vlk");
