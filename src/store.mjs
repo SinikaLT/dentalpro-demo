@@ -1,6 +1,6 @@
 import {CLINICS,CHAIRS,isoDate,shiftDate,weekday,uid} from "./domain.mjs";
 import {mkCatalog} from "./pricelist.mjs";
-import {DEFAULT_LAB_WORK} from "./compensation.mjs";
+import {DEFAULT_LAB_WORK,DEFAULT_USAGE_FEES} from "./compensation.mjs";
 
 // Nauja, izoliuota sintetinė aplinka: neskaitome ankstesnių asmens įrašų.
 export const STORAGE_KEY="dentalpro_v3_synthetic_only";
@@ -53,7 +53,7 @@ export function seedData(today=isoDate()){
       id:"demo-a-"+i,clinicId:a[0],chairId:a[1],patientId:a[2],staffId:a[3],
       date:day,time:a[4],duration:services.find(s=>s.id===a[5]).duration,serviceId:a[5],status:a[6],notes:""
     })),
-    findings:[],clinicalNotes:[],plans:[],invoices:[],forms:[],laboratoryCatalog:JSONclone(DEFAULT_LAB_WORK),audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
+    findings:[],clinicalNotes:[],plans:[],invoices:[],forms:[],laboratoryCatalog:JSONclone(DEFAULT_LAB_WORK),usageFees:JSONclone(DEFAULT_USAGE_FEES),audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
   };
 }
 function parse(storage,key,defaultValue){
@@ -68,6 +68,7 @@ export function openRepository(storage=globalThis.localStorage){
   }
   if(!Array.isArray(current.forms)){current.forms=[];try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
   if(!Array.isArray(current.laboratoryCatalog)){current.laboratoryCatalog=JSONclone(DEFAULT_LAB_WORK);try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
+  if(!current.usageFees||typeof current.usageFees!=="object"){current.usageFees=JSONclone(DEFAULT_USAGE_FEES);try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
   // Kainyno naujinimas keičia tik katalogą, o ne jau išsaugotų planų kainas.
   if(current.catalogRevision!=="mk-2026-11"){
     const known=new Set(current.services.map(s=>s.id));
