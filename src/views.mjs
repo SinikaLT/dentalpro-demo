@@ -7,6 +7,9 @@ import {invoiceCosts,salaryAccruals,salarySummary,validCost,parseLaboratoryCsv,r
 import {VLK_CATEGORIES,VLK_SOURCE_DATE,vlkCategory,vlkAmountIssues,vlkCaseIssues,vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "./vlk.mjs";
 import {PAYMENT_METHODS,paymentMethod,isConfirmed,paidAmount,pendingAmount,invoiceOutstanding,paymentEvents,cashRounded,cashDifference,advanceRemaining,patientAdvanceBalance,settlementDaySummary} from "./payments.mjs";
 
+const labNames=()=>[...new Set((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>x.laboratory).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"lt"));
+const labJobs=lab=>(db.laboratoryCatalog||[]).filter(x=>x.active!==false&&x.laboratory===lab);
+const labOptions=(lab,selected="")=>'<option value="">Pasirinkite darbą / rankinis įrašas</option>'+opt(labJobs(lab).map(x=>[x.id,x.name+" · "+money(x.price)]),selected);
 const repository=openRepository();
 let db=repository.get();
 const ui={cashDay:isoDate(),salaryMonth:isoDate().slice(0,7),category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
@@ -594,7 +597,8 @@ function viewVlk(){
  '<div class="field"><label>Gydymo plano sąsaja (nebūtina)</label><select name="planId"><option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===(editing?.patientId||db.patients.find(p=>p.clinicIds.includes(clinicId))?.id)&&p.clinicId===clinicId).map(p=>[p.id,p.title]),editing?.planId||"")+'</select></div>'+
  '<div class="field full"><label><input type="checkbox" name="eligibilityChecked" '+(editing?.eligibilityChecked?"checked":"")+'> Atsakingas darbuotojas patikrino teisę, sutarties sąlygas ir privalomus dokumentus (tik demo žyma)</label></div>'+
  '<div class="field full"><h3>Laboratorija ir savikaina šiam atvejui</h3><p class="help">Įkainiai įrašomi ranka arba pasirenkami iš demonstracinio laboratorijos kainyno. VLK atlygis bus skaičiuojamas tik užbaigus atvejį.</p></div>'+
- '<div class="field full"><label>Laboratorijos darbas</label><select name="labCatalogId" id="vlk-lab-choice"><option value="">Rankinis įrašas / netaikoma</option>'+opt((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>[x.id,x.laboratory+" – "+x.name+" · "+money(x.price)]),editing?.labCatalogId||"")+'</select></div>'+
+ '<div class="field full"><label>Dantų technikų laboratorija</label><select id="vlk-laboratory" name="selectedLaboratory"><option value="">Pasirinkite laboratoriją</option>'+opt(labNames().map(x=>[x,x]),editing?.costs?.laboratory?.[0]?.laboratory||"")+'<option value="__manual">Kita laboratorija (įvesti ranka)</option></select></div>'+
+ '<div class="field full"><label>Laboratorijos darbas</label><select name="labCatalogId" id="vlk-lab-choice">'+labOptions(editing?.costs?.laboratory?.[0]?.laboratory||"",editing?.labCatalogId||"")+'</select></div>'+
  '<div class="field"><label>Laboratorijos pavadinimas / darbas</label><input name="labName" maxlength="160" value="'+esc(editing?.costs?.laboratory?.[0]?.description||"")+'" placeholder="Pvz., cirkonio vainikėlis"></div>'+
  '<div class="field"><label>Laboratorijos kaina (€)</label><input type="number" name="labPrice" min="0" step="0.01" value="'+esc(editing?.costs?.laboratory?.[0]?.price??0)+'"></div>'+
  '<div class="field"><label>Detalė / medžiaga (papildoma)</label><input name="materialName" maxlength="160" value="'+esc(editing?.costs?.materials?.[0]?.description||"")+'" placeholder="Pvz., titaninė bazė"></div>'+
@@ -727,8 +731,9 @@ function viewDrawer(){
         '<p class="help">Sąskaitos savikaina turi būti suvestinė prieš pirmąjį mokėjimą. Užregistravus mokėjimą savikainos eilutės užrakinamos, kad nekeistų ankstesnių atlygio skaičiavimų.</p>'+
         '<h3>Laboratorijos darbai ('+money(invoiceCosts(invoice).lab)+')</h3>'+
         (invoice.costs?.laboratory||[]).map(x=>'<div class="segment">'+esc(x.description)+' · '+esc(x.laboratory||"")+' · '+Number(x.qty||1)+' × '+money(x.price)+(paid===0?btn("Pašalinti","remove-invoice-cost","btn small ghost","data-type=\'laboratory\' data-id=\'"+esc(x.id)+"\'"):"")+'</div>').join("")+
-        (paid===0?'<form id="invoice-lab-cost-form"><div class="field-grid"><div class="field full"><label>Techniko laboratorijos darbas</label><select id="invoice-lab-work" name="labWorkId"><option value="">Rankinis įrašas</option>'+opt((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>[x.id,x.laboratory+" – "+x.name+" · "+money(x.price)]),"")+'</select></div>'+
-        '<div class="field"><label>Laboratorija (demo)</label><input name="laboratory" maxlength="160" placeholder="Laboratorija A"></div><div class="field"><label>Darbo pavadinimas</label><input name="description" maxlength="160" placeholder="Pvz., cirkonio vainikėlis"></div>'+
+        (paid===0?'<form id="invoice-lab-cost-form"><div class="field-grid"><div class="field full"><label>Dantų technikų laboratorija</label><select id="invoice-laboratory" name="selectedLaboratory"><option value="">Pasirinkite laboratoriją</option>'+opt(labNames().map(x=>[x,x]),"")+'<option value="__manual">Kita laboratorija (įvesti ranka)</option></select></div>'+
+        '<div class="field full"><label>Laboratorijos darbas</label><select id="invoice-lab-work" name="labWorkId">'+labOptions("")+'</select></div>'+
+        '<div class="field"><label>Laboratorijos pavadinimas (rankiniam įrašui)</label><input name="laboratory" maxlength="160" placeholder="Jei laboratorijos nėra sąraše"></div><div class="field"><label>Darbo pavadinimas</label><input name="description" maxlength="160" placeholder="Pvz., cirkonio vainikėlis"></div>'+
         '<div class="field"><label>Vieneto įkainis (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" value="0"></div>'+
         '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div></div>'+
         '<p>'+btn("+ Pridėti laboratorijos darbą","add-invoice-lab","btn small")+'</p></form>':"")+
@@ -745,7 +750,7 @@ function viewDrawer(){
         '<p><b>Patvirtinta po grąžinimų: '+money(paid)+'</b> · Laukiama: '+money(reserved)+' · Likutis: '+money(remaining)+'</p>'+
         (uncommitted>0?'<form id="payment-form" style="margin-top:18px"><h3>Registruoti dalinį ar mišrų mokėjimą</h3><div class="field-grid">'+
         '<div class="field"><label>Mokėjimo suma (€)</label><input name="amount" type="number" min=".01" max="'+uncommitted.toFixed(2)+'" step=".01" required value="'+uncommitted.toFixed(2)+'"></div>'+
-        '<div class="field"><label>Būdas</label><select name="method" id="payment-method">'+opt(PAYMENT_METHODS.filter(x=>x.id!=="advance").map(x=>[x.id,x.label]),"card")+'</select></div>'+
+        '<div class="field"><label>Būdas</label><select name="method" id="payment-method">'+opt(PAYMENT_METHODS.filter(x=>x.id!=="advance").map(x=>[x.id,x.label]),"cash")+'</select></div>'+
         '<div class="field"><label>Būsena</label><select name="status" id="payment-status"><option value="confirmed">Patvirtinta rankiniu būdu</option><option value="pending">Laukiama patvirtinimo</option></select></div>'+
         '<div class="field"><label>Mokėjimo data</label><input name="date" type="date" value="'+isoDate()+'" required></div>'+
         '<div class="field"><label>Išorinio kvito / mokėjimo nuoroda</label><input name="reference" maxlength="120" placeholder="Kasa, terminalas, pavedimas"></div>'+
@@ -1434,13 +1439,18 @@ function handleChange(target){
     if(plans)plans.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===target.value&&p.clinicId===$("vlk-clinic").value).map(p=>[p.id,p.title]),"");
     return
   }
+  if(target.id==="vlk-laboratory"){
+    const form=$("vlk-form");
+    if(form){$("vlk-lab-choice").innerHTML=labOptions(target.value);
+      form.querySelector('[name="labName"]').value="";
+      form.querySelector('[name="labPrice"]').value="0";}
+    return;
+  }
   if(target.id==="vlk-lab-choice"){
-    const selected=(db.laboratoryCatalog||[]).find(x=>x.id===target.value),form=$("vlk-form");
-    if(selected&&form){
-      form.querySelector('[name="labName"]').value=selected.name;
-      form.querySelector('[name="labPrice"]').value=selected.price;
-    }
-    return
+    const selected=labJobs($("vlk-laboratory")?.value).find(x=>x.id===target.value),form=$("vlk-form");
+    if(form){form.querySelector('[name="labName"]').value=selected?.name||"";
+      form.querySelector('[name="labPrice"]').value=selected?.price??0;}
+    return;
   }
   if(target.id==="cash-day"){if(validDate(target.value)){ui.cashDay=target.value;render()}return}
   if(target.id==="advance-clinic"){
@@ -1454,14 +1464,19 @@ function handleChange(target){
     return
   }
   if(target.id==="salary-month"){ui.salaryMonth=target.value;render();return}
-  if(target.id==="invoice-lab-work"){
-    const chosen=(db.laboratoryCatalog||[]).find(x=>x.id===target.value);
+  if(target.id==="invoice-laboratory"){
     const form=$("invoice-lab-cost-form");
-    if(form&&chosen){
-      form.querySelector('[name="laboratory"]').value=chosen.laboratory;
-      form.querySelector('[name="description"]').value=chosen.name;
-      form.querySelector('[name="price"]').value=chosen.price;
-    }
+    if(form){$("invoice-lab-work").innerHTML=labOptions(target.value);
+      form.querySelector('[name="laboratory"]').value=target.value==="__manual"?"":target.value;
+      form.querySelector('[name="description"]').value="";
+      form.querySelector('[name="price"]').value="0";}
+    return;
+  }
+  if(target.id==="invoice-lab-work"){
+    const chosen=labJobs($("invoice-laboratory")?.value).find(x=>x.id===target.value);
+    const form=$("invoice-lab-cost-form");
+    if(form){form.querySelector('[name="description"]').value=chosen?.name||"";
+      form.querySelector('[name="price"]').value=chosen?.price??0;}
     return;
   }
   if(target.id==="invoice-patient"){
