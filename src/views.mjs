@@ -738,6 +738,30 @@ function viewDrawer(){
   const d=ui.modal;
   const close=btn("✕","close-modal","btn small ghost","aria-label='Uždaryti'");
   const wrap=(title,content)=>'<div class="drawer-shade" data-action="backdrop"><aside class="drawer" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="drawer-title"><h2>'+title+'</h2>'+close+'</div>'+content+'</aside></div>';
+  if(d.kind==="intake"){
+    const info=appointmentIntake(db,d.id);
+    if(!info)return wrap("Paciento priėmimas",empty("Vizitas nerastas",""));
+    const a=info.appointment,problem=labVisitWarnings(db,a);
+    return wrap("Paciento priėmimas – "+esc(name(a.patientId)),
+      '<div class="notice">Vizitas: <b>'+fmt(a.date)+' '+esc(a.time)+'</b> · Gydytojas '+esc(doctor(a.staffId))+
+      ' · Būsena '+esc(a.status)+'</div>'+
+      '<h3>Registracijos dokumentai</h3>'+
+      info.documents.map(x=>'<div class="segment">'+(x.signed?'✓ ':'⚠ ')+esc(x.label)+' – '+(x.signed?'Pasirašyta':'Trūksta')+'</div>').join("")+
+      (info.review?'<div class="notice warn">Sveikatos anketą reikia peržiūrėti su gydytoju prieš gydymą.</div>':"")+
+      '<p>'+btn("Atverti dokumentus","intake-documents","btn small","data-id=\'"+esc(a.id)+"\'")+'</p>'+
+      '<h3>Laboratorijos darbų parengtis</h3>'+
+      (problem.length?problem.map(x=>'<div class="notice warn">'+esc(x)+'</div>').join(""):'<p class="help">Nėra susietų nebaigtų laboratorijos užsakymų.</p>')+
+      '<h3>Atsiskaitymas</h3>'+
+      (info.invoices.length?info.invoices.map(i=>'<div class="segment">'+esc(i.number)+' · '+money(invoiceOutstanding(i,invoiceTotal(i)))+' likutis '+
+        btn("Atidaryti mokėjimą","open-invoice","btn small","data-id=\'"+esc(i.id)+"\'")+'</div>').join(""):
+        '<p class="help">Šiam vizitui sąskaita dar neišrašyta.</p>')+
+      '<div class="drawer-footer">'+
+      (!["Atvykęs","Atliekamas","Atliktas","Atšauktas","Neatvyko"].includes(a.status)?
+        btn("Pažymėti atvykimą","intake-arrived","btn primary","data-id=\'"+esc(a.id)+"\'"):"")+
+      btn("Gydymo planas","intake-plan","btn small","data-id=\'"+esc(a.id)+"\'")+
+      btn(info.invoices.length?"Sąskaita jau išrašyta":"Paruošti sąskaitą","intake-invoice","btn small","data-id=\'"+esc(a.id)+"\'")+
+      '</div>');
+  }
   if(d.kind==="appointment"){
     const original=db.appointments.find(a=>a.id===d.id);
     const a=Object.assign({clinicId:ui.clinic==="all"?"akm":ui.clinic,chairId:"",patientId:ui.patient,
@@ -1514,6 +1538,29 @@ function handleAction(target,event){
     }
     case "new-on-day":modal("appointment","",{preset:{date:target.dataset.date}});break;
     case "slot":modal("appointment","",{preset:{date:ui.day,time:target.dataset.time,chairId:target.dataset.chair,clinicId:db.chairs.find(c=>c.id===target.dataset.chair)?.clinicId}});break;
+    case "open-intake":modal("intake",id);break;
+    case "intake-arrived":{
+      const a=db.appointments.find(x=>x.id===id);if(!a||["Atšauktas","Neatvyko"].includes(a.status))break;
+      update("Patvirtintas paciento atvykimas (demo)",id,state=>{
+        const item=state.appointments.find(x=>x.id===id);
+        item.status="Atvykęs";item.arrivedAt=new Date().toISOString();
+      });notify("Paciento atvykimas pažymėtas.");break;
+    }
+    case "intake-documents":{
+      const a=db.appointments.find(x=>x.id===id);if(!a)break;
+      ui.patient=a.patientId;route("forms");break;
+    }
+    case "intake-plan":{
+      const a=db.appointments.find(x=>x.id===id);if(!a)break;
+      ui.patient=a.patientId;route("plans");break;
+    }
+    case "intake-invoice":{
+      const a=db.appointments.find(x=>x.id===id);if(!a)break;
+      const existing=sourceInvoice(db.invoices,{appointmentId:a.id});
+      if(existing){modal("invoice",existing.id);break;}
+      ui.patient=a.patientId;
+      modal("invoice","",{clinicId:a.clinicId,appointmentId:a.id,doctorId:a.staffId,serviceId:a.serviceId});break;
+    }
     case "edit-appt":modal("appointment",id);break;
     case "set-view":ui.view=target.dataset.view;render();break;
     case "cal-prev":calendarMove(-1);break;
