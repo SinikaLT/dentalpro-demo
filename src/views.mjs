@@ -853,6 +853,61 @@ function calendarMove(direction){
   }else ui.day=shiftDate(ui.day,direction*(ui.view==="week"?7:1));
   render();
 }
+function addDeskTask(){
+ const form=$("desk-task-form");if(!form)return;
+ const v=stringValues(new FormData(form)),clinicId=ui.clinic==="all"?"akm":ui.clinic;
+ if(!v.title?.trim()||v.title.length>160||!validDate(v.dueDate)){notify("Nurodykite užduoties pavadinimą ir datą.",true);return}
+ if(v.patientId&&!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(clinicId))){notify("Pacientas nepriklauso klinikai.",true);return}
+ const entry={id:uid("task"),clinicId,patientId:v.patientId||"",title:v.title.trim(),dueDate:v.dueDate,status:"Atvira",createdAt:new Date().toISOString(),demo:true};
+ update("Registratūros užduotis pridėta",entry.id,state=>{state.tasks??=[];state.tasks.push(entry)});
+ notify("Užduotis įrašyta.");
+}
+function finishTask(id){
+ const t=(db.tasks||[]).find(x=>x.id===id);if(!t||t.status==="Atlikta")return;
+ update("Registratūros užduotis atlikta",id,state=>{
+  const task=state.tasks.find(x=>x.id===id);task.status="Atlikta";task.finishedAt=new Date().toISOString();
+ });notify("Užduotis pažymėta atlikta.");
+}
+function addWaitlist(){
+ const form=$("waitlist-form");if(!form)return;
+ const v=stringValues(new FormData(form)),clinicId=ui.clinic==="all"?"akm":ui.clinic;
+ if(!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(clinicId))){notify("Pasirinkite pacientą.",true);return}
+ if(v.doctorId&&!db.staff.some(d=>d.id===v.doctorId&&d.clinicIds.includes(clinicId))){notify("Gydytojas nedirba šioje klinikoje.",true);return}
+ if((db.waitlist||[]).some(w=>w.patientId===v.patientId&&w.clinicId===clinicId&&w.status==="Laukia")){
+  notify("Pacientas jau įtrauktas į laukiančiųjų sąrašą.",true);return
+ }
+ const item={id:uid("wait"),clinicId,patientId:v.patientId,preferredDoctorId:v.doctorId||"",
+  reason:String(v.reason||"").trim().slice(0,250),status:"Laukia",createdAt:new Date().toISOString(),demo:true};
+ update("Pacientas įtrauktas į laukiančiųjų sąrašą",item.id,state=>{state.waitlist??=[];state.waitlist.push(item)});
+ notify("Pacientas įtrauktas į laukiančiųjų sąrašą.");
+}
+function waitlistAction(id,register){
+ const w=(db.waitlist||[]).find(x=>x.id===id&&x.status==="Laukia");if(!w)return;
+ if(!register){
+  update("Pašalintas iš laukiančiųjų sąrašo",id,state=>{const x=state.waitlist.find(y=>y.id===id);x.status="Atšaukta";x.finishedAt=new Date().toISOString()});
+  notify("Pažymėta, kad nebelaukia.");return;
+ }
+ ui.patient=w.patientId;
+ modal("appointment","",{preset:{patientId:w.patientId,clinicId:w.clinicId,staffId:w.preferredDoctorId||""},waitlistId:id});
+}
+function addLabOrder(){
+ const form=$("lab-order-form");if(!form)return;
+ const v=stringValues(new FormData(form)),lab=v.laboratory==="__manual"?String(v.manualLab||"").trim():v.laboratory;
+ const amount=Number(v.cost);
+ if(!lab||lab.length>160||!v.description?.trim()||v.description.length>160||!validDate(v.sentDate)||!validDate(v.dueDate)||
+   v.dueDate<v.sentDate||!Number.isFinite(amount)||amount<0||amount>100000){
+  notify("Patikrinkite laboratoriją, darbą, savikainą ir datas.",true);return
+ }
+ if(!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(v.clinicId))){notify("Pacientas nepriskirtas klinikai.",true);return}
+ if(v.planId&&!db.plans.some(p=>p.id===v.planId&&p.patientId===v.patientId&&p.clinicId===v.clinicId)){
+  notify("Gydymo planas nepriklauso pacientui ar klinikai.",true);return
+ }
+ const order={id:uid("laborder"),clinicId:v.clinicId,patientId:v.patientId,planId:v.planId||"",laboratory:lab,
+   description:v.description.trim(),cost:roundEuro(amount),sentDate:v.sentDate,dueDate:v.dueDate,
+   status:"Užsakyta",statusHistory:[{status:"Užsakyta",at:new Date().toISOString()}],demo:true};
+ update("Registruotas laboratorijos užsakymas",order.id,state=>{state.labOrders??=[];state.labOrders.push(order)});
+ notify("Laboratorijos užsakymas sukurtas.");
+}
 function saveAppointment(){
   const f=stringValues(formData("appt-form"));
   const a={
@@ -1338,6 +1393,22 @@ function handleAction(target,event){
   switch(act){
     case "route":route(target.dataset.route);break;
     case "go-calendar":route("calendar");break;
+    case "go-finances":ui.financeTab="daily";route("finances");break;
+    case "go-laborders":route("laborders");break;
+    case "work-patient":ui.patient=id;ui.patientTab="overview";route("patients");break;
+    case "work-documents":ui.patient=id;route("forms");break;
+    case "work-payment":{
+      ui.patient=id;
+      const item=db.invoices.find(i=>i.patientId===id&&invoiceOutstanding(i,invoiceTotal(i))>0.001);
+      if(item)modal("invoice",item.id);else modal("invoice");
+      break;
+    }
+    case "add-desk-task":addDeskTask();break;
+    case "finish-task":finishTask(id);break;
+    case "add-waitlist":addWaitlist();break;
+    case "wait-register":waitlistAction(id,true);break;
+    case "wait-cancel":waitlistAction(id,false);break;
+    case "add-lab-order":addLabOrder();break;
     case "close-modal":case "backdrop":if(act==="backdrop"&&event.target!==target)break;ui.modal=null;render();break;
     case "new-appt":modal("appointment","",{});break;
     case "new-on-day":modal("appointment","",{preset:{date:target.dataset.date}});break;
@@ -1461,6 +1532,26 @@ function handleChange(target){
     if(!plan)return;
     update("Atnaujinta gydymo plano būsena",plan.id,s=>s.plans.find(p=>p.id===plan.id).status=target.value);
     notify("Plano būsena atnaujinta.");return
+  }
+  if(act==="lab-order-status"){
+    const id=target.dataset.id,status=target.value;
+    const order=(db.labOrders||[]).find(x=>x.id===id);
+    if(!order||!LAB_ORDER_STATUSES.includes(status)||["Atiduota","Atšaukta"].includes(order.status))return;
+    update("Pakeista laboratorijos užsakymo būsena",id,state=>{
+      const item=state.labOrders.find(x=>x.id===id);item.status=status;
+      item.statusHistory??=[];item.statusHistory.push({status,at:new Date().toISOString()});
+    });notify("Užsakymo būsena atnaujinta.");return;
+  }
+  if(target.id==="order-patient"){
+    const plan=$("order-plan"),clinicId=$("order-clinic")?.value;
+    if(plan)plan.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===target.value&&p.clinicId===clinicId).map(p=>[p.id,p.title]),"");
+    return
+  }
+  if(target.id==="order-clinic"){
+    const patients=$("order-patient"),plans=$("order-plan");
+    if(patients)patients.innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(target.value)).map(p=>[p.id,name(p.id)]),"");
+    if(plans)plans.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===patients?.value&&p.clinicId===target.value).map(p=>[p.id,p.title]),"");
+    return
   }
   if(act==="plan-done"){
     const planId=target.dataset.plan,itemId=target.dataset.id,done=target.checked;
