@@ -27,11 +27,11 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   const context={document,localStorage,setTimeout(){return 1},clearTimeout(){},URL,Date,console};
   vm.runInNewContext(script+"\nglobalThis.__hooks = {ui,route,render,modal,db};",context,{timeout:8000});
   const hooks=context.__hooks;
-  assert.ok(node("page").innerHTML.includes("Darbo vietos apžvalga"));
+  assert.ok(node("page").innerHTML.includes("Registratūros darbo vieta"));
   assert.equal(hooks.db.clinics.length,2);
   assert.equal(hooks.db.chairs.length,4);
   assert.equal(hooks.db.patients.length,20);
-  for(const r of ["calendar","patients","doctors","odontogram","plans","notes","finances","forms","reports","compensation","services","vlk","admin"]){
+  for(const r of ["calendar","patients","laborders","doctors","odontogram","plans","notes","finances","forms","reports","compensation","services","vlk","admin"]){
     hooks.route(r);
     assert.match(node("page").innerHTML,/<h1>/);
     assert.ok(node("page").innerHTML.length>200,r+" should render");
@@ -39,6 +39,9 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   hooks.route("vlk");
   assert.match(node("page").innerHTML,/Faktinė kompensuojama suma/);
   assert.match(node("page").innerHTML,/PSDF atvejai ir būsenos/);
+  hooks.route("overview");
+  assert.match(node("page").innerHTML,/Neatliktos užduotys/);
+  assert.match(node("page").innerHTML,/Laukiančiųjų sąrašas/);
   hooks.route("finances");
   const finance=node("page").innerHTML;
   for(const phrase of ["Grynaisiais","Kortele","Pavedimu","VLK (baigti atvejai)","Banko pavedimų suderinimas","Pacientų avansai","Dienos kasos uždarymas","Eksportuoti dienos CSV"]){
