@@ -800,6 +800,70 @@ function saveService(){
   });
   ui.modal=null;render();notify("Paslauga išsaugota.");
 }
+function saveVlkCase(){
+ const form=$("vlk-form");if(!form)return;
+ const data=stringValues(new FormData(form));
+ const category=vlkCategory(data.categoryId);
+ const current=(db.vlkCases||[]).find(c=>c.id===ui.vlkEditingId);
+ if(current&&["Baigtas","Atmestas"].includes(current.status)){notify("Užbaigto / atmesto atvejo redaguoti negalima.",true);return}
+ const amount=Number(data.claimedAmount),contribution=Number(data.patientContribution||0);
+ const labPrice=Number(data.labPrice||0),materialPrice=Number(data.materialPrice||0);
+ const labCatalog=(db.laboratoryCatalog||[]).find(x=>x.id===data.labCatalogId);
+ const labName=(labCatalog?.name||data.labName||"").trim();
+ const labCost=labCatalog?Number(labCatalog.price):labPrice;
+ const materialName=String(data.materialName||"").trim();
+ if(!Number.isFinite(labCost)||labCost<0||labCost>100000||!Number.isFinite(materialPrice)||materialPrice<0||materialPrice>100000||
+    (labCost>0&&!labName)||(materialPrice>0&&!materialName)){
+   notify("Patikrinkite laboratorijos ir medžiagų pavadinimus bei savikainą.",true);return
+ }
+ const clinician=db.staff.find(d=>d.id===data.doctorId);
+ const rate=current?.doctorPercent??(Number.isFinite(Number(clinician?.salaryPercent))?Number(clinician.salaryPercent):35);
+ // Įkainiai sąskaitos / VLK atvejo koregavimo metu yra fiksuojami ir po užbaigimo nekeičiami.
+ const usage=usageFeeSnapshot({materials:data.usageMaterials==="on",surgicalMaterials:data.usageSurgical==="on"},{
+   materials:current?.usage?.materialsFee??db.usageFees?.materials??5,
+   surgicalMaterials:current?.usage?.surgicalMaterialsFee??db.usageFees?.surgicalMaterials??20
+ });
+ const record={
+   id:current?.id||uid("vlk"),caseNumber:current?.caseNumber||"VLK-DEMO-"+String(Date.now()).slice(-8),
+   clinicId:data.clinicId,patientId:data.patientId,doctorId:data.doctorId,doctorPercent:rate,
+   categoryId:data.categoryId,claimedAmount:amount,patientContribution:contribution,
+   referralReference:String(data.referralReference||"").trim(),
+   evisReference:String(data.evisReference||"").trim(),
+   planId:data.planId||"",eligibilityChecked:data.eligibilityChecked==="on",
+   costs:{laboratory:labCost>0?[{id:current?.costs?.laboratory?.[0]?.id||uid("vlk-lab"),description:labName,laboratory:labCatalog?.laboratory||"Demo laboratorija",price:roundEuro(labCost),qty:1}]:[],
+     materials:materialPrice>0?[{id:current?.costs?.materials?.[0]?.id||uid("vlk-mat"),description:materialName,price:roundEuro(materialPrice),qty:1}]:[]},
+   usage,status:current?.status||"Planuojamas",completedAt:current?.completedAt||"",createdAt:current?.createdAt||new Date().toISOString(),demo:true
+ };
+ const issues=vlkCaseIssues(record,db.vlkContracts,db.patients,db.staff);
+ if(issues.length){notify(issues.join(" "),true);return}
+ if(data.planId&&!db.plans.some(p=>p.id===data.planId&&p.patientId===data.patientId&&p.clinicId===data.clinicId)){
+   notify("Pasirinktas gydymo planas nepriklauso šiam pacientui ar klinikai.",true);return
+ }
+ update(current?"Atnaujintas PSDF demo atvejis":"Sukurtas PSDF demo atvejis",record.id,state=>{
+   state.vlkCases??=[];
+   const index=state.vlkCases.findIndex(x=>x.id===record.id);
+   if(index<0)state.vlkCases.push(record);else state.vlkCases[index]=record;
+ });
+ ui.vlkEditingId="";render();notify("VLK atvejis išsaugotas (demo).");
+}
+function finalizeVlkCase(id,status){
+ const record=(db.vlkCases||[]).find(c=>c.id===id);
+ if(!record||["Baigtas","Atmestas"].includes(record.status))return;
+ if(status==="Baigtas"){
+   const problems=vlkCaseIssues(record,db.vlkContracts,db.patients,db.staff);
+   if(!record.eligibilityChecked)problems.push("Būtina rankiniu būdu patvirtinti, kad patikrinta paciento teisė ir dokumentai.");
+   if(vlkCategory(record.categoryId)?.kind==="prosthetics"&&!record.evisReference)
+     problems.push("Protezavimui įrašykite demonstracinį EVIS DP atvejo numerį / nuorodą.");
+   if(problems.length){notify(problems.join(" "),true);return}
+   if(!confirm("Patvirtinti, kad šis demonstracinis VLK atvejis BAIGTAS? Užfiksuota faktinė suma ir savikaina nebus keičiamos. Gydytojo atlygis bus įtrauktas į užbaigimo mėnesį."))return;
+ }else if(!confirm("Atmesti šį demonstracinį PSDF atvejį? Gydytojo atlygis nebus skaičiuojamas."))return;
+ update(status==="Baigtas"?"Užbaigtas VLK demo atvejis":"Atmestas VLK demo atvejis",id,state=>{
+   const item=state.vlkCases.find(x=>x.id===id);
+   item.status=status;
+   item.completedAt=status==="Baigtas"?new Date().toISOString():"";
+ });
+ ui.vlkEditingId="";render();notify(status==="Baigtas"?"VLK atvejis baigtas, atlygis apskaičiuotas (demo).":"VLK atvejis atmestas.");
+}
 function saveInvoice(){
   const v=stringValues(formData("invoice-form")),qty=Number(v.qty),price=Number(v.price);
   if(!v.clinicId||!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(v.clinicId))||!db.services.some(s=>s.id===v.serviceId)||
@@ -1010,6 +1074,11 @@ function handleAction(target,event){
     case "save-service":saveService();break;
     case "new-invoice":modal("invoice");break;
     case "open-invoice":modal("invoice",id);break;
+    case "vlk-save":saveVlkCase();break;
+    case "vlk-new":ui.vlkEditingId="";render();break;
+    case "vlk-edit":ui.vlkEditingId=id;render();break;
+    case "vlk-complete":finalizeVlkCase(id,"Baigtas");break;
+    case "vlk-reject":finalizeVlkCase(id,"Atmestas");break;
     case "save-invoice":saveInvoice();break;
     case "save-invoice-usage":saveInvoiceUsage();break;
     case "save-usage-fees":saveUsageFees();break;
@@ -1064,6 +1133,40 @@ function handleChange(target){
     return
   }
   if(target.id==="service-category-filter"){ui.category=target.value;render();return}
+  if(act==="vlk-contract"){
+    const clinicId=target.dataset.clinic,kind=target.dataset.kind;
+    if(!db.clinics.some(c=>c.id===clinicId)||!["prosthetics","consultation"].includes(kind))return;
+    update("Pakeista PSDF sutarties demo žyma",clinicId,state=>{
+      state.vlkContracts??={};state.vlkContracts[clinicId]??={prosthetics:false,consultation:false};
+      state.vlkContracts[clinicId][kind]=target.checked;
+    });return
+  }
+  if(target.id==="vlk-category"){
+    const cat=vlkCategory(target.value);
+    const limit=$("vlk-cap-display");
+    if(limit)limit.value=cat?.limit==null?"Pagal konkrečią sutartį":money(cat.limit);
+    return
+  }
+  if(target.id==="vlk-clinic"){
+    $("vlk-patient").innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(target.value)).map(p=>[p.id,name(p.id)]),"");
+    $("vlk-doctor").innerHTML=opt(db.staff.filter(d=>d.clinicIds.includes(target.value)).map(d=>[d.id,d.name]),"");
+    const p=$("vlk-form")?.querySelector('[name="planId"]');
+    if(p)p.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(x=>x.clinicId===target.value&&x.patientId===$("vlk-patient").value).map(x=>[x.id,x.title]),"");
+    return
+  }
+  if(target.id==="vlk-patient"){
+    const plans=$("vlk-form")?.querySelector('[name="planId"]');
+    if(plans)plans.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===target.value&&p.clinicId===$("vlk-clinic").value).map(p=>[p.id,p.title]),"");
+    return
+  }
+  if(target.id==="vlk-lab-choice"){
+    const selected=(db.laboratoryCatalog||[]).find(x=>x.id===target.value),form=$("vlk-form");
+    if(selected&&form){
+      form.querySelector('[name="labName"]').value=selected.name;
+      form.querySelector('[name="labPrice"]').value=selected.price;
+    }
+    return
+  }
   if(target.id==="salary-month"){ui.salaryMonth=target.value;render();return}
   if(target.id==="invoice-lab-work"){
     const chosen=(db.laboratoryCatalog||[]).find(x=>x.id===target.value);
