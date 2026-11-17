@@ -1,0 +1,69 @@
+// Atsiskaitymų demonstracinė apskaita; be kasos aparato, kortelių terminalo, bankų ar fiskalinės integracijos.
+export const PAYMENT_METHODS=[
+  {id:"cash",label:"Grynieji (rankinis patvirtinimas)"},
+  {id:"card",label:"Kortelė (rankinis terminalo kvito patvirtinimas)"},
+  {id:"transfer",label:"Bankinis pavedimas (rankinis išrašo patvirtinimas)"},
+  {id:"advance",label:"Paciento avanso panaudojimas"}
+];
+export const PAYMENT_STATUSES=["pending","confirmed","cancelled"];
+export const roundCents=value=>Math.round((Number(value)+Number.EPSILON)*100)/100;
+export function isConfirmed(payment){return payment?.status===undefined||payment?.status==="confirmed"}
+export function paidAmount(invoice){
+  return roundCents((invoice?.payments||[]).filter(isConfirmed).reduce((n,p)=>n+Number(p.amount||0),0)-
+    (invoice?.refunds||[]).reduce((n,r)=>n+Number(r.amount||0),0));
+}
+export function pendingAmount(invoice){
+ return roundCents((invoice?.payments||[]).filter(p=>p.status==="pending").reduce((n,p)=>n+Number(p.amount||0),0));
+}
+export function invoiceOutstanding(invoice,total){
+ return Math.max(0,roundCents(Number(total)-paidAmount(invoice)));
+}
+export function paymentEvents(invoice){
+ const events=[];
+ for(const p of invoice?.payments||[]){
+   if(!isConfirmed(p))continue;
+   const date=p.confirmedDate||p.date;
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date)))continue;
+   events.push({id:p.id,date,amount:Number(p.amount||0),method:p.method,kind:"payment"});
+ }
+ for(const r of invoice?.refunds||[]){
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(r.date)))continue;
+   events.push({id:r.id,date:r.date,amount:-Number(r.amount||0),method:r.method,kind:"refund"});
+ }
+ return events.filter(e=>Number.isFinite(e.amount)&&e.amount!==0)
+   .sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
+}
+export function cashRounded(amount){return roundCents(Math.round(Number(amount)*20)/20)}
+export function cashDifference(amount){return roundCents(cashRounded(amount)-Number(amount))}
+export function advanceRemaining(entry){
+ const used=(entry?.allocations||[]).reduce((sum,a)=>sum+Number(a.amount||0),0);
+ const returned=(entry?.refunds||[]).reduce((sum,r)=>sum+Number(r.amount||0),0);
+ return Math.max(0,roundCents((isConfirmed(entry)?Number(entry.amount||0):0)-used-returned));
+}
+export function patientAdvanceBalance(advances,patientId,clinicId){
+ return roundCents((advances||[]).filter(a=>a.patientId===patientId&&a.clinicId===clinicId).reduce((n,a)=>n+advanceRemaining(a),0));
+}
+export function cashDaySummary(invoices,advances,date,clinicId="all"){
+ const allowed=x=>clinicId==="all"||x.clinicId===clinicId;
+ const rows=[];
+ for(const invoice of invoices||[]){
+   if(!allowed(invoice))continue;
+   for(const p of invoice.payments||[]){
+     if(!isConfirmed(p)||p.method==="advance"||(p.confirmedDate||p.date)!==date)continue;
+     rows.push({kind:"invoice",direction:"in",invoiceNumber:invoice.number,method:p.method,amount:Number(p.amount),cashAmount:p.method==="cash"?Number(p.cashReceived??p.amount):0,reference:p.reference||"",patientId:invoice.patientId});
+   }
+   for(const r of invoice.refunds||[])if(r.date===date){
+     rows.push({kind:"refund",direction:"out",invoiceNumber:invoice.number,method:r.method,amount:-Number(r.amount),cashAmount:r.method==="cash"?-Number(r.cashReturned??r.amount):0,reference:r.reference||"",patientId:invoice.patientId});
+   }
+ }
+ for(const advance of advances||[]){
+   if(!allowed(advance))continue;
+   if(isConfirmed(advance)&&(advance.confirmedDate||advance.date)===date)
+     rows.push({kind:"deposit",direction:"in",invoiceNumber:"Avansas",method:advance.method,amount:Number(advance.amount),cashAmount:advance.method==="cash"?Number(advance.cashReceived??advance.amount):0,reference:advance.reference||"",patientId:advance.patientId});
+   for(const refund of advance.refunds||[])if(refund.date===date)
+     rows.push({kind:"advance-refund",direction:"out",invoiceNumber:"Avanso grąžinimas",method:refund.method,amount:-Number(refund.amount),cashAmount:refund.method==="cash"?-Number(refund.cashReturned??refund.amount):0,reference:refund.reference||"",patientId:advance.patientId});
+ }
+ const totals={cash:0,card:0,transfer:0};
+ for(const row of rows)if(Object.hasOwn(totals,row.method))totals[row.method]=roundCents(totals[row.method]+(row.method==="cash"?row.cashAmount:row.amount));
+ return {rows,totals,cashNet:totals.cash,netTotal:roundCents(Object.values(totals).reduce((a,b)=>a+b,0))};
+}
