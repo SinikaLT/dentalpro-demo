@@ -43,7 +43,7 @@ export function salaryEntitlement(received,costs,percentage){
 export function salaryAccruals(invoices){
  const rows=[];
  for(const invoice of invoices||[]){
-   if(!invoice.doctorId||!Number.isFinite(Number(invoice.doctorPercent)))continue;
+   if(invoice.vlkCaseId||!invoice.doctorId||!Number.isFinite(Number(invoice.doctorPercent)))continue;
    const total=(invoice.items||[]).reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||1),0);
    const costs=invoiceCosts(invoice);
    let received=0,earned=0;
