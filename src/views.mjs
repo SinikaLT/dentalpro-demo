@@ -823,32 +823,33 @@ function viewDrawer(){
   if(d.kind==="invoice"){
     const invoice=db.invoices.find(i=>i.id===d.id);
     if(invoice){
-      const total=invoiceTotal(invoice),paid=paidAmount(invoice),remaining=invoiceOutstanding(invoice,total),reserved=pendingAmount(invoice),uncommitted=Math.max(0,roundEuro(remaining-reserved));
+      const costLocked=(invoice.payments||[]).length>0;
+       const total=invoiceTotal(invoice),paid=paidAmount(invoice),remaining=invoiceOutstanding(invoice,total),reserved=pendingAmount(invoice),uncommitted=Math.max(0,roundEuro(remaining-reserved));
       return wrap("Sąskaita "+invoice.number,'<div class="detail-grid"><div class="detail-item"><small>Pacientas</small><b>'+esc(name(invoice.patientId))+'</b></div>'+
         '<div class="detail-item"><small>Data</small><b>'+fmt(invoice.date)+'</b></div>'+
         '<div class="detail-item"><small>Suma</small><b>'+money(total)+'</b></div><div class="detail-item"><small>Likutis</small><b>'+money(remaining)+'</b></div></div>'+
         '<h3 style="margin-top:24px">Paslaugos</h3>'+(invoice.planItemId?'<p class="help">Susieta su gydymo plano procedūra: '+esc(invoice.planItemId)+'</p>':"")+invoice.items.map(x=>'<div class="segment">'+esc(x.description)+' · '+money(x.price)+'</div>').join("")+
         '<h3 style="margin-top:18px">Vienkartiniai medžiagų atskaitymai nuo gydytojo apyvartos</h3>'+
          '<div class="segment">'+
-         '<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="invoice-usage-materials" '+(invoice.usage?.materials?"checked":"")+' '+(paid>0?"disabled":"")+'> Medžiagos (sterilūs paketai, autoklavo įrankiai ir kt.) – '+money(invoice.usage?.materialsFee??DEFAULT_USAGE_FEES.materials)+'</label>'+
-         '<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" id="invoice-usage-surgical" '+(invoice.usage?.surgicalMaterials?"checked":"")+' '+(paid>0?"disabled":"")+'> Chirurginės medžiagos – '+money(invoice.usage?.surgicalMaterialsFee??DEFAULT_USAGE_FEES.surgicalMaterials)+'</label>'+
+         '<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="invoice-usage-materials" '+(invoice.usage?.materials?"checked":"")+' '+(costLocked?"disabled":"")+'> Medžiagos (sterilūs paketai, autoklavo įrankiai ir kt.) – '+money(invoice.usage?.materialsFee??DEFAULT_USAGE_FEES.materials)+'</label>'+
+         '<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" id="invoice-usage-surgical" '+(invoice.usage?.surgicalMaterials?"checked":"")+' '+(costLocked?"disabled":"")+'> Chirurginės medžiagos – '+money(invoice.usage?.surgicalMaterialsFee??DEFAULT_USAGE_FEES.surgicalMaterials)+'</label>'+
          '<p class="help">Atskaitoma vieną kartą už šią sąskaitoje esančią paslaugą, ne nuo kiekvieno mokėjimo. Jei pažymėtos abi – atskaitoma abiejų įkainių suma. Paciento mokėtina suma nesikeičia.</p>'+
-         (paid===0?btn("Išsaugoti medžiagų žymas","save-invoice-usage","btn small"):'<span class="pill grey">Užrakinta po mokėjimo</span>')+
+         (!costLocked?btn("Išsaugoti medžiagų žymas","save-invoice-usage","btn small"):'<span class="pill grey">Užrakinta po mokėjimo</span>')+
          '</div>'+
          '<p class="help">Fiksuoti atskaitymai: '+money((invoiceCosts(invoice).standard||0)+(invoiceCosts(invoice).surgical||0))+' · Kitos medžiagos ir laboratorija atskaitomos papildomai.</p>'+'<h3 style="margin-top:18px">Atlikęs gydytojas ir savikaina</h3>'+ 
         (invoice.doctorId?'<div class="notice">Gydytojas: <b>'+esc(doctor(invoice.doctorId))+'</b> · Užfiksuotas atlygio tarifas: <b>'+Number(invoice.doctorPercent)+' %</b></div>':'<div class="notice warn">Sąskaita nepriskirta gydytojui, todėl neįtraukiama į atlygio skaičiavimą.</div>')+
         '<p class="help">Sąskaitos savikaina turi būti suvestinė prieš pirmąjį mokėjimą. Užregistravus mokėjimą savikainos eilutės užrakinamos, kad nekeistų ankstesnių atlygio skaičiavimų.</p>'+
         '<h3>Laboratorijos darbai ('+money(invoiceCosts(invoice).lab)+')</h3>'+
-        (invoice.costs?.laboratory||[]).map(x=>'<div class="segment">'+esc(x.description)+' · '+esc(x.laboratory||"")+' · '+Number(x.qty||1)+' × '+money(x.price)+(paid===0?btn("Pašalinti","remove-invoice-cost","btn small ghost","data-type=\'laboratory\' data-id=\'"+esc(x.id)+"\'"):"")+'</div>').join("")+
-        (paid===0?'<form id="invoice-lab-cost-form"><div class="field-grid"><div class="field full"><label>Dantų technikų laboratorija</label><select id="invoice-laboratory" name="selectedLaboratory"><option value="">Pasirinkite laboratoriją</option>'+opt(labNames().map(x=>[x,x]),"")+'<option value="__manual">Kita laboratorija (įvesti ranka)</option></select></div>'+
+        (invoice.costs?.laboratory||[]).map(x=>'<div class="segment">'+esc(x.description)+' · '+esc(x.laboratory||"")+' · '+Number(x.qty||1)+' × '+money(x.price)+(!costLocked?btn("Pašalinti","remove-invoice-cost","btn small ghost","data-type=\'laboratory\' data-id=\'"+esc(x.id)+"\'"):"")+'</div>').join("")+
+        (!costLocked?'<form id="invoice-lab-cost-form"><div class="field-grid"><div class="field full"><label>Dantų technikų laboratorija</label><select id="invoice-laboratory" name="selectedLaboratory"><option value="">Pasirinkite laboratoriją</option>'+opt(labNames().map(x=>[x,x]),"")+'<option value="__manual">Kita laboratorija (įvesti ranka)</option></select></div>'+
         '<div class="field full"><label>Laboratorijos darbas</label><select id="invoice-lab-work" name="labWorkId">'+labOptions("")+'</select></div>'+
         '<div class="field"><label>Laboratorijos pavadinimas (rankiniam įrašui)</label><input name="laboratory" maxlength="160" placeholder="Jei laboratorijos nėra sąraše"></div><div class="field"><label>Darbo pavadinimas</label><input name="description" maxlength="160" placeholder="Pvz., cirkonio vainikėlis"></div>'+
         '<div class="field"><label>Vieneto įkainis (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" value="0"></div>'+
         '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div></div>'+
         '<p>'+btn("+ Pridėti laboratorijos darbą","add-invoice-lab","btn small")+'</p></form>':"")+
         '<h3>Medžiagos ir detalės ('+money(invoiceCosts(invoice).materials)+')</h3>'+
-        (invoice.costs?.materials||[]).map(x=>'<div class="segment">'+esc(x.description)+' · '+Number(x.qty||1)+' × '+money(x.price)+(paid===0?btn("Pašalinti","remove-invoice-cost","btn small ghost","data-type=\'materials\' data-id=\'"+esc(x.id)+"\'"):"")+'</div>').join("")+
-        (paid===0?'<form id="invoice-material-form"><div class="field-grid"><div class="field"><label>Detalė / medžiaga</label><input name="description" maxlength="160" required placeholder="Pvz., multiunitas, stiklo pluošto kaištis"></div>'+
+        (invoice.costs?.materials||[]).map(x=>'<div class="segment">'+esc(x.description)+' · '+Number(x.qty||1)+' × '+money(x.price)+(!costLocked?btn("Pašalinti","remove-invoice-cost","btn small ghost","data-type=\'materials\' data-id=\'"+esc(x.id)+"\'"):"")+'</div>').join("")+
+        (!costLocked?'<form id="invoice-material-form"><div class="field-grid"><div class="field"><label>Detalė / medžiaga</label><input name="description" maxlength="160" required placeholder="Pvz., multiunitas, stiklo pluošto kaištis"></div>'+
         '<div class="field"><label>Kaina (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" required></div>'+
         '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div></div>'+
         '<p>'+btn("+ Pridėti detalę / medžiagą","add-invoice-material","btn small")+'</p></form>':"")+
