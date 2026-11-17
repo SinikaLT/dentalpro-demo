@@ -278,19 +278,37 @@ function viewPlans(){
     '<section>'+(plan?planDetails(plan):empty("Planas nepasirinktas","Pradėkite nuo naujo gydymo plano."))+'</section></div></div>';
 }
 function planDetails(p){
-  const patientId=p.patientId;
-  return '<h3>'+esc(p.title)+'</h3><div class="flex"><label>Būsena</label><select id="plan-status" data-change="plan-status" style="max-width:230px">'+simple(PLAN_STATUSES,p.status)+'</select><span class="pill">Sąmata '+money(planTotal(p))+'</span></div>'+
-    '<div class="table-wrap"><table class="data-table"><thead><tr><th>Dantis</th><th>Procedūra</th><th>Suma</th><th>Atlikta</th></tr></thead><tbody>'+
-    p.items.map(i=>'<tr><td>'+esc(i.tooth||"—")+'</td><td>'+esc(i.description)+'</td><td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
-    '<td><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'>'+(invasiveConsentForItem(db.forms,patientId,p.id,i.id)
-     ?'<span class="pill">Sutikimas (demo): '+esc(invasiveConsentForItem(db.forms,patientId,p.id,i.id).answers?.decision||"")+'</span>'
-     :'<span class="pill grey">Invazinis sutikimas (jei taikoma): nesusietas</span>')+
-     btn("Sutikimas","consent-plan-item","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+btn("Pašalinti","delete-plan-item","btn small ghost","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
-    '<h3 style="margin-top:20px">Pridėti procedūrą</h3><form id="plan-item-form"><div class="field-grid"><div class="field"><label>Paslauga</label><select name="serviceId" id="plan-item-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
-    '<div class="field"><label>Dantis</label><input name="tooth" placeholder="Pvz., 16"></div><div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="20" value="1"></div>'+
-    '<div class="field"><label>Pasirenkama kaina (€)</label><div id="plan-price-container">'+pricePicker(primaryService()?.id)+'</div><small class="help">Intervalai: 10 € žingsniu ir tiksli intervalo pabaiga. „Nuo“ kainos tikslinamos.</small></div>'+
-    '<div class="field full"><label>Aprašymas</label><input name="description" placeholder="Papildomas paaiškinimas"></div></div>'+
-    '<p style="margin-top:14px">'+btn("+ Pridėti į planą","save-plan-item","btn primary")+'</p></form>';
+ const patientId=p.patientId;
+ const orders=(db.labOrders||[]).filter(o=>o.planId===p.id);
+ return '<h3>'+esc(p.title)+'</h3><div class="flex"><label>Būsena</label><select id="plan-status" data-change="plan-status" style="max-width:230px">'+simple(PLAN_STATUSES,p.status)+'</select>'+
+ '<span class="pill">Sąmata '+money(planTotal(p))+'</span>'+
+ '<span class="pill">'+p.items.filter(x=>x.done).length+'/'+p.items.length+' procedūrų atlikta</span></div>'+
+ '<div class="table-wrap"><table class="data-table"><thead><tr><th>Dantis</th><th>Procedūra / etapas</th><th>Terminas</th><th>Suma</th><th>Veiksmai</th></tr></thead><tbody>'+
+ p.items.map(i=>{
+   const form=invasiveConsentForItem(db.forms,patientId,p.id,i.id);
+   return '<tr><td>'+esc(i.tooth||"—")+'</td><td><b>'+esc(i.description)+'</b><small style="display:block">'+esc(i.stage||"Procedūra")+'</small>'+
+     '<label style="display:block"><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'> Atlikta</label></td>'+
+     '<td>'+fmt(i.targetDate)+(i.targetDate&&!i.done&&i.targetDate<isoDate()?' <span class="pill danger">Vėluoja</span>':"")+'</td>'+
+     '<td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
+     '<td>'+(form?'<span class="pill">Sutikimas: '+esc(form.answers?.decision||"")+'</span>':'<span class="pill grey">Invazinis sutikimas (jei taikoma): nėra</span>')+
+     btn("Sutikimas","consent-plan-item","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+
+     btn("Kitas vizitas","plan-next-appointment","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+
+     btn("Sąskaita","plan-invoice","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+
+     btn("Pašalinti","delete-plan-item","btn small ghost","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+'</td></tr>';
+ }).join("")+'</tbody></table></div>'+
+ '<h3 style="margin-top:16px">Susieti laboratorijos užsakymai</h3>'+
+ orders.map(o=>'<div class="segment">'+esc(o.description)+' · '+esc(o.laboratory)+' · '+pill(o.status)+' · '+fmt(o.dueDate)+'</div>').join("")+
+ (!orders.length?'<p class="help">Su planu nesusietų laboratorijos darbų čia nematysite.</p>':"")+
+ btn("+ Laboratorijos užsakymas","plan-lab-order","btn small")+
+ '<h3 style="margin-top:20px">Pridėti gydymo etapą / procedūrą</h3><form id="plan-item-form"><div class="field-grid">'+
+ '<div class="field"><label>Paslauga</label><select name="serviceId" id="plan-item-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
+ '<div class="field"><label>Dantis</label><input name="tooth" placeholder="Pvz., 16"></div>'+
+ '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="20" value="1"></div>'+
+ '<div class="field"><label>Pasirenkama kaina (€)</label><div id="plan-price-container">'+pricePicker(primaryService()?.id)+'</div><small class="help">Intervalai: 10 € žingsniu ir tiksli intervalo pabaiga.</small></div>'+
+ '<div class="field"><label>Gydymo etapas</label><select name="stage">'+simple(["Konsultacija","Gydymas","Atspaudai / skenavimas","Laboratorija","Matavimas","Fiksavimas","Kontrolė"],"Gydymas")+'</select></div>'+
+ '<div class="field"><label>Planuojama data</label><input type="date" name="targetDate" value="'+isoDate()+'"></div>'+
+ '<div class="field full"><label>Aprašymas</label><input name="description" maxlength="200" placeholder="Papildomas paaiškinimas"></div></div>'+
+ '<p style="margin-top:14px">'+btn("+ Pridėti į planą","save-plan-item","btn primary")+'</p></form>';
 }
 function viewNotes(){
   const p=db.patients.find(p=>p.id===ui.patient)||listPatients()[0];
@@ -1008,7 +1026,9 @@ function savePlanItem(){
   if(!p)return;
   const qty=Number(f.qty),price=Number(f.price);
   if(!Number.isInteger(qty)||qty<1||qty>20||!Number.isFinite(price)||price<0){notify("Neteisingas kiekis ar kaina.",true);return}
-  const item={id:uid("item"),serviceId:f.serviceId,description:f.description?.trim()||service(f.serviceId),tooth:f.tooth?.trim()||"",qty,price,done:false};
+  if(f.targetDate&&!validDate(f.targetDate)){notify("Neteisinga planuojamos procedūros data.",true);return}
+   const item={id:uid("item"),serviceId:f.serviceId,description:f.description?.trim()||service(f.serviceId),tooth:f.tooth?.trim()||"",
+      qty,price,stage:f.stage||"Gydymas",targetDate:f.targetDate||"",done:false};
   update("Į planą pridėta procedūra",p.id,s=>s.plans.find(x=>x.id===p.id).items.push(item));
   ui.selectedPlan=p.id;render();notify("Procedūra pridėta.");
 }
@@ -1466,6 +1486,21 @@ function handleAction(target,event){
     case "new-plan":modal("plan");break;
     case "save-plan":savePlan();break;
     case "select-plan":ui.selectedPlan=id;render();break;
+    case "plan-lab-order":ui.patient=db.plans.find(p=>p.id===ui.selectedPlan)?.patientId||ui.patient;route("laborders");break;
+    case "plan-next-appointment":{
+      const plan=db.plans.find(p=>p.id===target.dataset.plan),item=plan?.items.find(x=>x.id===id);
+      if(!plan||!item)break;
+      ui.patient=plan.patientId;
+      modal("appointment","",{preset:{clinicId:plan.clinicId,patientId:plan.patientId,serviceId:item.serviceId,date:item.targetDate||ui.day}});
+      break;
+    }
+    case "plan-invoice":{
+      const plan=db.plans.find(p=>p.id===target.dataset.plan),item=plan?.items.find(x=>x.id===id);
+      if(!plan||!item)break;
+      ui.patient=plan.patientId;
+      modal("invoice","",{planItemId:item.id,planId:plan.id,clinicId:plan.clinicId});
+      break;
+    }
     case "save-plan-item":savePlanItem();break;
     case "delete-plan-item":if(confirm("Pašalinti procedūrą iš demonstracinio gydymo plano?")){
       update("Pašalinta gydymo plano procedūra",target.dataset.plan,s=>{
