@@ -920,7 +920,7 @@ function saveVlkCase(){
  if(current&&["Baigtas","Atmestas"].includes(current.status)){notify("Užbaigto / atmesto atvejo redaguoti negalima.",true);return}
  const amount=Number(data.claimedAmount),contribution=Number(data.patientContribution||0);
  const labPrice=Number(data.labPrice||0),materialPrice=Number(data.materialPrice||0);
- const labCatalog=(db.laboratoryCatalog||[]).find(x=>x.id===data.labCatalogId);
+ const labCatalog=labJobs(data.selectedLaboratory).find(x=>x.id===data.labCatalogId);
  const labName=(labCatalog?.name||data.labName||"").trim();
  const labCost=labCatalog?Number(labCatalog.price):labPrice;
  const materialName=String(data.materialName||"").trim();
@@ -941,8 +941,8 @@ function saveVlkCase(){
    categoryId:data.categoryId,claimedAmount:amount,patientContribution:contribution,
    referralReference:String(data.referralReference||"").trim(),
    evisReference:String(data.evisReference||"").trim(),
-   planId:data.planId||"",eligibilityChecked:data.eligibilityChecked==="on",
-   costs:{laboratory:labCost>0?[{id:current?.costs?.laboratory?.[0]?.id||uid("vlk-lab"),description:labName,laboratory:labCatalog?.laboratory||"Demo laboratorija",price:roundEuro(labCost),qty:1}]:[],
+   planId:data.planId||"",labCatalogId:labCatalog?.id||"",eligibilityChecked:data.eligibilityChecked==="on",
+   costs:{laboratory:labCost>0?[{id:current?.costs?.laboratory?.[0]?.id||uid("vlk-lab"),description:labName,laboratory:labCatalog?.laboratory||(data.selectedLaboratory&&data.selectedLaboratory!=="__manual"?data.selectedLaboratory:"Demo laboratorija"),price:roundEuro(labCost),qty:1}]:[],
      materials:materialPrice>0?[{id:current?.costs?.materials?.[0]?.id||uid("vlk-mat"),description:materialName,price:roundEuro(materialPrice),qty:1}]:[]},
    usage,status:data.caseStatus==="Vykdomas"?"Vykdomas":"Planuojamas",completedAt:current?.completedAt||"",createdAt:current?.createdAt||new Date().toISOString(),demo:true
  };
@@ -1186,9 +1186,9 @@ function updateInvoiceCost(type,removalId=""){
    });notify("Savikainos eilutė pašalinta.");return;
  }
  const form=$(type==="materials"?"invoice-material-form":"invoice-lab-cost-form");if(!form)return;
- const v=stringValues(new FormData(form)),catalog=(db.laboratoryCatalog||[]).find(x=>x.id===v.labWorkId);
+ const v=stringValues(new FormData(form)),catalog=labJobs(v.selectedLaboratory).find(x=>x.id===v.labWorkId);
  const description=type==="laboratory"&&catalog?catalog.name:String(v.description||"").trim();
- const laboratory=type==="laboratory"?(catalog?.laboratory||String(v.laboratory||"").trim()):"";
+ const laboratory=type==="laboratory"?(catalog?.laboratory||(v.selectedLaboratory&&v.selectedLaboratory!=="__manual"?v.selectedLaboratory:String(v.laboratory||"").trim())):"";
  const price=type==="laboratory"&&catalog?Number(catalog.price):Number(v.price);
  const qty=Number(v.qty);
  if(!validCost(description,price,qty)||(type==="laboratory"&&!laboratory)){notify("Įveskite pavadinimą, kainą ir kiekį.",true);return}
