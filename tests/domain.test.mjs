@@ -212,7 +212,7 @@ test("mokėjimų dalimis apskaita išskaido atlyginimą pagal mokėjimo mėnesį
    clinicId:"akm",patientId:"p-0-0",items:[{description:"Protezavimas",price:600,qty:1}],
    costs:{laboratory:[{description:"Cirkonio vainikėlis",price:120,qty:1}],materials:[{description:"Multiunitas",price:40,qty:1}]},
    payments:[{id:"p1",date:"2026-11-10",amount:100},{id:"p2",date:"2026-11-21",amount:300},{id:"p3",date:"2026-12-04",amount:200}]};
- assert.deepEqual(invoiceCosts(invoice),{lab:120,materials:40});
+ assert.deepEqual(invoiceCosts(invoice),{lab:120,materials:40,standard:0,surgical:0});
  const entries=salaryAccruals([invoice]);
  assert.deepEqual(entries.map(e=>e.earning),[0,84,70]);
  assert.equal(salarySummary([invoice],"2026-11").total,84);
@@ -236,4 +236,33 @@ test("CSV laboratorijos kainynas skaito Excel eksportą ir atmeta klaidas",()=>{
  assert.equal(parsed[0].price,95.5);
  assert.equal(parsed[1].laboratory,"Demo B");
  assert.throws(()=>parseLaboratoryCsv("Laboratorija;Darbas;Kaina\nDemo A;Testas;-5"));
+});
+
+
+test("standartinių medžiagų 5 € atskaitymas mažina tik gydytojo atlygio bazę",()=>{
+ const invoice={items:[{price:100,qty:1}],usage:{materials:true,surgicalMaterials:false},
+  costs:{laboratory:[],materials:[]},doctorId:"dr-akm-1",doctorPercent:40,
+  clinicId:"akm",patientId:"p-0-0",number:"DP-5",payments:[{id:"pay5",date:"2026-11-10",amount:100}]};
+ assert.deepEqual(invoiceCosts(invoice),{lab:0,materials:0,standard:5,surgical:0});
+ assert.equal(invoiceTotal(invoice),100);
+ assert.equal(salaryAccruals([invoice])[0].earning,38);
+});
+test("chirurginių medžiagų 20 € atskaitymas ir abiejų žymų sudėtis",()=>{
+ const invoice={items:[{price:100,qty:1}],usage:{materials:false,surgicalMaterials:true},
+  costs:{laboratory:[],materials:[]},doctorId:"dr-akm-1",doctorPercent:40,
+  clinicId:"akm",patientId:"p-0-0",number:"DP-20",payments:[{id:"pay20",date:"2026-11-10",amount:100}]};
+ assert.equal(invoiceCosts(invoice).surgical,20);
+ assert.equal(salaryAccruals([invoice])[0].earning,32);
+ invoice.usage.materials=true;
+ assert.equal(salaryAccruals([invoice])[0].earning,30);
+ assert.equal(invoiceTotal(invoice),100);
+});
+test("daliniuose mokėjimuose fiksuotos medžiagos atskaitomos vieną kartą",()=>{
+ const invoice={id:"partial-usage",items:[{price:100,qty:1}],usage:{materials:true,surgicalMaterials:true},
+  costs:{laboratory:[],materials:[]},doctorId:"dr-akm-1",doctorPercent:40,
+  clinicId:"akm",patientId:"p-0-0",number:"DP-25",
+  payments:[{id:"a",date:"2026-11-10",amount:20},{id:"b",date:"2026-12-10",amount:80}]};
+ assert.deepEqual(salaryAccruals([invoice]).map(x=>x.earning),[0,30]);
+ assert.equal(salarySummary([invoice],"2026-11").total,0);
+ assert.equal(salarySummary([invoice],"2026-12").total,30);
 });
