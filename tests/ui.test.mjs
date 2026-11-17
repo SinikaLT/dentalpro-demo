@@ -25,7 +25,7 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
     getItem:key=>saved.get(key)??null,setItem:(key,v)=>saved.set(key,v),removeItem:key=>saved.delete(key)
   };
   const context={document,localStorage,setTimeout(){return 1},clearTimeout(){},URL,Date,console};
-  vm.runInNewContext(script+"\nglobalThis.__hooks = {ui,route,render,modal,handleAction,handleChange,get db(){return db}};",context,{timeout:8000});
+  vm.runInNewContext(script+"\nglobalThis.__hooks = {ui,route,render,modal,handleAction,handleChange,update,get db(){return db}};",context,{timeout:8000});
   const hooks=context.__hooks;
   assert.ok(node("page").innerHTML.includes("Registratūros darbo vieta"));
   assert.equal(hooks.db.clinics.length,2);
@@ -78,9 +78,9 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
     "Laboratory selection should precede work selection");
   assert.match(invoiceDrawer,/id="payment-method"/);
   assert.match(invoiceDrawer,/option value="cash" selected/);
-  hooks.db.vlkCases.push({id:"vlk-ui",caseNumber:"VLK-DEMO-UI",status:"Vykdomas",
+  hooks.update("test VLK","vlk-ui",state=>state.vlkCases.push({id:"vlk-ui",caseNumber:"VLK-DEMO-UI",status:"Vykdomas",
     clinicId:"akm",patientId:"p-0-0",doctorId:"dr-akm-1",
-    patientContribution:75,claimedAmount:300,doctorPercent:35,categoryId:"adult-standard"});
+    patientContribution:75,claimedAmount:300,doctorPercent:35,categoryId:"adult-standard"}));
   hooks.modal("vlk-copay","vlk-ui");
   assert.match(node("drawer-root").innerHTML,/Paciento VLK priemoka/);
   assert.match(node("drawer-root").innerHTML,/save-vlk-copay/);
@@ -88,9 +88,9 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   assert.match(node("page").innerHTML,/new-vlk-copay/);
   hooks.route("laborders");
   assert.match(node("page").innerHTML,/id="order-appointment"/);
-  hooks.db.plans.push({id:"plan-ui",patientId:"p-0-0",clinicId:"akm",title:"Etapų planas",status:"Vykdomas",
+  hooks.update("test plan","plan-ui",state=>state.plans.push({id:"plan-ui",patientId:"p-0-0",clinicId:"akm",title:"Etapų planas",status:"Vykdomas",
     items:[{id:"line-ui",serviceId:"s-cons",description:"Procedūra A",price:60,qty:1,
-      stage:"Gydymas",targetDate:"2026-11-17",done:false}]});
+      stage:"Gydymas",targetDate:"2026-11-17",done:false}]}));
   hooks.ui.patient="p-0-0";hooks.ui.selectedPlan="plan-ui";
   hooks.route("plans");
   hooks.handleChange({dataset:{change:"plan-done",plan:"plan-ui",id:"line-ui"},checked:true});
