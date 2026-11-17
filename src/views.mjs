@@ -710,10 +710,32 @@ function viewDrawer(){
         '<div class="field"><label>Kaina (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" required></div>'+
         '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div></div>'+
         '<p>'+btn("+ Pridėti detalę / medžiagą","add-invoice-material","btn small")+'</p></form>':"")+
-        '<h3 style="margin-top:22px">Demonstraciniai mokėjimai</h3>'+(invoice.payments||[]).map(p=>'<div class="segment">'+fmt(p.date)+' · '+esc(p.method)+' · '+money(p.amount)+'</div>').join("")+
-        (remaining>0?'<form id="payment-form" style="margin-top:18px"><div class="field-grid"><div class="field"><label>Suma (€)</label><input type="number" name="amount" min=".01" max="'+remaining.toFixed(2)+'" step=".01" value="'+remaining.toFixed(2)+'"></div>'+
-        '<div class="field"><label>Būdas</label><select name="method">'+simple(["Grynieji (demo)","Kortelė (demo)","Pavedimas (demo)"],"Kortelė (demo)")+'</select></div></div>'+
-        '<div class="drawer-footer">'+btn("Registruoti mokėjimą","save-payment","btn primary")+'</div></form>':'<div class="notice">Sąskaita apmokėta (demonstracinis įrašas).</div>'));
+        '<h3 style="margin-top:22px">Mokėjimų istorija</h3>'+
+        '<p class="help">Gauti mokėjimai patvirtinami ranka pagal kasos / kortelės kvitą ar banko išrašą. Tik patvirtinti mokėjimai skaičiuoja gydytojo atlygį.</p>'+
+        (invoice.payments||[]).map(p=>'<div class="segment">'+fmt(p.confirmedDate||p.date)+' · '+esc(PAYMENT_METHODS.find(x=>x.id===paymentMethod(p.method))?.label||p.method)+' · '+money(p.amount)+' · '+esc(p.status==="pending"?"Laukiama":p.status==="cancelled"?"Atmesta":"Patvirtinta")+(p.reference?' · '+esc(p.reference):"")+(p.status==="pending"?btn("Patvirtinti","payment-confirm","btn small primary","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'")+btn("Atmesti","payment-cancel","btn small ghost","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'"):"")+'</div>').join("")+
+        (invoice.refunds||[]).map(r=>'<div class="segment">Grąžinimas · '+fmt(r.date)+' · '+esc(r.method)+' · –'+money(r.amount)+' · '+esc(r.reason||"")+'</div>').join("")+
+        '<p><b>Patvirtinta po grąžinimų: '+money(paid)+'</b> · Laukiama: '+money(reserved)+' · Likutis: '+money(remaining)+'</p>'+
+        (uncommitted>0?'<form id="payment-form" style="margin-top:18px"><h3>Registruoti dalinį ar mišrų mokėjimą</h3><div class="field-grid">'+
+        '<div class="field"><label>Mokėjimo suma (€)</label><input name="amount" type="number" min=".01" max="'+uncommitted.toFixed(2)+'" step=".01" required value="'+uncommitted.toFixed(2)+'"></div>'+
+        '<div class="field"><label>Būdas</label><select name="method" id="payment-method">'+opt(PAYMENT_METHODS.filter(x=>x.id!=="advance").map(x=>[x.id,x.label]),"card")+'</select></div>'+
+        '<div class="field"><label>Būsena</label><select name="status" id="payment-status"><option value="confirmed">Patvirtinta rankiniu būdu</option><option value="pending">Laukiama patvirtinimo</option></select></div>'+
+        '<div class="field"><label>Mokėjimo data</label><input name="date" type="date" value="'+isoDate()+'" required></div>'+
+        '<div class="field"><label>Išorinio kvito / mokėjimo nuoroda</label><input name="reference" maxlength="120" placeholder="Kasa, terminalas, pavedimas"></div>'+
+        '<div class="field"><label>Paciento įteikti grynieji (€)</label><input name="cashReceived" type="number" min="0" step="0.01" placeholder="Tik grynųjų grąžai"></div></div>'+
+        '<p class="help">Grynųjų faktinė suma apvalinama iki 0,05 €; grąža nuo įteiktos sumos apskaičiuojama automatiškai. Kortelė ir pavedimas neapvalinami. Pavedimas registruojamas kaip laukiantis iki banko išrašo patvirtinimo.</p>'+
+        '<p>'+btn("Įrašyti mokėjimą","save-payment","btn primary")+'</p></form>':'<div class="notice">Nėra laisvo likučio naujam mokėjimui (gali būti laukiančių mokėjimų).</div>')+
+        (paid>0?'<form id="invoice-refund-form"><h3>Grąžinimas</h3><div class="field-grid">'+
+        '<div class="field"><label>Suma (€)</label><input name="amount" type="number" min=".01" max="'+paid.toFixed(2)+'" step=".01" required></div>'+
+        '<div class="field"><label>Grąžinimo būdas</label><select name="method">'+opt(PAYMENT_METHODS.filter(x=>x.id!=="advance").map(x=>[x.id,x.label]),"transfer")+'</select></div>'+
+        '<div class="field"><label>Nuoroda</label><input name="reference" maxlength="120"></div>'+
+        '<div class="field"><label>Priežastis *</label><input name="reason" maxlength="250" required></div></div>'+
+        '<p>'+btn("Registruoti grąžinimą","invoice-refund","btn small ghost")+'</p></form>':"")+
+        '<h3>Paciento avansai</h3><p>Turimas avanso likutis: <b>'+money(patientAdvanceBalance(db.advances||[],invoice.patientId,invoice.clinicId))+'</b></p>'+
+        ((db.advances||[]).some(a=>a.patientId===invoice.patientId&&a.clinicId===invoice.clinicId&&advanceRemaining(a)>0)&&uncommitted>0?
+        '<form id="advance-allocation-form"><div class="field-grid"><div class="field"><label>Patvirtintas avansas</label><select name="advanceId">'+opt((db.advances||[]).filter(a=>a.patientId===invoice.patientId&&a.clinicId===invoice.clinicId&&advanceRemaining(a)>0).map(a=>[a.id,a.date+" · "+money(advanceRemaining(a))]),"")+'</select></div>'+
+        '<div class="field"><label>Priskiriama suma (€)</label><input name="amount" type="number" min=".01" step=".01" max="'+uncommitted.toFixed(2)+'" required></div></div>'+
+        '<p>'+btn("Priskirti avansą sąskaitai","advance-allocate","btn small")+'</p></form>':"")+
+        '<p class="help">Avanso priskyrimas nėra nauja kasos įplauka.</p>');
     }
     const clinicId=ui.clinic==="all"?"akm":ui.clinic;
     return wrap("Nauja demonstracinė sąskaita",'<form id="invoice-form"><div class="field-grid"><div class="field full"><label>Klinika</label><select name="clinicId" id="invoice-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),clinicId)+'</select></div>'+
