@@ -524,6 +524,7 @@ function viewVlk(){
  '<div class="field"><label>Pacientas (tik demo) *</label><select name="patientId" id="vlk-patient">'+opt(db.patients.filter(p=>p.clinicIds.includes(clinicId)).map(p=>[p.id,name(p.id)]),editing?.patientId||db.patients.find(p=>p.clinicIds.includes(clinicId))?.id)+'</select></div>'+
  '<div class="field"><label>Gydytojas *</label><select name="doctorId" id="vlk-doctor">'+opt(db.staff.filter(d=>d.clinicIds.includes(clinicId)).map(d=>[d.id,d.name]),editing?.doctorId||db.staff.find(d=>d.clinicIds.includes(clinicId))?.id)+'</select></div>'+
  '<div class="field full"><label>PSDF paslaugos rūšis / paciento kategorija *</label><select name="categoryId" id="vlk-category">'+opt(VLK_CATEGORIES.map(c=>[c.id,c.label+(c.limit==null?" · pagal sutarties įkainį":" · iki "+money(c.limit))]),category.id)+'</select></div>'+
+ '<div class="field"><label>VLK atvejo eiga</label><select name="caseStatus">'+opt([["Planuojamas","Planuojamas"],["Vykdomas","Vykdomas"]],editing?.status||"Planuojamas")+'</select></div>'+
  '<div class="field"><label>Maksimali kompensacija</label><input id="vlk-cap-display" readonly value="'+(category.limit===null?"Pagal konkrečią sutartį":money(category.limit))+'"></div>'+
  '<div class="field"><label>Faktinė kompensuojama suma (€) *</label><input type="number" name="claimedAmount" min="0.01" max="100000" step="0.01" value="'+esc(editing?.claimedAmount??"")+'" required placeholder="Nebūtinai maksimali suma"></div>'+
  '<div class="field"><label>Paciento priemoka (€), jei taikoma</label><input type="number" name="patientContribution" min="0" step="0.01" value="'+esc(editing?.patientContribution??0)+'"></div>'+
@@ -842,7 +843,7 @@ function saveVlkCase(){
    planId:data.planId||"",eligibilityChecked:data.eligibilityChecked==="on",
    costs:{laboratory:labCost>0?[{id:current?.costs?.laboratory?.[0]?.id||uid("vlk-lab"),description:labName,laboratory:labCatalog?.laboratory||"Demo laboratorija",price:roundEuro(labCost),qty:1}]:[],
      materials:materialPrice>0?[{id:current?.costs?.materials?.[0]?.id||uid("vlk-mat"),description:materialName,price:roundEuro(materialPrice),qty:1}]:[]},
-   usage,status:current?.status||"Planuojamas",completedAt:current?.completedAt||"",createdAt:current?.createdAt||new Date().toISOString(),demo:true
+   usage,status:data.caseStatus==="Vykdomas"?"Vykdomas":"Planuojamas",completedAt:current?.completedAt||"",createdAt:current?.createdAt||new Date().toISOString(),demo:true
  };
  const issues=vlkCaseIssues(record,db.vlkContracts,db.patients,db.staff);
  if(issues.length){notify(issues.join(" "),true);return}
