@@ -432,6 +432,9 @@ function viewCompensation(){
  const vlkRows=vlkSalaryRows(db.vlkCases||[],ui.salaryMonth,ui.clinic),vlkTotal=vlkSalaryTotal(db.vlkCases||[],ui.salaryMonth,ui.clinic);
  const registered=(db.invoices||[]).filter(i=>i.doctorId&&(ui.clinic==="all"||ui.clinic===i.clinicId));
  const percent=doctor=>Number.isFinite(Number(doctor.salaryPercent))?doctor.salaryPercent:35;
+ const doctorTotals=new Map();
+ for(const item of summary.doctors)doctorTotals.set(item.doctorId,{doctorId:item.doctorId,private:roundEuro(item.earning),vlk:0});
+ for(const item of vlkRows){const entry=doctorTotals.get(item.doctorId)||{doctorId:item.doctorId,private:0,vlk:0};entry.vlk=roundEuro(entry.vlk+item.earning);doctorTotals.set(item.doctorId,entry)}
  return page("Laboratorija ir gydytojų atlygis","Tik sintetinė savininko ataskaitos demonstracija")+
  '<section class="panel"><div class="notice warn"><b>NĖRA saugios prieigos kontrolės.</b> Ši vieša demonstracija neriboja matomumo pagal naudotoją. Toliau naudokite tik išgalvotas sumas ir vardus. Tik savininkui prieinama ataskaita bus galima tik įdiegus serverinį prisijungimą bei teisių tikrinimą.</div>'+
  '<h2>Fiksuoti medžiagų atskaitymai (DEMO)</h2>'+
@@ -474,6 +477,9 @@ function viewCompensation(){
  '<div class="stat"><small>Privatus atlygis</small><strong>'+money(summary.total)+'</strong></div>'+
  '<div class="stat"><small>Viso (DEMO)</small><strong>'+money(roundEuro(vlkTotal+summary.total))+'</strong></div>'+
  '<div class="stat"><small>Baigti VLK atvejai</small><strong>'+vlkRows.length+'</strong></div></div>'+
+ '<h3>Gydytojų atlygio suvestinė (privatūs + VLK)</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Gydytojas</th><th>Privatūs mokėjimai</th><th>VLK baigti atvejai</th><th>Iš viso</th></tr></thead><tbody>'+
+ [...doctorTotals.values()].map(x=>'<tr><td>'+esc(doctor(x.doctorId))+'</td><td>'+money(x.private)+'</td><td>'+money(x.vlk)+'</td><td><b>'+money(roundEuro(x.private+x.vlk))+'</b></td></tr>').join("")+'</tbody></table></div>'+
+ '<h3>Baigtų VLK atvejų detalizacija</h3>'+
  '<div class="table-wrap"><table class="data-table"><thead><tr><th>Užbaigta</th><th>Gydytojas</th><th>Atvejis</th><th>Faktinė PSDF suma</th><th>Laboratorija</th><th>Detalės</th><th>Medžiagos</th><th>Chirurginės</th><th>%</th><th>Atlygis</th></tr></thead><tbody>'+
  vlkRows.map(x=>'<tr><td>'+fmt(x.date)+'</td><td>'+esc(doctor(x.doctorId))+'</td><td>'+esc(x.caseNumber)+'</td><td>'+money(x.claimedAmount)+'</td><td>'+money(x.costs.lab)+'</td><td>'+money(x.costs.materials)+'</td><td>'+money(x.costs.standard)+'</td><td>'+money(x.costs.surgical)+'</td><td>'+x.doctorPercent+' %</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
  (!vlkRows.length?empty("Baigtų VLK atvejų nėra","Nebaigti atvejai atlygio nesukuria."):"")+'</section>';
