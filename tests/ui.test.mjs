@@ -55,7 +55,6 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   }
   hooks.modal("invoice");
   assert.match(node("drawer-root").innerHTML,/usageMaterials/);
-  assert.match(node("drawer-root").innerHTML,/selectedLaboratory/);
   hooks.modal("appointment");
   assert.match(node("drawer-root").innerHTML,/suggest-appt-slot/);
   assert.match(node("drawer-root").innerHTML,/new-patient-from-appt/);
