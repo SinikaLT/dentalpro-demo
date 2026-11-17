@@ -704,8 +704,8 @@ function viewLabOrders(){
  const selectedPlans=db.plans.filter(p=>p.patientId===patientId);
  return page("Laboratorijų užsakymai","Užsakymo, gamybos, gavimo ir perdavimo sekimas – tik DEMO")+
  '<section class="panel"><h2>Užsakymo eiga</h2><p class="help">Paciento galutinį protezavimo vizitą registruokite tik patikrinę, ar laboratorinis darbas jau gautas. Šis modulis nesusisiekia su laboratorijomis automatiškai.</p>'+
- '<div class="table-wrap"><table class="data-table"><thead><tr><th>Pacientas</th><th>Laboratorija</th><th>Darbas</th><th>Išsiųsta</th><th>Terminas</th><th>Savikaina</th><th>Būsena</th><th>Veiksmai</th></tr></thead><tbody>'+
- orders.map(o=>'<tr><td>'+esc(name(o.patientId))+'</td><td>'+esc(o.laboratory)+'</td><td>'+esc(o.description)+'</td><td>'+fmt(o.sentDate)+'</td><td>'+fmt(o.dueDate)+'</td><td>'+money(o.cost)+'</td><td>'+pill(o.status)+'</td><td>'+
+ '<div class="table-wrap"><table class="data-table"><thead><tr><th>Pacientas</th><th>Laboratorija</th><th>Darbas</th><th>Išsiųsta</th><th>Terminas</th><th>Savikaina</th><th>Susietas vizitas</th><th>Būsena</th><th>Veiksmai</th></tr></thead><tbody>'+
+ orders.map(o=>'<tr><td>'+esc(name(o.patientId))+'</td><td>'+esc(o.laboratory)+'</td><td>'+esc(o.description)+'</td><td>'+fmt(o.sentDate)+'</td><td>'+fmt(o.dueDate)+'</td><td>'+money(o.cost)+'</td><td>'+esc((db.appointments||[]).find(a=>a.id===o.appointmentId)?.date||"—")+'</td><td>'+pill(o.status)+'</td><td>'+
  (o.status!=="Atiduota"&&o.status!=="Atšaukta"?'<select data-change="lab-order-status" data-id="'+esc(o.id)+'">'+simple(LAB_ORDER_STATUSES,o.status)+'</select>':"")+
  btn("Pacientas","work-patient","btn small","data-id=\'"+esc(o.patientId)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
  (!orders.length?empty("Užsakymų nėra","Sukurkite pirmąjį demonstracinį laboratorijos užsakymą."):"")+'</section>'+
@@ -714,6 +714,7 @@ function viewLabOrders(){
  '<div class="field"><label>Klinika</label><select name="clinicId" id="order-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),ui.clinic==="all"?"akm":ui.clinic)+'</select></div>'+
  '<div class="field"><label>Pacientas</label><select name="patientId" id="order-patient">'+opt(listPatients().map(p=>[p.id,name(p.id)]),patientId)+'</select></div>'+
  '<div class="field full"><label>Gydymo planas (nebūtina)</label><select name="planId" id="order-plan"><option value="">Nesusieta</option>'+opt(selectedPlans.map(p=>[p.id,p.title]),"")+'</select></div>'+
+ '<div class="field full"><label>Susietas būsimas vizitas (nebūtina)</label><select name="appointmentId" id="order-appointment"><option value="">Nesusieta</option>'+opt(db.appointments.filter(a=>a.patientId===patientId&&a.clinicId===(ui.clinic==="all"?"akm":ui.clinic)&&a.status!=="Atšauktas").map(a=>[a.id,a.date+" "+a.time+" · "+doctor(a.staffId)]),"")+'</select></div>'+
  '<div class="field"><label>Laboratorija</label><select name="laboratory" id="order-lab">'+opt(labNames().map(x=>[x,x]),labNames()[0]||"")+'<option value="__manual">Kita (ranka)</option></select></div>'+
  '<div class="field"><label>Kita laboratorija (jei reikia)</label><input name="manualLab" maxlength="160"></div>'+
  '<div class="field"><label>Darbo pavadinimas</label><input name="description" maxlength="160" required></div>'+
@@ -993,10 +994,13 @@ function addLabOrder(){
   notify("Patikrinkite laboratoriją, darbą, savikainą ir datas.",true);return
  }
  if(!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(v.clinicId))){notify("Pacientas nepriskirtas klinikai.",true);return}
+ if(v.appointmentId&&!db.appointments.some(a=>a.id===v.appointmentId&&a.patientId===v.patientId&&a.clinicId===v.clinicId)){
+   notify("Susietas vizitas nepriklauso pacientui ar klinikai.",true);return
+ }
  if(v.planId&&!db.plans.some(p=>p.id===v.planId&&p.patientId===v.patientId&&p.clinicId===v.clinicId)){
   notify("Gydymo planas nepriklauso pacientui ar klinikai.",true);return
  }
- const order={id:uid("laborder"),clinicId:v.clinicId,patientId:v.patientId,planId:v.planId||"",laboratory:lab,
+ const order={id:uid("laborder"),clinicId:v.clinicId,patientId:v.patientId,planId:v.planId||"",appointmentId:v.appointmentId||"",laboratory:lab,
    description:v.description.trim(),cost:roundEuro(amount),sentDate:v.sentDate,dueDate:v.dueDate,
    status:"Užsakyta",statusHistory:[{status:"Užsakyta",at:new Date().toISOString()}],demo:true};
  update("Registruotas laboratorijos užsakymas",order.id,state=>{state.labOrders??=[];state.labOrders.push(order)});
@@ -1031,10 +1035,14 @@ function saveAppointment(){
   const a={
     id:ui.modal.id||uid("a"),clinicId:f.clinicId,chairId:f.chairId,patientId:f.patientId,
     staffId:f.staffId,date:f.date,time:f.time,duration:Number(f.duration),serviceId:f.serviceId,
+    planId:ui.modal?.preset?.planId||db.appointments.find(x=>x.id===ui.modal.id)?.planId||"",
+    planItemId:ui.modal?.preset?.planItemId||db.appointments.find(x=>x.id===ui.modal.id)?.planItemId||"",
     status:f.status,reminderStatus:f.reminderStatus||"Nesiųstas",notes:String(f.notes||"").trim()
   };
   const issues=appointmentIssues(db,a);
   if(issues.length){notify(issues.join(" "),true);return}
+  const labWarnings=labVisitWarnings(db,a);
+  if(labWarnings.length&&!confirm("Laboratorijos darbai dar neparuošti:\n"+labWarnings.join("\n")+"\nVis tiek registruoti vizitą?"))return;
   update(ui.modal.id?"Redaguotas vizitas":"Sukurtas vizitas",a.id,s=>{
     const i=s.appointments.findIndex(x=>x.id===a.id);
     if(i>=0)s.appointments[i]=a;else s.appointments.push(a);
@@ -1680,7 +1688,7 @@ function handleAction(target,event){
       const plan=db.plans.find(p=>p.id===target.dataset.plan),item=plan?.items.find(x=>x.id===id);
       if(!plan||!item)break;
       ui.patient=plan.patientId;
-      modal("appointment","",{preset:{clinicId:plan.clinicId,patientId:plan.patientId,serviceId:item.serviceId,date:item.targetDate||ui.day}});
+      modal("appointment","",{preset:{clinicId:plan.clinicId,patientId:plan.patientId,serviceId:item.serviceId,planId:plan.id,planItemId:item.id,date:item.targetDate||ui.day}});
       break;
     }
     case "plan-invoice":{
