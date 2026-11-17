@@ -63,19 +63,19 @@ export function cashDaySummary(invoices,advances,date,clinicId="all"){
    }
    for(const r of invoice.refunds||[])if(r.date===date){
      const method=paymentMethod(r.method);
-     rows.push({kind:"refund",direction:"out",invoiceNumber:invoice.number,method,amount:-Number(r.amount),cashAmount:method==="cash"?-Number(r.cashAmount??cashRounded(r.amount)):0,reference:r.reference||"",patientId:invoice.patientId});
+     rows.push({kind:"refund",direction:"out",invoiceNumber:invoice.number,method,amount:-Number(r.amount),cashAmount:method==="cash"?-Number(r.cashAmount??cashRounded(r.amount)):0,rounding:method==="cash"?roundCents(Number(r.amount)-Number(r.cashAmount??cashRounded(r.amount))):0,reference:r.reference||"",patientId:invoice.patientId});
    }
  }
  for(const advance of advances||[]){
    if(!allowed(advance))continue;
    if(isConfirmed(advance)&&(advance.confirmedDate||advance.date)===date)
-     rows.push({kind:"deposit",direction:"in",invoiceNumber:"Avansas",method:paymentMethod(advance.method),amount:Number(advance.amount),cashAmount:paymentMethod(advance.method)==="cash"?Number(advance.cashAmount??cashRounded(advance.amount)):0,reference:advance.reference||"",patientId:advance.patientId});
+     rows.push({kind:"deposit",direction:"in",invoiceNumber:"Avansas",method:paymentMethod(advance.method),amount:Number(advance.amount),cashAmount:paymentMethod(advance.method)==="cash"?Number(advance.cashAmount??cashRounded(advance.amount)):0,rounding:paymentMethod(advance.method)==="cash"?roundCents(Number(advance.cashAmount??cashRounded(advance.amount))-Number(advance.amount)):0,reference:advance.reference||"",patientId:advance.patientId});
    for(const refund of advance.refunds||[])if(refund.date===date)
-     rows.push({kind:"advance-refund",direction:"out",invoiceNumber:"Avanso grąžinimas",method:paymentMethod(refund.method),amount:-Number(refund.amount),cashAmount:paymentMethod(refund.method)==="cash"?-Number(refund.cashAmount??cashRounded(refund.amount)):0,reference:refund.reference||"",patientId:advance.patientId});
+     rows.push({kind:"advance-refund",direction:"out",invoiceNumber:"Avanso grąžinimas",method:paymentMethod(refund.method),amount:-Number(refund.amount),cashAmount:paymentMethod(refund.method)==="cash"?-Number(refund.cashAmount??cashRounded(refund.amount)):0,rounding:paymentMethod(refund.method)==="cash"?roundCents(Number(refund.amount)-Number(refund.cashAmount??cashRounded(refund.amount))):0,reference:refund.reference||"",patientId:advance.patientId});
  }
  const totals={cash:0,card:0,transfer:0};
  for(const row of rows)if(Object.hasOwn(totals,row.method))totals[row.method]=roundCents(totals[row.method]+(row.method==="cash"?row.cashAmount:row.amount));
- return {rows,totals,cashNet:totals.cash,netTotal:roundCents(Object.values(totals).reduce((a,b)=>a+b,0))};
+ return {rows,totals,cashNet:totals.cash,roundingTotal:roundCents(rows.reduce((n,r)=>n+Number(r.rounding||0),0)),netTotal:roundCents(Object.values(totals).reduce((a,b)=>a+b,0))};
 }
 
 /** VLK nėra tos dienos kasos įplauka: tik administraciškai baigtos kompensacijos. */
