@@ -1814,12 +1814,18 @@ function handleChange(target){
   if(target.id==="order-patient"){
     const plan=$("order-plan"),clinicId=$("order-clinic")?.value;
     if(plan)plan.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===target.value&&p.clinicId===clinicId).map(p=>[p.id,p.title]),"");
+    const appointment=$("order-appointment");
+    if(appointment)appointment.innerHTML='<option value="">Nesusieta</option>'+
+      opt(db.appointments.filter(a=>a.patientId===target.value&&a.clinicId===clinicId&&a.status!=="Atšauktas").map(a=>[a.id,a.date+" "+a.time+" · "+doctor(a.staffId)]),"");
     return
   }
   if(target.id==="order-clinic"){
     const patients=$("order-patient"),plans=$("order-plan");
     if(patients)patients.innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(target.value)).map(p=>[p.id,name(p.id)]),"");
     if(plans)plans.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===patients?.value&&p.clinicId===target.value).map(p=>[p.id,p.title]),"");
+    const appointment=$("order-appointment");
+    if(appointment)appointment.innerHTML='<option value="">Nesusieta</option>'+
+      opt(db.appointments.filter(a=>a.patientId===patients?.value&&a.clinicId===target.value&&a.status!=="Atšauktas").map(a=>[a.id,a.date+" "+a.time+" · "+doctor(a.staffId)]),"");
     return
   }
   if(act==="plan-done"){
