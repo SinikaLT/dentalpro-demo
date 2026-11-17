@@ -242,7 +242,7 @@ function planDetails(p){
     p.items.map(i=>'<tr><td>'+esc(i.tooth||"—")+'</td><td>'+esc(i.description)+'</td><td>'+money(Number(i.qty||1)*Number(i.price||0))+'</td>'+
     '<td><input type="checkbox" aria-label="Procedūra atlikta" data-change="plan-done" data-plan="'+esc(p.id)+'" data-id="'+esc(i.id)+'" '+(i.done?"checked":"")+'>'+(invasiveConsentForItem(db.forms,patientId,p.id,i.id)
      ?'<span class="pill">Sutikimas (demo): '+esc(invasiveConsentForItem(db.forms,patientId,p.id,i.id).answers?.decision||"")+'</span>'
-     :'<span class="pill grey">Invazinis sutikimas nesusietas</span>')+
+     :'<span class="pill grey">Invazinis sutikimas (jei taikoma): nesusietas</span>')+
      btn("Sutikimas","consent-plan-item","btn small","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+btn("Pašalinti","delete-plan-item","btn small ghost","data-plan=\'"+esc(p.id)+"\' data-id=\'"+esc(i.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
     '<h3 style="margin-top:20px">Pridėti procedūrą</h3><form id="plan-item-form"><div class="field-grid"><div class="field"><label>Paslauga</label><select name="serviceId" id="plan-item-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
     '<div class="field"><label>Dantis</label><input name="tooth" placeholder="Pvz., 16"></div><div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="20" value="1"></div>'+
@@ -395,9 +395,8 @@ function printSignedForm(id){
    '<p><small>DentalPro 2.0 • tik sintetiniai duomenys • spausdinta kopija</small></p></body></html>';
  const win=window.open("","_blank");
  if(!win){notify("Naršyklė neleido atidaryti spausdinimo lango. Leiskite iššokančius langus.",true);return}
+ win.addEventListener("load",()=>{win.focus();win.print()},{once:true});
  win.document.open();win.document.write(html);win.document.close();
- win.focus();
- win.addEventListener("load",()=>win.print(),{once:true});
 }
 function setupSignatureCanvas(){
  const canvas=document.querySelector("#form-signature");
