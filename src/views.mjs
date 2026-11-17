@@ -295,6 +295,7 @@ function viewForms(){
  const p=db.patients.find(x=>x.id===ui.patient)||listPatients()[0];
  if(!p)return page("Paciento dokumentai","Registravimo formos – demo")+empty("Nėra pacientų","Sukurkite sintetinį pacientą.");
  const rows=(db.forms||[]).filter(f=>f.patientId===p.id).sort((a,b)=>String(b.signedAt).localeCompare(String(a.signedAt)));
+ const checklist=registrationChecklist(db.forms,p.id);
  const items=FORM_TYPES.map(form=>{
    const latest=rows.find(x=>x.type===form.id);
    return '<div class="segment" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><b>'+esc(form.name)+'</b><small style="display:block">'+(latest?'Paskutinis įrašas: '+esc(new Date(latest.signedAt).toLocaleString("lt-LT")):'Dokumentas dar nepasirašytas')+'</small>'+
