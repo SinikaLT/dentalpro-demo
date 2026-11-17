@@ -361,9 +361,9 @@ function viewFinances(){
     '<p><b>Pacientų mokėjimai ir avansai (grynieji, kortelės, pavedimai): '+money(cash.netTotal)+'</b></p>'+
     '<p><b>PSDF administraciškai baigti atvejai: '+money(cash.vlk)+'</b></p>'+
     '<p class="help">VLK skiltis nėra į kasą gauti pinigai – tai tik tą dieną užbaigtų atvejų PSDF sumos. Ji neįtraukiama į grynųjų / kortelių / pavedimų sumą. Grynieji rodomi po atsiskaitymo apvalinimo.</p>'+
-    '<div class="table-wrap"><table class="data-table"><thead><tr><th>Operacija</th><th>Pacientas</th><th>Sąskaita</th><th>Atsiskaitymo būdas</th><th>Patvirtinta suma</th><th>Nuoroda</th></tr></thead><tbody>'+
-    cash.rows.map(x=>'<tr><td>'+esc(({invoice:"Mokėjimas",refund:"Grąžinimas",deposit:"Avansas","advance-refund":"Avanso grąžinimas"})[x.kind]||x.kind)+'</td><td>'+esc(name(x.patientId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+esc(PAYMENT_METHODS.find(m=>m.id===x.method)?.label||x.method)+'</td><td>'+money(x.method==="cash"?x.cashAmount:x.amount)+'</td><td>'+esc(x.reference||"—")+'</td></tr>').join("")+
-    cash.vlkCases.map(x=>'<tr><td>Baigtas VLK atvejis</td><td>'+esc(name(x.patientId))+'</td><td>'+esc(x.caseNumber)+'</td><td>VLK / PSDF (ne kasos įplauka)</td><td>'+money(x.claimedAmount)+'</td><td>'+esc(x.evisReference||"—")+'</td></tr>').join("")+
+    '<div class="table-wrap"><table class="data-table"><thead><tr><th>Operacija</th><th>Pacientas</th><th>Sąskaita</th><th>Atsiskaitymo būdas</th><th>Patvirtinta suma</th><th>Grynųjų apvalinimas</th><th>Nuoroda</th></tr></thead><tbody>'+
+    cash.rows.map(x=>'<tr><td>'+esc(({invoice:"Mokėjimas",refund:"Grąžinimas",deposit:"Avansas","advance-refund":"Avanso grąžinimas"})[x.kind]||x.kind)+'</td><td>'+esc(name(x.patientId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+esc(PAYMENT_METHODS.find(m=>m.id===x.method)?.label||x.method)+'</td><td>'+money(x.method==="cash"?x.cashAmount:x.amount)+'</td><td>'+money(x.rounding||0)+'</td><td>'+esc(x.reference||"—")+'</td></tr>').join("")+
+    cash.vlkCases.map(x=>'<tr><td>Baigtas VLK atvejis</td><td>'+esc(name(x.patientId))+'</td><td>'+esc(x.caseNumber)+'</td><td>VLK / PSDF (ne kasos įplauka)</td><td>'+money(x.claimedAmount)+'</td><td>—</td><td>'+esc(x.evisReference||"—")+'</td></tr>').join("")+
     '</tbody></table></div>'+
     btn("Eksportuoti dienos CSV","export-cash-day","btn small")+
     '<h3 style="margin-top:16px">Dienos kasos uždarymas ir suderinimas (DEMO)</h3>'+
@@ -611,7 +611,7 @@ function viewCompensation(){
  '<div class="stat-grid"><div class="stat"><small>VLK atlygis</small><strong>'+money(vlkTotal)+'</strong></div>'+
  '<div class="stat"><small>Privatus atlygis</small><strong>'+money(summary.total)+'</strong></div>'+
  '<div class="stat"><small>Viso (DEMO)</small><strong>'+money(roundEuro(vlkTotal+summary.total))+'</strong></div>'+
- '<div class="stat"><small>Baigti VLK atvejai</small><strong>'+vlkRows.length+'</strong></div></div>'+
+ '<div class="stat"><small>VLK atlygio įrašai</small><strong>'+vlkRows.length+'</strong></div></div>'+
  '<h3>Gydytojų atlygio suvestinė (privatūs + VLK)</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Gydytojas</th><th>Privatūs mokėjimai</th><th>VLK baigti atvejai</th><th>Iš viso</th></tr></thead><tbody>'+
  [...doctorTotals.values()].map(x=>'<tr><td>'+esc(doctor(x.doctorId))+'</td><td>'+money(x.private)+'</td><td>'+money(x.vlk)+'</td><td><b>'+money(roundEuro(x.private+x.vlk))+'</b></td></tr>').join("")+'</tbody></table></div>'+
  '<h3>Baigtų VLK atvejų detalizacija</h3>'+
@@ -900,9 +900,13 @@ function viewDrawer(){
         '<p>'+btn("+ Pridėti detalę / medžiagą","add-invoice-material","btn small")+'</p></form>':"")+
         '<h3 style="margin-top:22px">Mokėjimų istorija</h3>'+
         '<p class="help">Gauti mokėjimai patvirtinami ranka pagal kasos / kortelės kvitą ar banko išrašą. Tik patvirtinti mokėjimai skaičiuoja gydytojo atlygį.</p>'+
-        (invoice.payments||[]).map(p=>'<div class="segment">'+fmt(p.confirmedDate||p.date)+' · '+esc(PAYMENT_METHODS.find(x=>x.id===paymentMethod(p.method))?.label||p.method)+' · '+money(p.amount)+' · '+esc(p.status==="pending"?"Laukiama":p.status==="cancelled"?"Atmesta":"Patvirtinta")+(p.reference?' · '+esc(p.reference):"")+(p.status==="pending"?btn("Patvirtinti","payment-confirm","btn small primary","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'")+btn("Atmesti","payment-cancel","btn small ghost","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'"):"")+'</div>').join("")+
+        (invoice.payments||[]).map(p=>'<div class="segment">'+fmt(p.confirmedDate||p.date)+' · '+esc(PAYMENT_METHODS.find(x=>x.id===paymentMethod(p.method))?.label||p.method)+' · '+money(p.amount)+
+        (paymentMethod(p.method)==="cash"?' · faktiškai grynaisiais '+money(p.cashAmount??cashRounded(p.amount))+
+          ' (apvalinimas '+money(roundEuro(Number(p.cashAmount??cashRounded(p.amount))-Number(p.amount)))+')':"")+
+        ' · '+esc(p.status==="pending"?"Laukiama":p.status==="cancelled"?"Atmesta":"Patvirtinta")+(p.reference?' · '+esc(p.reference):"")+(p.status==="pending"?btn("Patvirtinti","payment-confirm","btn small primary","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'")+btn("Atmesti","payment-cancel","btn small ghost","data-id=\'"+esc(p.id)+"\' data-invoice=\'"+esc(invoice.id)+"\'"):"")+'</div>').join("")+
         (invoice.refunds||[]).map(r=>'<div class="segment">Grąžinimas · '+fmt(r.date)+' · '+esc(r.method)+' · –'+money(r.amount)+' · '+esc(r.reason||"")+'</div>').join("")+
         '<p><b>Patvirtinta po grąžinimų: '+money(paid)+'</b> · Laukiama: '+money(reserved)+' · Likutis: '+money(remaining)+'</p>'+
+ '<p class="help">Grynųjų apvalinimo skirtumas: '+money(invoiceCashRounding(invoice))+'. Sąskaitos likutis skaičiuojamas pagal nominalią sumą, dienos kasa ir gydytojo atlygis – pagal faktinius grynuosius.</p>'+
         (uncommitted>0?'<form id="payment-form" style="margin-top:18px"><h3>Registruoti dalinį ar mišrų mokėjimą</h3><div class="field-grid">'+
         '<div class="field"><label>Mokėjimo suma (€)</label><input name="amount" type="number" min=".01" max="'+uncommitted.toFixed(2)+'" step=".01" required value="'+uncommitted.toFixed(2)+'"></div>'+
         '<div class="field"><label>Būdas</label><select name="method" id="payment-method">'+opt(PAYMENT_METHODS.filter(x=>x.id!=="advance").map(x=>[x.id,x.label]),"cash")+'</select></div>'+
@@ -1320,7 +1324,7 @@ function manualPaymentValues(formId,max){
  const cashAmount=method==="cash"?cashRounded(amount):0;
  const given=String(v.cashReceived||"").trim()?Number(v.cashReceived):cashAmount;
  if(method==="cash"&&(!Number.isFinite(given)||given<cashAmount||given>100000))return {error:"Įteikta grynųjų suma negali būti mažesnė už apvalintą mokėjimą."};
- return {amount,method,date,status,reference,cashAmount,
+ return {amount,method,date,status,reference,cashAmount,roundingAdjustment:method==="cash"?roundEuro(cashAmount-amount):0,
    cashReceived:method==="cash"?roundEuro(given):0,change:method==="cash"?roundEuro(given-cashAmount):0,
    confirmedDate:status==="confirmed"?date:"",demo:true};
 }
@@ -1363,7 +1367,8 @@ function refundInvoicePayment(){
  if(!["cash","card","transfer"].includes(method)||!String(v.reason||"").trim()){notify("Pasirinkite grąžinimo būdą ir nurodykite priežastį.",true);return}
  if(!confirm("Patvirtinate, kad pinigai jau grąžinti išoriniu būdu? Ši demonstracija neatlieka mokėjimų."))return;
  const record={id:uid("refund"),date:isoDate(),amount,method,reason:String(v.reason).trim().slice(0,250),
-   reference:String(v.reference||"").trim().slice(0,120),cashAmount:method==="cash"?cashRounded(amount):0,demo:true};
+   reference:String(v.reference||"").trim().slice(0,120),cashAmount:method==="cash"?cashRounded(amount):0,
+   roundingAdjustment:method==="cash"?roundEuro(cashRounded(amount)-amount):0,demo:true};
  update("Atliktas grąžinimas (demo, nekoreguojant ankstesnio įrašo)",invoice.id,state=>{
    const item=state.invoices.find(i=>i.id===invoice.id);
    item.refunds??=[];item.refunds.push(record);
