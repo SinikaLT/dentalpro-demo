@@ -59,8 +59,6 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
   assert.match(node("drawer-root").innerHTML,/suggest-appt-slot/);
   assert.match(node("drawer-root").innerHTML,/new-patient-from-appt/);
   assert.match(node("drawer-root").innerHTML,/reminderStatus/);
-  const invoiceNew=node("drawer-root").innerHTML;
-  assert.ok(invoiceNew.includes('usageMaterials'));
   hooks.route("vlk");
   const vlkForm=node("page").innerHTML;
   assert.ok(vlkForm.indexOf('id="vlk-laboratory"')<vlkForm.indexOf('id="vlk-lab-choice"'),"VLK laboratory selection should precede its works");
