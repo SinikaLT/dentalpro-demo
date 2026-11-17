@@ -97,3 +97,9 @@ Sukuriant sąskaitą užfiksuojamas individualus gydytojo atlygio procentas. Pag
 Mokant dalimis atlygis apskaitomas pagal kiekvienos įmokos datą ir apskaičiuojamas **kumuliacinio atlygio pokyčiu**, kad jau priskaičiuota suma kitą mėnesį nesidubliuotų. Mėnesio ataskaita rodo gydytojų sumas ir įmokų detales. Tai yra **demonstracinė atlygio bazės apskaita, o ne oficialus darbo užmokestis ar neto išmoka**.
 
 **PRIVATUMAS:** ši vieša GitHub Pages demonstracija **neturi saugaus savininko / administratoriaus autentifikavimo ir negali uždrausti kitiems peržiūrėti atlygio modulį**. Jokios realios atlygio sumos, darbo sutartys, tikri pacientai, laboratorijos sąskaitos ir darbuotojų duomenys čia neįvedami. Prieš realų naudojimą būtina atskira autentifikuota serverinė sistema su griežta savininko / administratoriaus role ir serveriniu leidimų tikrinimu; vien paslėpti meniu negana.
+
+### Fiksuoti standartinių ir chirurginių medžiagų atskaitymai
+
+Sąskaitos kūrimo lange yra dvi atskiros varnelės: **Medžiagos** (pradinis įkainis 5 € už sterilias pakuotes, autoklavo įrankius ir kt.) ir **Chirurginės medžiagos** (pradinis įkainis 20 €). Jos skirtos gydytojo atlygio bazės mažinimui, o ne paciento sąskaitos didinimui. Gali būti pažymėta viena, abi ar nė viena; pažymėjus abi, atskaitomos abi sumos. Tai vienkartiniai sąskaitos paslaugos atskaitymai, o ne atskaitymai nuo kiekvieno dalinio mokėjimo.
+
+**Laboratorija ir atlygis (DEMO)** skiltyje tarifai redaguojami, tačiau kiekviena naujai sukurta sąskaita išsaugo tuo metu galiojusius įkainius ir varnelių būseną. Prieš pirmą mokėjimą varneles galima pakeisti, po mokėjimo jos užrakinamos. Pakeitus naujų sąskaitų tarifus, istorinių sąskaitų atlygio bazė nekinta. Atskiros brangios detalės ir medžiagos vis dar įvedamos rankiniu būdu – jos nepriskiriamos fiksuotam 5 € arba 20 € atskaitymui ir išskaičiuojamos papildomai, todėl nedubliuokite tų pačių išlaidų.
