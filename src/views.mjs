@@ -722,7 +722,14 @@ function viewAdmin(){
     '<div class="two-cols"><section class="panel"><h2>Demonstracinė aplinka</h2><div class="notice warn">Nėra prisijungimo, naudotojų teisių, serverinės duomenų bazės ar saugaus audito. Tai tik sintetinė v3 aplinka; ankstesni naršyklės pacientų įrašai neperkeliami. Neveskite tikrų pacientų duomenų.</div>'+
     '<div class="detail-grid" style="margin:20px 0">'+[["Klinikos",db.clinics.length],["Kėdės",db.chairs.length],["Gydytojai",db.staff.length],["Pacientai",db.patients.length]].map(([k,v])=>'<div class="detail-item"><small>'+k+'</small><b>'+v+'</b></div>').join("")+'</div>'+
     '<div class="actions">'+btn("Eksportuoti demo JSON","export","btn primary")+btn("Eksportuoti vizitų CSV","export-appointments","btn small")+btn("Atkurti demo įrašus","reset","btn danger")+'</div></section>'+
-    '<section class="panel"><h2>Veiksmų žurnalas</h2><div class="audit-list">'+db.audit.slice(0,60).map(a=>'<div class="audit-entry"><span><strong>'+esc(a.action)+'</strong><small class="muted" style="display:block">'+esc(a.entity)+'</small></span><span class="muted">'+esc(new Date(a.at).toLocaleString("lt-LT"))+'</span></div>').join("")+'</div></section></div>';
+    '<section class="panel"><h2>Veiksmų žurnalas (tik vietinis DEMO)</h2>'+
+    '<p class="help">Rodomos kai kurios saugios laukų reikšmės prieš / po pakeitimo. Ši istorija nėra nuo klastojimo apsaugotas serverinis auditas.</p>'+
+    '<div class="audit-list">'+db.audit.slice(0,60).map(a=>'<div class="audit-entry"><span><strong>'+esc(a.action)+'</strong>'+
+    '<small class="muted" style="display:block">'+esc(a.entity)+' · '+esc(a.actor||"Senas demonstracinis įrašas")+'</small>'+
+    (a.changes&&Object.keys(a.changes).length?'<details><summary>Peržiūrėti laukų pasikeitimus</summary>'+
+    Object.entries(a.changes).slice(0,12).map(([key,values])=>'<small style="display:block">'+esc(key)+': '+
+      esc(values.before??"—")+' → '+esc(values.after??"—")+'</small>').join("")+'</details>':"")+
+    '</span><span class="muted">'+esc(new Date(a.at).toLocaleString("lt-LT"))+'</span></div>').join("")+'</div></section></div>';
 }
 
 
