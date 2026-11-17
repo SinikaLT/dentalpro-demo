@@ -39,7 +39,9 @@ export function appointmentIntake(state,appointmentId){
 export function labVisitWarnings(state,appointment){
  const orders=(state.labOrders||[]).filter(o=>o.patientId===appointment.patientId&&
  o.clinicId===appointment.clinicId&&o.status!=="Atšaukta"&&
- (o.appointmentId===appointment.id||(!o.appointmentId&&o.planId&&o.planId===appointment.planId)));
+ ((o.appointmentId&&o.appointmentId===appointment.id)||
+  (o.planItemId&&o.planItemId===appointment.planItemId)||
+  (!o.appointmentId&&!o.planItemId&&o.planId&&o.planId===appointment.planId)));
  return orders.filter(o=>!["Gauta","Atiduota"].includes(o.status)).map(o=>
   "Laboratorijos darbas „"+o.description+"“ dar negautas (būsena: "+o.status+").");
 }
