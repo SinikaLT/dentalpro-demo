@@ -93,7 +93,7 @@ function viewOverview(){
  (!rows.length?empty("Šiandien vizitų nėra","Peržiūrėkite kalendorių arba registruokite pacientą."):"")+'</section>'+
  '<div class="two-cols"><section class="panel"><h2>Neatliktos užduotys</h2>'+
  taskRows.slice(0,15).map(t=>'<div class="segment"><b>'+esc(t.title)+'</b><small style="display:block">'+fmt(t.dueDate)+' · '+esc(t.patientId?name(t.patientId):clinic(t.clinicId))+'</small>'+
- btn("Atlikta","finish-task","btn small","data-id=\'"+esc(t.id)+"\'")+'</div>').join("")+
+ (t.planItemId?btn("Paruošti sąskaitą","billing-task","btn small primary","data-id=\'"+esc(t.id)+"\'"):"")+btn("Atlikta","finish-task","btn small","data-id=\'"+esc(t.id)+"\'")+'</div>').join("")+
  (!taskRows.length?'<p class="help">Atvirų užduočių nėra.</p>':"")+
  '<form id="desk-task-form"><h3>Pridėti užduotį</h3><div class="field-grid">'+
  '<div class="field"><label>Užduotis</label><input name="title" maxlength="160" required placeholder="Pvz., paskambinti pacientui"></div>'+
@@ -1281,6 +1281,9 @@ function saveInvoice(){
     const conflicts=duplicateInvoiceIssues(s.invoices,invoice);
     if(conflicts.length)throw new Error(conflicts.join(" "));
     s.invoices.push(invoice);
+    if(invoice.planItemId)for(const t of s.tasks||[])if(t.planItemId===invoice.planItemId&&t.planId===invoice.planId){
+      t.status="Atlikta";t.finishedAt=new Date().toISOString();
+    }
   });
   ui.modal={kind:"invoice",id:invoice.id};render();notify("Sąskaita sukurta.");
 }
@@ -1582,6 +1585,18 @@ function handleAction(target,event){
     }
     case "add-desk-task":addDeskTask();break;
     case "finish-task":finishTask(id);break;
+    case "billing-task":{
+      const task=(db.tasks||[]).find(t=>t.id===id),plan=(db.plans||[]).find(p=>p.id===task?.planId);
+      const item=plan?.items.find(x=>x.id===task?.planItemId);
+      if(!plan||!item)break;
+      const existing=sourceInvoice(db.invoices,{planItemId:item.id});
+      if(existing){modal("invoice",existing.id);break}
+      if((db.vlkCases||[]).some(c=>c.planId===plan.id&&c.status!=="Atmestas")){
+        notify("Procedūra susieta su VLK. Paciento priemoką įveskite per VLK atvejį.",true);break
+      }
+      ui.patient=plan.patientId;
+      modal("invoice","",{planItemId:item.id,planId:plan.id,clinicId:plan.clinicId});break;
+    }
     case "mark-reminder":{
       const appt=db.appointments.find(a=>a.id===id);if(!appt)break;
       update("Rankiniu būdu pažymėtas priminimas pacientui",id,state=>{
@@ -1796,9 +1811,24 @@ function handleChange(target){
   }
   if(act==="plan-done"){
     const planId=target.dataset.plan,itemId=target.dataset.id,done=target.checked;
-    update("Pakeista plano procedūros būsena",planId,s=>{
-      const item=s.plans.find(p=>p.id===planId)?.items.find(i=>i.id===itemId);if(item)item.done=done;
-    });return
+    update("Pakeista plano procedūros būsena",planId,state=>{
+      const plan=state.plans.find(p=>p.id===planId),item=plan?.items.find(i=>i.id===itemId);
+      if(!item)return;
+      item.done=done;item.completedAt=done?new Date().toISOString():"";
+      const task=(state.tasks||[]).find(t=>t.planItemId===itemId&&t.planId===planId);
+      const billed=!!sourceInvoice(state.invoices,{planItemId:itemId});
+      const isVlk=(state.vlkCases||[]).some(c=>c.planId===planId&&c.status!=="Atmestas");
+      if(done&&!billed&&!isVlk&&!task){
+        state.tasks??=[];
+        state.tasks.push({id:uid("task"),clinicId:plan.clinicId,patientId:plan.patientId,
+          planId,planItemId:itemId,title:"Paruošti sąskaitą: "+item.description,
+          dueDate:isoDate(),status:"Atvira",demo:true});
+      }else if(task&&(!done||billed||isVlk)){
+        task.status="Atlikta";task.finishedAt=new Date().toISOString();
+      }else if(task&&done&&task.status==="Atlikta"&&!billed&&!isVlk){
+        task.status="Atvira";task.finishedAt="";
+      }
+    });notify(done?"Procedūra atlikta; sukurta atsiskaitymo užduotis, jei ji reikalinga.":"Procedūros atlikimo žyma nuimta.");return;
   }
   if(target.id==="appt-clinic"){switchAppointmentClinic(target.value);return}
   if(target.id==="appt-service"&&!ui.modal?.id){
