@@ -4,6 +4,7 @@ import {openRepository,defaultAvailability,defaultBreaks} from "./store.mjs";
 import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
 import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,registrationChecklist,invasiveConsentForItem,FORM_DISCLOSURES} from "./forms.mjs";
 import {invoiceCosts,salaryAccruals,salarySummary,validCost,parseLaboratoryCsv,roundEuro,DEFAULT_USAGE_FEES,usageFeeSnapshot,validUsageFee} from "./compensation.mjs";
+import {VLK_CATEGORIES,VLK_SOURCE_DATE,vlkCategory,vlkAmountIssues,vlkCaseIssues,vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "./vlk.mjs";
 
 const repository=openRepository();
 let db=repository.get();
@@ -493,9 +494,52 @@ function viewReports(){
     '<p class="help">Rodikliai skaičiuojami iš šios naršyklės demonstracinių įrašų. Nėra sinchronizacijos su realiomis klinikomis.</p></section>';
 }
 function viewVlk(){
-  return page("VLK / PSDF","Tik informacinis demonstracinis modulis")+
-    '<section class="panel"><h2>VLK / PSDF</h2><p>Demonstracinis paslaugų katalogas apima konsultacijas su siuntimu, suaugusiųjų ir vaikų dantų protezavimo paslaugas.</p>'+
-    '<div class="notice warn">Kompensacijos neskaičiuojamos, teisė į PSDF finansavimą netikrinama, duomenys neteikiami VLK ar kitoms valstybinėms sistemoms.</div></section>';
+ const available=db.vlkCases||[],cases=available.filter(c=>ui.clinic==="all"||c.clinicId===ui.clinic);
+ const editing=available.find(c=>c.id===ui.vlkEditingId&&c.status!=="Baigtas")||null;
+ const clinicId=editing?.clinicId||(ui.clinic==="all"?"akm":ui.clinic);
+ const category=vlkCategory(editing?.categoryId)||VLK_CATEGORIES[0];
+ const done=cases.filter(c=>c.status==="Baigtas"),pending=cases.filter(c=>c.status!=="Baigtas"&&c.status!=="Atmestas");
+ const paid=cases.filter(c=>c.status==="Baigtas").reduce((sum,c)=>sum+Number(c.claimedAmount||0),0);
+ return page("VLK / PSDF","Kompensuojamų paslaugų atvejai ir jų užbaigimo kontrolė – tik DEMO")+
+ '<section class="panel"><div class="notice warn"><b>DEMOnstracija, ne VLK integracija.</b> Teisė į kompensaciją, sutarties galiojimas, siuntimas, konsiliumo išvada bei EVIS DP įrašai automatiškai netikrinami. Įveskite tik išgalvotus duomenis. Dantų protezavimo kompensacijos ribos atnaujintos '+VLK_SOURCE_DATE+'. Konsultacijų įkainius būtina patikrinti pagal konkrečios klinikos VLK sutartį.</div>'+
+ '<h2>Klinikų PSDF sutarčių žymos (DEMO)</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Klinika</th><th>Dantų protezavimas</th><th>Specialisto konsultacijos su siuntimu</th></tr></thead><tbody>'+
+ db.clinics.map(cl=>'<tr><td>'+esc(cl.name)+'</td><td><label><input type="checkbox" data-change="vlk-contract" data-clinic="'+esc(cl.id)+'" data-kind="prosthetics" '+(db.vlkContracts?.[cl.id]?.prosthetics?"checked":"")+'> Sutartis patvirtinta (demo)</label></td>'+
+ '<td><label><input type="checkbox" data-change="vlk-contract" data-clinic="'+esc(cl.id)+'" data-kind="consultation" '+(db.vlkContracts?.[cl.id]?.consultation?"checked":"")+'> Sutartis patvirtinta (demo)</label></td></tr>').join("")+'</tbody></table></div>'+
+ '<p class="help">Žymos administracinės ir nepakeičia tikros sutarties su VLK.</p></section>'+
+ '<div class="stat-grid"><div class="stat"><small>Vykdomi atvejai</small><strong>'+pending.length+'</strong></div><div class="stat"><small>Baigti atvejai</small><strong>'+done.length+'</strong></div>'+
+ '<div class="stat"><small>Baigtų atvejų PSDF suma (demo)</small><strong>'+money(paid)+'</strong></div><div class="stat"><small>Neužbaigtų atlygis</small><strong>0 €</strong></div></div>'+
+ '<section class="panel"><div class="panel-title"><h2>'+(editing?"Redaguoti nebaigtą PSDF atvejį":"Registruoti PSDF atvejį")+'</h2>'+(editing?btn("Naujas atvejis","vlk-new","btn small"):"")+'</div>'+
+ '<form id="vlk-form"><div class="field-grid">'+
+ '<div class="field"><label>Klinika *</label><select name="clinicId" id="vlk-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),clinicId)+'</select></div>'+
+ '<div class="field"><label>Pacientas (tik demo) *</label><select name="patientId" id="vlk-patient">'+opt(db.patients.filter(p=>p.clinicIds.includes(clinicId)).map(p=>[p.id,name(p.id)]),editing?.patientId||db.patients.find(p=>p.clinicIds.includes(clinicId))?.id)+'</select></div>'+
+ '<div class="field"><label>Gydytojas *</label><select name="doctorId" id="vlk-doctor">'+opt(db.staff.filter(d=>d.clinicIds.includes(clinicId)).map(d=>[d.id,d.name]),editing?.doctorId||db.staff.find(d=>d.clinicIds.includes(clinicId))?.id)+'</select></div>'+
+ '<div class="field full"><label>PSDF paslaugos rūšis / paciento kategorija *</label><select name="categoryId" id="vlk-category">'+opt(VLK_CATEGORIES.map(c=>[c.id,c.label+(c.limit==null?" · pagal sutarties įkainį":" · iki "+money(c.limit))]),category.id)+'</select></div>'+
+ '<div class="field"><label>Maksimali kompensacija</label><input id="vlk-cap-display" readonly value="'+(category.limit===null?"Pagal konkrečią sutartį":money(category.limit))+'"></div>'+
+ '<div class="field"><label>Faktinė kompensuojama suma (€) *</label><input type="number" name="claimedAmount" min="0.01" max="100000" step="0.01" value="'+esc(editing?.claimedAmount??"")+'" required placeholder="Nebūtinai maksimali suma"></div>'+
+ '<div class="field"><label>Paciento priemoka (€), jei taikoma</label><input type="number" name="patientContribution" min="0" step="0.01" value="'+esc(editing?.patientContribution??0)+'"></div>'+
+ '<div class="field"><label>Siuntimo nuoroda (demo; būtina konsultacijai)</label><input name="referralReference" maxlength="120" value="'+esc(editing?.referralReference||"")+'" placeholder="Tik išgalvotas identifikatorius"></div>'+
+ '<div class="field"><label>EVIS DP atvejo nr. / patvirtinimo žyma (demo)</label><input name="evisReference" maxlength="120" value="'+esc(editing?.evisReference||"")+'" placeholder="Tik išgalvotas identifikatorius"></div>'+
+ '<div class="field"><label>Gydymo plano sąsaja (nebūtina)</label><select name="planId"><option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===(editing?.patientId||db.patients.find(p=>p.clinicIds.includes(clinicId))?.id)&&p.clinicId===clinicId).map(p=>[p.id,p.title]),editing?.planId||"")+'</select></div>'+
+ '<div class="field full"><label><input type="checkbox" name="eligibilityChecked" '+(editing?.eligibilityChecked?"checked":"")+'> Atsakingas darbuotojas patikrino teisę, sutarties sąlygas ir privalomus dokumentus (tik demo žyma)</label></div>'+
+ '<div class="field full"><h3>Laboratorija ir savikaina šiam atvejui</h3><p class="help">Įkainiai įrašomi ranka arba pasirenkami iš demonstracinio laboratorijos kainyno. VLK atlygis bus skaičiuojamas tik užbaigus atvejį.</p></div>'+
+ '<div class="field full"><label>Laboratorijos darbas</label><select name="labCatalogId" id="vlk-lab-choice"><option value="">Rankinis įrašas / netaikoma</option>'+opt((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>[x.id,x.laboratory+" – "+x.name+" · "+money(x.price)]),editing?.labCatalogId||"")+'</select></div>'+
+ '<div class="field"><label>Laboratorijos pavadinimas / darbas</label><input name="labName" maxlength="160" value="'+esc(editing?.costs?.laboratory?.[0]?.description||"")+'" placeholder="Pvz., cirkonio vainikėlis"></div>'+
+ '<div class="field"><label>Laboratorijos kaina (€)</label><input type="number" name="labPrice" min="0" step="0.01" value="'+esc(editing?.costs?.laboratory?.[0]?.price??0)+'"></div>'+
+ '<div class="field"><label>Detalė / medžiaga (papildoma)</label><input name="materialName" maxlength="160" value="'+esc(editing?.costs?.materials?.[0]?.description||"")+'" placeholder="Pvz., titaninė bazė"></div>'+
+ '<div class="field"><label>Detalės / medžiagos kaina (€)</label><input type="number" name="materialPrice" min="0" step="0.01" value="'+esc(editing?.costs?.materials?.[0]?.price??0)+'"></div>'+
+ '<div class="field full"><label><input name="usageMaterials" type="checkbox" '+(editing?.usage?.materials?"checked":"")+'> Medžiagos – '+money(editing?.usage?.materialsFee??db.usageFees?.materials??5)+' (standartinis atskaitymas)</label>'+
+ '<label><input name="usageSurgical" type="checkbox" '+(editing?.usage?.surgicalMaterials?"checked":"")+'> Chirurginės medžiagos – '+money(editing?.usage?.surgicalMaterialsFee??db.usageFees?.surgicalMaterials??20)+'</label></div>'+
+ '</div><p class="help">„Baigtas“ nustatoma atskiru veiksmu. Vėliau faktinės kompensacijos ar savikainos negalima keisti, kad nepasikeistų jau priskaičiuotas atlygis.</p>'+
+ '<p>'+btn(editing?"Išsaugoti atvejį":"Sukurti PSDF atvejį","vlk-save","btn primary")+'</p></form></section>'+
+ '<section class="panel"><h2>PSDF atvejai ir būsenos</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Atvejis</th><th>Pacientas</th><th>Gydytojas</th><th>Paslauga</th><th>Faktinė suma</th><th>Būsena</th><th>Veiksmai</th></tr></thead><tbody>'+
+ cases.map(c=>'<tr><td>'+esc(c.caseNumber)+'</td><td>'+esc(name(c.patientId))+'</td><td>'+esc(doctor(c.doctorId))+'</td><td>'+esc(vlkCategory(c.categoryId)?.label||"")+'</td><td>'+money(c.claimedAmount)+'</td><td>'+pill(c.status)+'</td><td>'+
+ (c.status==="Baigtas"?'<span class="pill">Atvejis užrakintas</span>':c.status==="Atmestas"?'<span class="pill grey">Atmestas</span>':
+ btn("Redaguoti","vlk-edit","btn small","data-id=\'"+esc(c.id)+"\'")+
+ btn("Baigti atvejį","vlk-complete","btn small primary","data-id=\'"+esc(c.id)+"\'")+
+ btn("Atmesti","vlk-reject","btn small ghost","data-id=\'"+esc(c.id)+"\'"))+
+ '</td></tr>').join("")+'</tbody></table></div>'+
+ (!cases.length?empty("Atvejų nėra","Sukurkite pirmąjį demonstracinį PSDF atvejį."):"")+
+ '<p class="help">Baigtos PSDF sumos nėra tikrų VLK gautų mokėjimų patvirtinimas. Šiame demo atlygis priskaičiuojamas tik pažymėjus atvejį „Baigtas“, tačiau VLK faktinio apmokėjimo duomenys negaunami.</p></section>';
 }
 function viewAdmin(){
   return page("Administravimas","Duomenų eksportas, demonstracijos atkūrimas ir veiksmų istorija")+
