@@ -1,3 +1,4 @@
+import {paymentEvents} from "./payments.mjs";
 // Tik sintetinė demonstracinė darbo užmokesčio apskaita.
 // Realioje sistemoje būtina serverinė prieigos kontrolė (owner role), audit trail ir DB.
 export const DEFAULT_LAB_WORK=[
@@ -46,14 +47,13 @@ export function salaryAccruals(invoices){
    const total=(invoice.items||[]).reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||1),0);
    const costs=invoiceCosts(invoice);
    let received=0,earned=0;
-   for(const payment of [...(invoice.payments||[])].sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.id).localeCompare(String(b.id)))){
+   for(const payment of paymentEvents(invoice)){
      const amount=Number(payment.amount);
-     if(!(amount>0)||!/^\d{4}-\d{2}-\d{2}$/.test(payment.date))continue;
-     received=Math.min(Math.max(0,total),roundEuro(received+amount));
+     received=Math.min(Math.max(0,total),Math.max(0,roundEuro(received+amount)));
      const next=salaryEntitlement(received,costs,invoice.doctorPercent);
      const payout=roundEuro(next-earned);
      earned=next;
-     rows.push({id:payment.id,invoiceId:invoice.id,invoiceNumber:invoice.number,date:payment.date,
+     rows.push({id:payment.id,invoiceId:invoice.id,invoiceNumber:invoice.number,date:payment.date,paymentKind:payment.kind,
        clinicId:invoice.clinicId,patientId:invoice.patientId,doctorId:invoice.doctorId,
        doctorPercent:Number(invoice.doctorPercent),paymentAmount:amount,receivedToDate:received,
        lab:costs.lab,materials:costs.materials,standard:costs.standard,surgical:costs.surgical,earning:payout,earningToDate:earned,
