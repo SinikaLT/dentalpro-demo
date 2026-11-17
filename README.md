@@ -148,3 +148,22 @@ Atlikta kasdienės administratorės darbo eigos demonstracinė integracija:
 Plačiau: [Registratūros darbo eiga](docs/REGISTRATUROS_DARBO_EIGA.md) ir [Saugi serverinė versija](docs/SAUGI_SERVERINE_VERSIJA.md).
 
 **Svarbu: tik demonstracija!** Realūs pacientų duomenys, atlyginimai ir dokumentai neleidžiami, nes vis dar nėra serverinės autentifikacijos / teisių, bendros patikimos DB, tikrų SMS / el. pašto siuntimo, realios fiskalizacijos, kortelių terminalo sąsajos ar VLK automatinių integracijų. Tikras saugumas privalo būti realizuotas atskiroje serverinėje infrastruktūroje, o ne meniu slėpimu.
+
+
+## Registratūros kritinių ir aukšto prioriteto pataisų etapas (2026-11-17)
+
+Registratūros darbo vietoje prie dienos vizito yra **Priimti** veiksmas. Jis atveria vieną paciento atvykimo langą su vizito informacija, registracijos dokumentų būsenomis, gydytojo peržiūrėtinos sveikatos anketos žyma, neparuoštais laboratorijos darbais, susijusiomis sąskaitomis ir nuorodomis į gydymo planą bei atsiskaitymą. „Pažymėti atvykimą“ įrašo demonstracinę „Atvykęs“ būseną. Sistemoje nėra tikro medicininio gydytojo patvirtinimo ar teisinių e. parašų.
+
+**Gydymo planas → atlikta:** pažymėjus procedūrą atlikta, jos būsena rodoma kaip „Paruošta apmokestinti“, o registratorei sukuriama užduotis paruošti sąskaitą. Užduoties mygtukas atveria susietą sąskaitos projektą. Išrašius sąskaitą užduotis automatiškai uždaroma ir procedūra rodoma kaip „Apmokestinta“. VLK konkrečiai pažymėta procedūra tvarkoma per VLK atvejį. Perspėjama prieš kuriant sąskaitą už dar nepažymėtą atlikta procedūrą.
+
+**Apsauga nuo dvigubo apmokestinimo:** už tą patį vizito ID, plano procedūros ID ar VLK atvejo priemokos ID antros sąskaitos sukurti neleidžiama – atidaroma esama. Taip pat perspėjama apie panašią to paties paciento, tos pačios dienos ir vienodos paslaugos rankinę sąskaitą; atskiras teisėtas procedūras galima patvirtinti, kad jos nebūtų klaidingai užblokuotos. Kai nėra priskirto gydytojo, įspėjama, kad atlygis nebus skaičiuojamas.
+
+**Grynųjų apvalinimas:** sąskaitos nominali skola ir faktiniai grynieji apskaitomi atskirai. Pavyzdžiui, pilnai apmokant 12,03 € sąskaitą, grynaisiais paimami 12,05 €, skola lygi 0 €, o 0,02 € apvalinimas matomas mokėjimo istorijoje ir dienos kasos detalizacijoje. Gydytojo atlygio skaičiavimui iš tiesiogiai už sąskaitą gautų grynųjų naudojama faktiškai apvalinta suma. Pavedimai ir kortelės neapvalinami. Avansų ir grąžinimų fizinių grynųjų apvalinimo skirtumai taip pat atskirai fiksuojami. Tai demonstracinė, ne fiskalinė kasos apskaita.
+
+**VLK / PSDF priemokų apskaita:** VLK atvejui galima pasirinkti konkrečią gydymo plano procedūrą ir per VLK ekraną išrašyti **vieną paciento priemokos sąskaitą**. Laboratorijos, detalės ir fiksuotos medžiagų sąnaudos užfiksuojamos **VLK atvejyje**, o priemokos sąskaitoje antrą kartą nenurašomos. Priemoka gydytojo atlygio nedidina, kol VLK atvejis nebaigtas; tuomet įskaičiuojamos iki užbaigimo faktiškai patvirtintos paciento priemokos, o vėliau gautos įmokos / grąžinimai koreguoja vėlesnių mėnesių atlygį. VLK atvejui užbaigus registruojama kompensacijos dalis, **ne faktinis VLK pervedimas**. Savininko demo ataskaitoje privataus atlygio skaičiavimas nebedubliuoja VLK priemokos sąskaitos. Tai nėra VLK sistemos integracija ir nėra oficialus atlyginimų apskaičiavimas.
+
+**Laboratorijos užsakymai:** kuriant laboratorijos užsakymą galima priskirti būsimą paciento vizitą. Su tuo vizitu ar gydymo plano procedūra susietam laboratoriniam darbui dar esant gamybos būsenoje, registruojant vizitą rodomas perspėjimas. Užsakymo sąraše matomas priskirtas vizitas; keičiant pacientą ar kliniką vizitų sąrašas atsinaujina.
+
+**Patikra:** papildomi automatiniai regresiniai bei integruotos demonstracinės registratūros eigos testai tikrina dokumentus, vizito ryšius, sąskaitos dublikatų ribojimą, grynųjų apvalinimą, dalinius mokėjimus, VLK priemoką, gydytojo atlygį, laboratorijos parengtį ir naršyklės saugyklos gedimo reakciją. Tikro darbuotojo bandymo su realiu kasos aparatu ar terminalu nėra – integracijų su jais pagal sprendimą nedaroma.
+
+**Privatumas / saugumas:** programa tebėra **vieša sintetinė GitHub Pages demonstracija**. Tikros serverinės naudotojų teisių sistemos, e. sveikatos, EVIS DP ar bankų prijungimo nėra. Realiems pacientų dokumentams ir finansiniams atlyginimų duomenims ji netinka. Reikalinga atskira serverinė, autentifikuota versija su teisių tikrinimu ir audito įrašų sauga.
