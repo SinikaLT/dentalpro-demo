@@ -850,12 +850,13 @@ function viewDrawer(){
         '<p>'+btn("Priskirti avansą sąskaitai","advance-allocate","btn small")+'</p></form>':"")+
         '<p class="help">Avanso priskyrimas nėra nauja kasos įplauka.</p>');
     }
-    const clinicId=ui.clinic==="all"?"akm":ui.clinic;
+    const clinicId=d.clinicId|| (ui.clinic==="all"?"akm":ui.clinic);
+    const picked=planInvoiceItems(ui.patient,clinicId).find(x=>x.id===d.planItemId);
     return wrap("Nauja demonstracinė sąskaita",'<form id="invoice-form"><div class="field-grid"><div class="field full"><label>Klinika</label><select name="clinicId" id="invoice-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),clinicId)+'</select></div>'+
       '<div class="field full"><label>Pacientas</label><select name="patientId" id="invoice-patient">'+opt(db.patients.filter(p=>p.clinicIds.includes(clinicId)).map(p=>[p.id,name(p.id)]),ui.patient)+'</select></div>'+
-      '<div class="field full"><label>Gydymo plano procedūra (nebūtina)</label><select name="planItemId" id="invoice-plan-item"><option value="">Nesusieta</option>'+opt(planInvoiceItems(db.patients.some(p=>p.id===ui.patient&&p.clinicIds.includes(clinicId))?ui.patient:db.patients.find(p=>p.clinicIds.includes(clinicId))?.id,clinicId).map(x=>[x.id,x.name]),"")+'</select></div>'+'<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
-      '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div>'+
-      '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(primaryService()?.price||0)+'"></div>'+
+      '<div class="field full"><label>Gydymo plano procedūra (nebūtina)</label><select name="planItemId" id="invoice-plan-item"><option value="">Nesusieta</option>'+opt(planInvoiceItems(db.patients.some(p=>p.id===ui.patient&&p.clinicIds.includes(clinicId))?ui.patient:db.patients.find(p=>p.clinicIds.includes(clinicId))?.id,clinicId).map(x=>[x.id,x.name]),picked?.id||"")+'</select></div>'+'<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+serviceChoices(picked?.serviceId||primaryService()?.id)+'</select></div>'+
+      '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="'+Number(picked?.qty||1)+'"></div>'+
+      '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(picked?.price??primaryService()?.price??0)+'"></div>'+
       '<div class="field full"><label>Gydytojas, kuriam priskiriama procedūra</label><select name="doctorId" id="invoice-doctor"><option value="">Nepriskirti (atlygis nebus skaičiuojamas)</option>'+opt(db.staff.filter(d=>d.clinicIds.includes(clinicId)).map(d=>[d.id,d.name]),"")+'</select></div>'+'<div class="field full"><label>Medžiagų naudojimas šiai paslaugai (atskaitymas tik nuo gydytojo atlygio bazės)</label>'+
        '<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="usageMaterials"> Medžiagos – '+money(db.usageFees?.materials??DEFAULT_USAGE_FEES.materials)+'</label>'+
        '<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="usageSurgical"> Chirurginės medžiagos – '+money(db.usageFees?.surgicalMaterials??DEFAULT_USAGE_FEES.surgicalMaterials)+'</label>'+
