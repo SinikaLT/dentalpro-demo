@@ -409,3 +409,49 @@ test("nauji demo duomenų laukai turi avansų ir kasos uždarymų saugyklą",()=
  assert.deepEqual(seed.advances,[]);
  assert.deepEqual(seed.cashClosings,[]);
 });
+
+import {searchPatients,duplicatePatients,receptionistDashboard,LAB_ORDER_STATUSES} from "../src/workflows.mjs";
+
+test("registratorė ieško paciento telefonu, vardu, pavarde ir el. paštu",()=>{
+ const people=[{id:"a",firstName:"Rūta",lastName:"Petrauskienė",phone:"+370 612 11111",email:"demo@example.com"},
+               {id:"b",firstName:"Jonas",lastName:"Kazlauskas",phone:"+370 699 22222",email:"j@example.com"}];
+ assert.equal(searchPatients(people,"ruta")[0].id,"a");
+ assert.equal(searchPatients(people,"petrauskiene")[0].id,"a");
+ assert.equal(searchPatients(people,"61211111")[0].id,"a");
+ assert.equal(searchPatients(people,"demo@example.com")[0].id,"a");
+ assert.equal(searchPatients(people,"neegzistuoja").length,0);
+});
+test("panašiems pacientams rodoma dubliavimo rizika pagal telefoną arba vardą, pavardę ir gimimo datą",()=>{
+ const people=[{id:"a",firstName:"Rūta",lastName:"Petrauskienė",birthDate:"1985-01-02",phone:"+37061211111"}];
+ assert.equal(duplicatePatients(people,{firstName:"Ruta",lastName:"Petrauskiene",birthDate:"1985-01-02",phone:""}).length,1);
+ assert.equal(duplicatePatients(people,{firstName:"Kita",lastName:"Pavardė",birthDate:"",phone:"37061211111"}).length,1);
+ assert.equal(duplicatePatients(people,{firstName:"Rūta",lastName:"Petrauskienė",birthDate:"1985-01-02",phone:""}, "a").length,0);
+});
+test("registratūros darbo vietos rodikliai naudoja patvirtintus mokėjimus, o ne laukiančius",()=>{
+ const data=seedData("2026-11-17");
+ data.appointments=[{id:"a",date:"2026-11-17",time:"09:00",clinicId:"akm",patientId:"p-0-0",status:"Registruotas"}];
+ data.invoices=[{id:"i",clinicId:"akm",items:[{price:100,qty:1}],payments:[{id:"p",amount:100,status:"pending",date:"2026-11-17"}]}];
+ data.tasks=[{id:"t",clinicId:"akm",title:"Patikrinti sutartį",status:"Atvira",dueDate:"2026-11-17"}];
+ data.labOrders=[{id:"o",clinicId:"akm",status:"Gauta",dueDate:"2026-11-16"}];
+ const result=receptionistDashboard(data,"2026-11-17","akm");
+ assert.equal(result.appointments.length,1);
+ assert.equal(result.documents.length,1);
+ assert.equal(result.awaiting.length,1);
+ assert.equal(result.debts.length,1);
+ assert.equal(result.outstanding,100);
+ assert.equal(result.overdueTasks.length,1);
+ assert.equal(result.readyOrders.length,1);
+});
+test("demo saugyklos įrašymo nesėkmė neištrina ankstesnės patvirtintos būsenos",()=>{
+ const storage=new Map();
+ const adapter={getItem:key=>storage.get(key)??null,setItem:(key,value)=>{if(adapter.reject)throw Error("Quota exceeded");storage.set(key,value);},removeItem:key=>storage.delete(key),reject:false};
+ const repository=openRepository(adapter);
+ const before=repository.get();
+ adapter.reject=true;
+ assert.throws(()=>repository.transaction("Demo nesėkmė","x",s=>s.tasks.push({id:"t",title:"Nepersistavo"})),/Nepavyko išsaugoti/);
+ assert.deepEqual(repository.get(),before);
+ assert.equal(storage.get(STORAGE_KEY),JSON.stringify(before));
+});
+test("laboratorijos užsakymų būsenų sąrašas leidžia sekti darbų eigą",()=>{
+ assert.deepEqual(LAB_ORDER_STATUSES,["Užsakyta","Gaminama","Gauta","Atiduota","Atšaukta"]);
+});
