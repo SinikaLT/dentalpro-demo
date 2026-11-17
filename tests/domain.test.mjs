@@ -338,3 +338,74 @@ test("nauja VLK demo saugykla nekeičia ankstesnių pacientų duomenų ir sutart
  assert.equal(data.vlkContracts.akm.prosthetics,false);
  assert.equal(data.vlkContracts.kur.consultation,false);
 });
+
+import {isConfirmed,paymentMethod,paidAmount,pendingAmount,invoiceOutstanding,paymentEvents,cashRounded,cashDifference,
+ advanceRemaining,patientAdvanceBalance,cashDaySummary,settlementDaySummary} from "../src/payments.mjs";
+
+test("laukiami pavedimai nedidina įmokų ir gydytojo atlygio, patvirtinti kortelės ir grynieji didina",()=>{
+ const invoice={id:"manual-1",number:"DP-M1",clinicId:"akm",doctorId:"dr-akm-1",doctorPercent:40,
+   items:[{price:200,qty:1}],costs:{laboratory:[],materials:[]},
+   payments:[{id:"bank",date:"2026-11-17",method:"transfer",amount:100,status:"pending"},
+     {id:"card",date:"2026-11-17",method:"card",amount:60,status:"confirmed"},
+     {id:"cash",date:"2026-11-17",method:"cash",amount:40,status:"confirmed",cashAmount:40}]};
+ assert.equal(pendingAmount(invoice),100);
+ assert.equal(paidAmount(invoice),100);
+ assert.equal(invoiceOutstanding(invoice,200),100);
+ assert.equal(salarySummary([invoice],"2026-11").total,40);
+ invoice.payments[0].status="confirmed";invoice.payments[0].confirmedDate="2026-11-18";
+ assert.equal(paidAmount(invoice),200);
+ assert.equal(salarySummary([invoice],"2026-11").total,80);
+});
+test("grąžinimas atskiru įrašu mažina vėlesnio mėnesio atlyginimą, nekeičia originalo",()=>{
+ const invoice={id:"refund-1",number:"DP-REF",clinicId:"akm",doctorId:"dr-akm-1",doctorPercent:40,
+ items:[{price:100,qty:1}],costs:{laboratory:[],materials:[]},
+ payments:[{id:"p1",date:"2026-11-17",amount:100,status:"confirmed",method:"card"}],
+ refunds:[{id:"r1",date:"2026-12-01",amount:20,method:"card"}]};
+ assert.equal(paidAmount(invoice),80);
+ assert.equal(salarySummary([invoice],"2026-11").total,40);
+ assert.equal(salarySummary([invoice],"2026-12").total,-8);
+ assert.equal(salarySummary([invoice],"").total,32);
+ assert.equal(invoice.payments[0].amount,100);
+});
+test("avansas priskiriamas sąskaitai be antros kasos įplaukos",()=>{
+ const advance={id:"adv1",clinicId:"akm",patientId:"p-0-0",date:"2026-11-17",amount:150,
+ method:"cash",status:"confirmed",cashAmount:150,
+ allocations:[{id:"a1",invoiceId:"i1",paymentId:"p1",amount:80,date:"2026-11-18"}],refunds:[]};
+ const invoice={id:"i1",clinicId:"akm",patientId:"p-0-0",number:"DP-AV",doctorId:"dr-akm-1",doctorPercent:40,
+ items:[{price:200,qty:1}],costs:{laboratory:[],materials:[]},
+ payments:[{id:"p1",date:"2026-11-18",confirmedDate:"2026-11-18",amount:80,method:"advance",status:"confirmed"}]};
+ assert.equal(advanceRemaining(advance),70);
+ assert.equal(patientAdvanceBalance([advance],"p-0-0","akm"),70);
+ assert.equal(cashDaySummary([invoice],[advance],"2026-11-17","akm").totals.cash,150);
+ assert.equal(cashDaySummary([invoice],[advance],"2026-11-18","akm").netTotal,0);
+ assert.equal(salarySummary([invoice],"2026-11").total,32);
+});
+test("dienos keturios skiltys: grynieji, kortelės, pavedimas ir VLK atskirai",()=>{
+ const inv={number:"DP-4",clinicId:"akm",patientId:"p-0-0",payments:[
+  {id:"a",date:"2026-11-17",method:"Grynieji (demo)",amount:10.02,status:"confirmed",cashAmount:10},
+  {id:"b",date:"2026-11-17",method:"card",amount:20,status:"confirmed"},
+  {id:"c",date:"2026-11-17",method:"transfer",amount:30,status:"pending"},
+  {id:"d",date:"2026-11-16",confirmedDate:"2026-11-17",method:"transfer",amount:30,status:"confirmed"}],
+ refunds:[{id:"r",date:"2026-11-17",method:"cash",amount:5,cashAmount:5}]};
+ const vlk=[{id:"vlk",clinicId:"akm",patientId:"p-0-0",caseNumber:"VLK1",status:"Baigtas",
+  completedAt:"2026-11-17T10:00:00Z",claimedAmount:170.39},
+  {id:"vlk2",clinicId:"akm",status:"Vykdomas",completedAt:"",claimedAmount:1000}];
+ const day=settlementDaySummary([inv],[],vlk,"2026-11-17","akm");
+ assert.deepEqual(day.totals,{cash:5,card:20,transfer:30});
+ assert.equal(day.netTotal,55);
+ assert.equal(day.vlk,170.39);
+ assert.equal(day.financialTotal,225.39);
+ assert.equal(settlementDaySummary([inv],[],vlk,"2026-11-17","kur").netTotal,0);
+ assert.equal(settlementDaySummary([inv],[],vlk,"2026-11-17","kur").vlk,0);
+});
+test("grynųjų 0,05 € apvalinimas taikomas faktinei sumai, ne paciento paslaugos vertei",()=>{
+ assert.equal(cashRounded(12.02),12);
+ assert.equal(cashRounded(12.03),12.05);
+ assert.equal(cashDifference(12.03),0.02);
+ assert.equal(cashRounded(12.07),12.05);
+});
+test("nauji demo duomenų laukai turi avansų ir kasos uždarymų saugyklą",()=>{
+ const seed=seedData("2026-11-17");
+ assert.deepEqual(seed.advances,[]);
+ assert.deepEqual(seed.cashClosings,[]);
+});
