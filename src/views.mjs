@@ -671,7 +671,8 @@ function viewVlk(){
  '<div class="field"><label>Paciento priemoka (€), jei taikoma</label><input type="number" name="patientContribution" min="0" step="0.01" value="'+esc(editing?.patientContribution??0)+'"></div>'+
  '<div class="field"><label>Siuntimo nuoroda (demo; būtina konsultacijai)</label><input name="referralReference" maxlength="120" value="'+esc(editing?.referralReference||"")+'" placeholder="Tik išgalvotas identifikatorius"></div>'+
  '<div class="field"><label>EVIS DP atvejo nr. / patvirtinimo žyma (demo)</label><input name="evisReference" maxlength="120" value="'+esc(editing?.evisReference||"")+'" placeholder="Tik išgalvotas identifikatorius"></div>'+
- '<div class="field"><label>Gydymo plano sąsaja (nebūtina)</label><select name="planId"><option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===(editing?.patientId||db.patients.find(p=>p.clinicIds.includes(clinicId))?.id)&&p.clinicId===clinicId).map(p=>[p.id,p.title]),editing?.planId||"")+'</select></div>'+
+ '<div class="field"><label>Gydymo plano sąsaja (nebūtina)</label><select name="planId" id="vlk-plan"><option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===(editing?.patientId||db.patients.find(p=>p.clinicIds.includes(clinicId))?.id)&&p.clinicId===clinicId).map(p=>[p.id,p.title]),editing?.planId||"")+'</select></div>'+
+ '<div class="field"><label>Kompensuojama plano procedūra (nebūtina)</label><select name="planItemId" id="vlk-plan-item"><option value="">Nesusieta (visa byla)</option>'+opt(db.plans.find(p=>p.id===editing?.planId)?.items.map(i=>[i.id,i.description])||[],editing?.planItemId||"")+'</select></div>'+
  '<div class="field full"><label><input type="checkbox" name="eligibilityChecked" '+(editing?.eligibilityChecked?"checked":"")+'> Atsakingas darbuotojas patikrino teisę, sutarties sąlygas ir privalomus dokumentus (tik demo žyma)</label></div>'+
  '<div class="field full"><h3>Laboratorija ir savikaina šiam atvejui</h3><p class="help">Įkainiai įrašomi ranka arba pasirenkami iš demonstracinio laboratorijos kainyno. VLK atlygis bus skaičiuojamas tik užbaigus atvejį.</p></div>'+
  '<div class="field full"><label>Dantų technikų laboratorija</label><select id="vlk-laboratory" name="selectedLaboratory"><option value="">Pasirinkite laboratoriją</option>'+opt(labNames().map(x=>[x,x]),editing?.costs?.laboratory?.[0]?.laboratory||"")+'<option value="__manual">Kita laboratorija (įvesti ranka)</option></select></div>'+
@@ -1196,20 +1197,26 @@ function saveVlkCase(){
    categoryId:data.categoryId,claimedAmount:amount,patientContribution:contribution,
    referralReference:String(data.referralReference||"").trim(),
    evisReference:String(data.evisReference||"").trim(),
-   planId:data.planId||"",labCatalogId:labCatalog?.id||"",eligibilityChecked:data.eligibilityChecked==="on",
+   planId:data.planId||"",planItemId:data.planItemId||"",labCatalogId:labCatalog?.id||"",eligibilityChecked:data.eligibilityChecked==="on",
    costs:{laboratory:labCost>0?[{id:current?.costs?.laboratory?.[0]?.id||uid("vlk-lab"),description:labName,laboratory:labCatalog?.laboratory||(data.selectedLaboratory&&data.selectedLaboratory!=="__manual"?data.selectedLaboratory:"Demo laboratorija"),price:roundEuro(labCost),qty:1}]:[],
      materials:materialPrice>0?[{id:current?.costs?.materials?.[0]?.id||uid("vlk-mat"),description:materialName,price:roundEuro(materialPrice),qty:1}]:[]},
    usage,status:data.caseStatus==="Vykdomas"?"Vykdomas":"Planuojamas",completedAt:current?.completedAt||"",createdAt:current?.createdAt||new Date().toISOString(),demo:true
  };
  if(current){
   const copay=sourceInvoice(db.invoices,{vlkCaseId:current.id});
-  if(copay&&(current.patientId!==record.patientId||current.clinicId!==record.clinicId||
+  if(copay&&(current.planId!==record.planId||current.planItemId!==record.planItemId||current.patientId!==record.patientId||current.clinicId!==record.clinicId||
      current.doctorId!==record.doctorId||Math.abs(Number(current.patientContribution)-Number(record.patientContribution))>0.001)){
    notify("VLK priemokos sąskaita jau išrašyta; šių atvejo duomenų keisti negalima.",true);return
   }
  }
  const issues=vlkCaseIssues(record,db.vlkContracts,db.patients,db.staff);
  if(issues.length){notify(issues.join(" "),true);return}
+ if(data.planItemId&&!db.plans.some(p=>p.id===data.planId&&p.patientId===data.patientId&&p.clinicId===data.clinicId&&p.items.some(i=>i.id===data.planItemId))){
+   notify("VLK procedūra nepriklauso pasirinktam gydymo planui.",true);return
+ }
+ if(data.planItemId&&db.invoices.some(i=>i.planItemId===data.planItemId&&!i.vlkCaseId)){
+   notify("Šiai procedūrai jau išrašyta privati sąskaita. Patikrinkite apskaitą prieš priskirdami VLK.",true);return
+ }
  if(data.planId&&!db.plans.some(p=>p.id===data.planId&&p.patientId===data.patientId&&p.clinicId===data.clinicId)){
    notify("Pasirinktas gydymo planas nepriklauso šiam pacientui ar klinikai.",true);return
  }
@@ -1268,7 +1275,8 @@ function saveInvoice(){
   if(v.doctorId&&!doc){notify("Gydytojas turi dirbti pasirinktoje klinikoje.",true);return}
   const existing=sourceInvoice(db.invoices,{appointmentId:ui.modal?.appointmentId||"",planItemId:match?.id||""});
   if(existing){notify("Už šį vizitą arba plano procedūrą sąskaita jau išrašyta: "+existing.number,true);modal("invoice",existing.id);return}
-  if(match&&(db.vlkCases||[]).some(c=>c.planId===match.planId&&c.status!=="Atmestas")){
+  if(match&&(db.vlkCases||[]).some(c=>c.status!=="Atmestas"&&
+    (c.planItemId===match.id||(!c.planItemId&&c.planId===match.planId&&db.plans.find(p=>p.id===match.planId)?.items.length===1)))){
     notify("Šis gydymo planas susietas su VLK atveju. Paciento priemoka registruojama tik per VLK atvejį, kad sąnaudos nesidubliuotų.",true);return
   }
   if(!doc&&!confirm("Sąskaitai nepriskirtas gydytojas. Gydytojo atlyginimas nebus skaičiuojamas. Tikrai tęsti?"))return;
@@ -1817,7 +1825,8 @@ function handleChange(target){
       item.done=done;item.completedAt=done?new Date().toISOString():"";
       const task=(state.tasks||[]).find(t=>t.planItemId===itemId&&t.planId===planId);
       const billed=!!sourceInvoice(state.invoices,{planItemId:itemId});
-      const isVlk=(state.vlkCases||[]).some(c=>c.planId===planId&&c.status!=="Atmestas");
+      const isVlk=(state.vlkCases||[]).some(c=>c.status!=="Atmestas"&&
+       (c.planItemId===itemId||(!c.planItemId&&c.planId===planId&&plan.items.length===1)));
       if(done&&!billed&&!isVlk&&!task){
         state.tasks??=[];
         state.tasks.push({id:uid("task"),clinicId:plan.clinicId,patientId:plan.patientId,
@@ -1856,11 +1865,19 @@ function handleChange(target){
     $("vlk-doctor").innerHTML=opt(db.staff.filter(d=>d.clinicIds.includes(target.value)).map(d=>[d.id,d.name]),"");
     const p=$("vlk-form")?.querySelector('[name="planId"]');
     if(p)p.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(x=>x.clinicId===target.value&&x.patientId===$("vlk-patient").value).map(x=>[x.id,x.title]),"");
+    if($("vlk-plan-item"))$("vlk-plan-item").innerHTML='<option value="">Nesusieta (visa byla)</option>';
     return
   }
   if(target.id==="vlk-patient"){
     const plans=$("vlk-form")?.querySelector('[name="planId"]');
     if(plans)plans.innerHTML='<option value="">Nesusieta</option>'+opt(db.plans.filter(p=>p.patientId===target.value&&p.clinicId===$("vlk-clinic").value).map(p=>[p.id,p.title]),"");
+    if($("vlk-plan-item"))$("vlk-plan-item").innerHTML='<option value="">Nesusieta (visa byla)</option>';
+    return
+  }
+  if(target.id==="vlk-plan"){
+    const select=$("vlk-plan-item");
+    if(select)select.innerHTML='<option value="">Nesusieta (visa byla)</option>'+
+      opt(db.plans.find(p=>p.id===target.value)?.items.map(i=>[i.id,i.description])||[],"");
     return
   }
   if(target.id==="vlk-laboratory"){
