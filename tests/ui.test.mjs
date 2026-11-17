@@ -36,6 +36,9 @@ test("standalone demonstracija paleidžiama ir atveria pagrindinius modulius be 
     assert.match(node("page").innerHTML,/<h1>/);
     assert.ok(node("page").innerHTML.length>200,r+" should render");
   }
+  hooks.route("vlk");
+  assert.match(node("page").innerHTML,/Faktinė kompensuojama suma/);
+  assert.match(node("page").innerHTML,/PSDF atvejai ir būsenos/);
   for(const view of ["day","week","month","list"]){
     hooks.ui.view=view;hooks.route("calendar");
     assert.ok(node("page").innerHTML.length>800,view+" should render");
