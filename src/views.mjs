@@ -1200,6 +1200,45 @@ function downloadJson(){
   const url=URL.createObjectURL(blob),link=document.createElement("a");
   link.href=url;link.download="dentalpro-demo-"+isoDate()+".json";link.click();URL.revokeObjectURL(url);
 }
+function downloadCashDayCsv(){
+ const summary=settlementDaySummary(db.invoices,db.advances||[],db.vlkCases||[],ui.cashDay,ui.clinic);
+ const rows=[["Data","Operacijos rūšis","Klinika","Pacientas (demo)","Sąskaita / atvejis","Mokėjimo būdas","Suma EUR","Išorinis dokumentas"]];
+ for(const row of summary.rows)rows.push([ui.cashDay,row.kind,ui.clinic,name(row.patientId),row.invoiceNumber,row.method,
+   row.method==="cash"?row.cashAmount:row.amount,row.reference||""]);
+ for(const v of summary.vlkCases)rows.push([ui.cashDay,"VLK baigtas atvejis",clinic(v.clinicId),name(v.patientId),v.caseNumber,"VLK / PSDF (ne kasos įplauka)",v.claimedAmount,v.evisReference||""]);
+ rows.push([ui.cashDay,"SUMA","", "", "", "Grynieji",summary.totals.cash,""]);
+ rows.push([ui.cashDay,"SUMA","", "", "", "Kortelės",summary.totals.card,""]);
+ rows.push([ui.cashDay,"SUMA","", "", "", "Pavedimai",summary.totals.transfer,""]);
+ rows.push([ui.cashDay,"SUMA","", "", "", "VLK baigti atvejai (ne įplaukos)",summary.vlk,""]);
+ const cell=value=>{const valueText=String(value??"");return '"'+(/^[=+@\-\t\r]/.test(valueText)?"'":"")+valueText.replace(/"/g,'""')+'"';};
+ const content="\uFEFF"+rows.map(x=>x.map(cell).join(";")).join("\r\n");
+ const blob=new Blob([content],{type:"text/csv;charset=utf-8"});
+ const url=URL.createObjectURL(blob),link=document.createElement("a");
+ link.href=url;link.download="dentalpro-dienos-suvestine-demo-"+ui.cashDay+".csv";link.click();URL.revokeObjectURL(url);
+ notify("Dienos suvestinė eksportuota CSV (demo).");
+}
+function closeCashDay(){
+ const form=$("cash-close-form");if(!form)return;
+ const v=stringValues(new FormData(form));
+ const clinicId=v.clinicId;
+ if(!db.clinics.some(c=>c.id===clinicId)){notify("Pasirinkite kliniką.",true);return}
+ const counted={cash:Number(v.countedCash),card:Number(v.countedCard),transfer:Number(v.countedTransfer)};
+ if(["countedCash","countedCard","countedTransfer"].some(key=>!v[key]&&v[key]!=="0")||
+    Object.values(counted).some(x=>!Number.isFinite(x)||Math.abs(x)>100000)){
+   notify("Įveskite faktines dienos grynųjų, kortelių ir pavedimų sumas.",true);return
+ }
+ const computed=settlementDaySummary(db.invoices,db.advances||[],db.vlkCases||[],ui.cashDay,clinicId);
+ const difference={cash:roundEuro(counted.cash-computed.totals.cash),
+   card:roundEuro(counted.card-computed.totals.card),
+   transfer:roundEuro(counted.transfer-computed.totals.transfer)};
+ const record={id:uid("close"),date:ui.cashDay,clinicId,createdAt:new Date().toISOString(),
+   counted,expected:{...computed.totals},difference,vlk:computed.vlk,
+   notes:String(v.notes||"").trim().slice(0,400),demo:true};
+ update("Išsaugotas rankinis dienos mokėjimų suderinimas",record.id,state=>{
+   state.cashClosings??=[];state.cashClosings.push(record);
+ });
+ notify(Object.values(difference).some(x=>Math.abs(x)>0.001)?"Dienos suvestinė išsaugota; yra neatitikimų.":"Dienos suvestinė išsaugota; įvestos sumos sutampa.");
+}
 function downloadAppointmentsCsv(){
   const rows=[["Data","Laikas","Klinika","Kėdė","Pacientas (demo)","Gydytojas (demo)","Paslauga","Būsena","Trukmė min."],
     ...db.appointments.filter(a=>ui.clinic==="all"||a.clinicId===ui.clinic)
