@@ -450,15 +450,15 @@ function viewCompensation(){
  '<textarea id="lab-csv" rows="5" placeholder="Laboratorija;Darbas;Kaina\nDemo laboratorija;Cirkonio vainikėlis;95"></textarea>'+
  '<p>'+btn("Importuoti CSV","import-lab-csv","btn small")+'</p></details></section>'+
  '<section class="panel"><div class="panel-title"><h2>Mėnesinė gydytojų atlygio ataskaita (DEMO)</h2><label>Mėnuo <input id="salary-month" aria-label="Atlygio mėnuo" type="month" value="'+esc(ui.salaryMonth)+'"></label></div>'+
- '<p class="help">Atlygis = max(0, iki šiol gauta už sąskaitą − laboratorija − medžiagos) × gydytojo %. Mėnesio atlygis yra padidėjimas nuo šį mėnesį gautų įmokų. Kai savikaina dar nepadengta, atlygis 0 €. Kaina fiksuojama sąskaitoje. Mokesčiai ir realios išmokos neskaičiuojami.</p>'+
+ '<p class="help">Atlygis = max(0, iki šiol gauta už sąskaitą − laboratorija − atskirai įvestos detalės − 5 € už medžiagas (jei pažymėta) − 20 € už chirurgines medžiagas (jei pažymėta)) × gydytojo %. Mėnesio atlygis yra padidėjimas nuo šį mėnesį gautų įmokų. Kai savikaina dar nepadengta, atlygis 0 €. Kaina fiksuojama sąskaitoje. Mokesčiai ir realios išmokos neskaičiuojami.</p>'+
  '<div class="stat-grid"><div class="stat"><small>Atlygis per pasirinktą mėnesį</small><strong>'+money(summary.total)+'</strong></div>'+
  '<div class="stat"><small>Gautos įmokos per mėnesį</small><strong>'+money(summary.rows.reduce((n,r)=>n+r.paymentAmount,0))+'</strong></div>'+
  '<div class="stat"><small>Priskirtos sąskaitos</small><strong>'+registered.length+'</strong></div>'+
  '<div class="stat"><small>Įmokų įrašai</small><strong>'+summary.rows.length+'</strong></div></div>'+
  '<h3>Pagal gydytojus</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Gydytojas</th><th>Pacientų įmokos</th><th>Priskaičiuotas atlygis</th></tr></thead><tbody>'+
  summary.doctors.map(x=>'<tr><td>'+esc(doctor(x.doctorId))+'</td><td>'+money(x.received)+'</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
- '<h3 style="margin-top:18px">Įmokų detalizacija</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Gydytojas</th><th>Sąskaita</th><th>Gauta</th><th>Laboratorija (viso)</th><th>Medžiagos (viso)</th><th>%</th><th>Atlygis nuo įmokos</th></tr></thead><tbody>'+
- summary.rows.map(x=>'<tr><td>'+fmt(x.date)+'</td><td>'+esc(doctor(x.doctorId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+money(x.paymentAmount)+'</td><td>'+money(x.lab)+'</td><td>'+money(x.materials)+'</td><td>'+x.doctorPercent+' %</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
+ '<h3 style="margin-top:18px">Įmokų detalizacija</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Gydytojas</th><th>Sąskaita</th><th>Gauta</th><th>Laboratorija (viso)</th><th>Detalės (viso)</th><th>Medžiagos 5 €</th><th>Chirurginės 20 €</th><th>%</th><th>Atlygis nuo įmokos</th></tr></thead><tbody>'+
+ summary.rows.map(x=>'<tr><td>'+fmt(x.date)+'</td><td>'+esc(doctor(x.doctorId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+money(x.paymentAmount)+'</td><td>'+money(x.lab)+'</td><td>'+money(x.materials)+'</td><td>'+money(x.standard)+'</td><td>'+money(x.surgical)+'</td><td>'+x.doctorPercent+' %</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
  (!summary.rows.length?empty("Nėra įmokų","Sukurkite demo sąskaitą, priskirkite gydytoją ir užregistruokite mokėjimą."):"")+'</section>';
 }
 function viewReports(){
@@ -580,7 +580,14 @@ function viewDrawer(){
         '<div class="detail-item"><small>Data</small><b>'+fmt(invoice.date)+'</b></div>'+
         '<div class="detail-item"><small>Suma</small><b>'+money(total)+'</b></div><div class="detail-item"><small>Likutis</small><b>'+money(remaining)+'</b></div></div>'+
         '<h3 style="margin-top:24px">Paslaugos</h3>'+(invoice.planItemId?'<p class="help">Susieta su gydymo plano procedūra: '+esc(invoice.planItemId)+'</p>':"")+invoice.items.map(x=>'<div class="segment">'+esc(x.description)+' · '+money(x.price)+'</div>').join("")+
-        '<h3 style="margin-top:18px">Atlikęs gydytojas ir savikaina</h3>'+ 
+        '<h3 style="margin-top:18px">Vienkartiniai medžiagų atskaitymai nuo gydytojo apyvartos</h3>'+
+         '<div class="segment">'+
+         '<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="invoice-usage-materials" '+(invoice.usage?.materials?"checked":"")+' '+(paid>0?"disabled":"")+'> Medžiagos (sterilūs paketai, autoklavo įrankiai ir kt.) – 5 €</label>'+
+         '<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" id="invoice-usage-surgical" '+(invoice.usage?.surgicalMaterials?"checked":"")+' '+(paid>0?"disabled":"")+'> Chirurginės medžiagos – 20 €</label>'+
+         '<p class="help">Atskaitoma vieną kartą už šią sąskaitoje esančią paslaugą, ne nuo kiekvieno mokėjimo. Jei pažymėta abu – 25 €. Paciento mokėtina suma nesikeičia.</p>'+
+         (paid===0?btn("Išsaugoti medžiagų žymas","save-invoice-usage","btn small"):'<span class="pill grey">Užrakinta po mokėjimo</span>')+
+         '</div>'+
+         '<p class="help">Fiksuoti atskaitymai: '+money((invoiceCosts(invoice).standard||0)+(invoiceCosts(invoice).surgical||0))+' · Kitos medžiagos ir laboratorija atskaitomos papildomai.</p>'+'<h3 style="margin-top:18px">Atlikęs gydytojas ir savikaina</h3>'+ 
         (invoice.doctorId?'<div class="notice">Gydytojas: <b>'+esc(doctor(invoice.doctorId))+'</b> · Užfiksuotas atlygio tarifas: <b>'+Number(invoice.doctorPercent)+' %</b></div>':'<div class="notice warn">Sąskaita nepriskirta gydytojui, todėl neįtraukiama į atlygio skaičiavimą.</div>')+
         '<p class="help">Sąskaitos savikaina turi būti suvestinė prieš pirmąjį mokėjimą. Užregistravus mokėjimą savikainos eilutės užrakinamos, kad nekeistų ankstesnių atlygio skaičiavimų.</p>'+
         '<h3>Laboratorijos darbai ('+money(invoiceCosts(invoice).lab)+')</h3>'+
@@ -607,7 +614,10 @@ function viewDrawer(){
       '<div class="field full"><label>Gydymo plano procedūra (nebūtina)</label><select name="planItemId" id="invoice-plan-item"><option value="">Nesusieta</option>'+opt(planInvoiceItems(db.patients.some(p=>p.id===ui.patient&&p.clinicIds.includes(clinicId))?ui.patient:db.patients.find(p=>p.clinicIds.includes(clinicId))?.id,clinicId).map(x=>[x.id,x.name]),"")+'</select></div>'+'<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
       '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div>'+
       '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(primaryService()?.price||0)+'"></div>'+
-      '<div class="field full"><label>Gydytojas, kuriam priskiriama procedūra</label><select name="doctorId" id="invoice-doctor"><option value="">Nepriskirti (atlygis nebus skaičiuojamas)</option>'+opt(db.staff.filter(d=>d.clinicIds.includes(clinicId)).map(d=>[d.id,d.name]),"")+'</select></div>'+
+      '<div class="field full"><label>Gydytojas, kuriam priskiriama procedūra</label><select name="doctorId" id="invoice-doctor"><option value="">Nepriskirti (atlygis nebus skaičiuojamas)</option>'+opt(db.staff.filter(d=>d.clinicIds.includes(clinicId)).map(d=>[d.id,d.name]),"")+'</select></div>'+'<div class="field full"><label>Medžiagų naudojimas šiai paslaugai (atskaitymas tik nuo gydytojo atlygio bazės)</label>'+
+       '<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="usageMaterials"> Medžiagos – 5 €</label>'+
+       '<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="usageSurgical"> Chirurginės medžiagos – 20 €</label>'+
+       '<small class="help">Pažymėjus abi, iš atlygio bazės vieną kartą išskaičiuojama 25 €. Paciento sąskaita nepadidinama.</small></div>'+
        '<div class="field full"><label>Data</label><input name="date" type="date" value="'+isoDate()+'"></div></div>'+
       '<div class="drawer-footer">'+btn("Sukurti sąskaitą","save-invoice","btn primary")+'</div></form>');
   }
@@ -750,10 +760,21 @@ function saveInvoice(){
   const doc=db.staff.find(d=>d.id===v.doctorId&&d.clinicIds.includes(v.clinicId));
   if(v.doctorId&&!doc){notify("Gydytojas turi dirbti pasirinktoje klinikoje.",true);return}
   const percent=doc?(Number.isFinite(Number(doc.salaryPercent))?Number(doc.salaryPercent):35):null;
-  const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,planItemId:match?.id||"",planId:match?.planId||"",doctorId:doc?.id||"",doctorPercent:percent,costs:{laboratory:[],materials:[]},
+  const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,planItemId:match?.id||"",planId:match?.planId||"",doctorId:doc?.id||"",doctorPercent:percent,usage:{materials:v.usageMaterials==="on",surgicalMaterials:v.usageSurgical==="on"},costs:{laboratory:[],materials:[]},
     items:[{id:uid("line"),description:service(v.serviceId),serviceId:v.serviceId,price,qty}],payments:[]};
   update("Sukurta demonstracinė sąskaita",invoice.id,s=>s.invoices.push(invoice));
   ui.modal={kind:"invoice",id:invoice.id};render();notify("Sąskaita sukurta.");
+}
+function saveInvoiceUsage(){
+ const invoice=db.invoices.find(i=>i.id===ui.modal?.id);
+ if(!invoice)return;
+ if((invoice.payments||[]).length){notify("Medžiagų žymų pakeisti po pirmojo mokėjimo negalima.",true);return}
+ const materials=$("invoice-usage-materials")?.checked===true;
+ const surgicalMaterials=$("invoice-usage-surgical")?.checked===true;
+ update("Atnaujintos fiksuotos medžiagų savikainos žymos",invoice.id,state=>{
+   state.invoices.find(i=>i.id===invoice.id).usage={materials,surgicalMaterials};
+ });
+ notify("Medžiagų atskaitymai išsaugoti.");
 }
 function savePayment(){
   const invoice=db.invoices.find(i=>i.id===ui.modal.id);
@@ -928,6 +949,7 @@ function handleAction(target,event){
     case "new-invoice":modal("invoice");break;
     case "open-invoice":modal("invoice",id);break;
     case "save-invoice":saveInvoice();break;
+    case "save-invoice-usage":saveInvoiceUsage();break;
     case "save-doctor-percent":saveDoctorPercent(id);break;
     case "save-lab-work":saveLaboratoryWork("lab-catalog-form");break;
     case "edit-lab-work":modal("lab-work",id);break;
