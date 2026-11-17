@@ -761,6 +761,66 @@ function savePayment(){
     id:uid("pay"),date:isoDate(),amount,method:v.method
   }));notify("Demonstracinis mokėjimas įrašytas.");
 }
+function saveDoctorPercent(doctorId){
+ const field=$("salary-"+doctorId),value=Number(field?.value);
+ if(!field||!field.value.trim()||!Number.isFinite(value)||value<0||value>100){notify("Procentas turi būti nuo 0 iki 100.",true);return}
+ if(!db.staff.some(d=>d.id===doctorId))return;
+ update("Atnaujintas demo gydytojo atlygio procentas",doctorId,state=>{state.staff.find(d=>d.id===doctorId).salaryPercent=value});
+ notify("Procentas bus taikomas tik naujoms sąskaitoms.");
+}
+function saveLaboratoryWork(formId,id=""){
+ const form=$(formId);if(!form)return;
+ const v=stringValues(new FormData(form)),price=Number(v.price);
+ if(!v.laboratory?.trim()||v.laboratory.length>160||!validCost(v.name,price)){notify("Įveskite laboratoriją, darbą ir teisingą įkainį.",true);return}
+ const entry={id:id||uid("lab"),laboratory:v.laboratory.trim(),name:v.name.trim(),price:roundEuro(price),active:true,demo:true};
+ update(id?"Atnaujintas demo laboratorijos įkainis":"Pridėtas demo laboratorijos įkainis",entry.id,state=>{
+   state.laboratoryCatalog??=[];
+   const i=state.laboratoryCatalog.findIndex(x=>x.id===entry.id);
+   if(i<0)state.laboratoryCatalog.push(entry);else state.laboratoryCatalog[i]=entry;
+ });
+ if(id)ui.modal=null;
+ render();notify("Laboratorijos įkainis išsaugotas.");
+}
+function importLaboratoryCsv(){
+ try{
+   const rows=parseLaboratoryCsv($("lab-csv")?.value||"");
+   if(!rows.length||rows.length>300){notify("CSV turi būti 1–300 duomenų eilučių.",true);return}
+   update("Importuotas demo laboratorijos kainynas",String(rows.length),state=>{
+     state.laboratoryCatalog??=[];
+     for(const entry of rows){
+       const old=state.laboratoryCatalog.find(x=>x.laboratory.toLocaleLowerCase("lt")===entry.laboratory.toLocaleLowerCase("lt")&&x.name.toLocaleLowerCase("lt")===entry.name.toLocaleLowerCase("lt"));
+       if(old){old.price=entry.price;old.active=true}
+       else state.laboratoryCatalog.push({id:uid("lab"),...entry});
+     }
+   });notify("Importuota / atnaujinta "+rows.length+" demo darbų.");
+ }catch(error){notify(error.message||"Nepavyko nuskaityti CSV.",true)}
+}
+function updateInvoiceCost(type,removalId=""){
+ const invoice=db.invoices.find(i=>i.id===ui.modal?.id);
+ if(!invoice||!["laboratory","materials"].includes(type))return;
+ if((invoice.payments||[]).length){notify("Savikaina užrakinta po pirmojo mokėjimo.",true);return}
+ if(removalId){
+   update("Pašalinta demo savikainos eilutė",invoice.id,state=>{
+     const target=state.invoices.find(i=>i.id===invoice.id);
+     target.costs??={laboratory:[],materials:[]};
+     target.costs[type]=(target.costs[type]||[]).filter(x=>x.id!==removalId);
+   });notify("Savikainos eilutė pašalinta.");return;
+ }
+ const form=$(type==="materials"?"invoice-material-form":"invoice-lab-cost-form");if(!form)return;
+ const v=stringValues(new FormData(form)),catalog=(db.laboratoryCatalog||[]).find(x=>x.id===v.labWorkId);
+ const description=type==="laboratory"&&catalog?catalog.name:String(v.description||"").trim();
+ const laboratory=type==="laboratory"?(catalog?.laboratory||String(v.laboratory||"").trim()):"";
+ const price=type==="laboratory"&&catalog?Number(catalog.price):Number(v.price);
+ const qty=Number(v.qty);
+ if(!validCost(description,price,qty)||(type==="laboratory"&&!laboratory)){notify("Įveskite pavadinimą, kainą ir kiekį.",true);return}
+ const line={id:uid("cost"),description,laboratory,price:roundEuro(price),qty,catalogId:catalog?.id||"",demo:true};
+ update("Pridėta demonstracinė savikaina",invoice.id,state=>{
+   const target=state.invoices.find(i=>i.id===invoice.id);
+   target.costs??={laboratory:[],materials:[]};
+   target.costs[type]??=[];
+   target.costs[type].push(line);
+ });notify("Savikaina priskirta sąskaitai.");
+}
 function downloadJson(){
   const blob=new Blob([repository.export()],{type:"application/json;charset=utf-8"});
   const url=URL.createObjectURL(blob),link=document.createElement("a");
