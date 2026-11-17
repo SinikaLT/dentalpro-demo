@@ -14,6 +14,17 @@ export function duplicateInvoiceIssues(invoices,candidate){
  const existing=sourceInvoice(invoices,candidate,candidate.id);
  return existing?[("Už šį vizitą, gydymo plano procedūrą arba VLK priemoką sąskaita jau sukurta: "+existing.number)]:[];
 }
+/** Perspėjimas dėl vienodos paslaugos tam pačiam pacientui tą pačią dieną.
+ * Nėra griežto blokavimo – gali būti dvi vienodos teisėtos procedūros.
+ */
+export function suspectedRepeatInvoices(invoices,candidate){
+ const item=candidate?.items?.[0];
+ if(!item)return [];
+ return (invoices||[]).filter(i=>i.id!==candidate.id&&!i.vlkCaseId&&
+   i.patientId===candidate.patientId&&i.clinicId===candidate.clinicId&&i.date===candidate.date&&
+   (i.items||[]).some(x=>x.serviceId===item.serviceId&&x.qty===item.qty&&
+     Math.abs(Number(x.price)-Number(item.price))<0.001));
+}
 export function planItemBillingState(state,planId,itemId){
  const plan=(state.plans||[]).find(p=>p.id===planId),item=plan?.items.find(x=>x.id===itemId);
  if(!plan||!item)return {status:"Nerasta",invoice:null};
