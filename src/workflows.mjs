@@ -23,14 +23,19 @@ export function duplicatePatients(patients,candidate,excludeId=""){
 export function receptionistDashboard(state,date,clinicId="all"){
  const scope=cid=>clinicId==="all"||cid===clinicId;
  const appointments=(state.appointments||[]).filter(a=>a.date===date&&scope(a.clinicId)&&a.status!=="Atšauktas").sort((a,b)=>a.time.localeCompare(b.time));
- const documents=appointments.filter(a=>registrationChecklist(state.forms,a.patientId).some(x=>!x.signed));
+ const documents=appointments.filter(a=>registrationChecklist(state.forms,a.patientId).some(x=>!x.signed)||
+    state.patients?.find(p=>p.id===a.patientId)?.healthReviewRequired===true);
  const awaiting=appointments.filter(a=>a.status==="Registruotas");
+ const tomorrowDate=new Date(date+"T12:00:00Z");tomorrowDate.setUTCDate(tomorrowDate.getUTCDate()+1);
+ const tomorrow=tomorrowDate.toISOString().slice(0,10);
+ const reminders=(state.appointments||[]).filter(a=>a.date===tomorrow&&scope(a.clinicId)&&
+   !["Atšauktas","Neatvyko"].includes(a.status)&&!a.reminderStatus?.startsWith("Priminta"));
  const invoices=(state.invoices||[]).filter(i=>scope(i.clinicId));
  const debts=invoices.filter(i=>invoiceOutstanding(i,invoiceTotal(i))>0.001);
  const overdueTasks=(state.tasks||[]).filter(t=>scope(t.clinicId)&&t.status!=="Atlikta"&&t.dueDate<=date);
  const readyOrders=(state.labOrders||[]).filter(o=>scope(o.clinicId)&&o.status==="Gauta");
  const lateOrders=(state.labOrders||[]).filter(o=>scope(o.clinicId)&&!["Gauta","Atiduota","Atšaukta"].includes(o.status)&&o.dueDate&&o.dueDate<date);
- return {appointments,documents,awaiting,debts,overdueTasks,readyOrders,lateOrders,
+ return {appointments,documents,awaiting,reminders,debts,overdueTasks,readyOrders,lateOrders,
   outstanding:Math.round(debts.reduce((sum,i)=>sum+invoiceOutstanding(i,invoiceTotal(i)),0)*100)/100};
 }
 export const LAB_ORDER_STATUSES=["Užsakyta","Gaminama","Gauta","Atiduota","Atšaukta"];
