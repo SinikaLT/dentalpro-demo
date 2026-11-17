@@ -293,3 +293,48 @@ test("nepažymėti atskaitymai netaikomi, naujam tarifui galioja įvesties patik
  assert.equal(validUsageFee("15,00"),false);
  assert.equal(validUsageFee("7.50"),true);
 });
+
+import {VLK_CATEGORIES,vlkAmountIssues,vlkCaseIssues,vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "../src/vlk.mjs";
+
+test("VLK kompensacija turi tik faktiškai suteiktų paslaugų sumą, ne visą maksimalią ribą",()=>{
+ assert.ok(VLK_CATEGORIES.some(c=>c.id==="child-primary"&&c.limit===342.13));
+ assert.ok(VLK_CATEGORIES.some(c=>c.id==="adult-standard"&&c.limit===670.39));
+ assert.ok(VLK_CATEGORIES.some(c=>c.id==="adult-complex"&&c.limit===2062.70));
+ assert.deepEqual(vlkAmountIssues("adult-standard",500,0),[]);
+ assert.ok(vlkAmountIssues("adult-standard",671,0).length>0);
+ assert.ok(vlkAmountIssues("child-primary",400,0).length>0);
+ assert.deepEqual(vlkAmountIssues("referral-consultation",42,0),[]);
+});
+test("VLK atlygis tik užbaigus atvejį ir tik nuo faktinės sumos su savikaina",()=>{
+ const sample={id:"vlk-demo",caseNumber:"VLK-DEMO-1",categoryId:"adult-standard",
+ clinicId:"akm",patientId:"p-0-0",doctorId:"dr-akm-1",doctorPercent:40,
+ claimedAmount:500,patientContribution:100,status:"Vykdomas",completedAt:"",
+ costs:{laboratory:[{price:100,qty:1}],materials:[{price:20,qty:1}]},
+ usage:{materials:true,surgicalMaterials:false,materialsFee:5,surgicalMaterialsFee:20},demo:true};
+ assert.equal(vlkCaseEarning(sample),0);
+ assert.equal(vlkSalaryTotal([sample],"2026-11"),0);
+ sample.status="Baigtas";sample.completedAt="2026-11-17T12:00:00.000Z";
+ assert.equal(vlkCaseEarning(sample),150);
+ assert.equal(vlkSalaryTotal([sample],"2026-11"),150);
+ assert.equal(vlkSalaryRows([sample],"2026-12").length,0);
+ assert.equal(vlkSalaryRows([sample],"2026-11","kur").length,0);
+ assert.equal(vlkSalaryRows([sample],"2026-11","akm").length,1);
+ assert.equal(vlkCaseEarning({...sample,claimedAmount:750}),0);
+});
+test("VLK konsultacijai reikalingas siuntimas ir atskira klinikos sutartis",()=>{
+ const state=seedData("2026-11-17");
+ const sample={id:"vlk-a",categoryId:"referral-consultation",clinicId:"akm",patientId:"p-0-0",
+ doctorId:"dr-akm-1",doctorPercent:35,claimedAmount:35,patientContribution:0,
+ referralReference:"",status:"Planuojamas"};
+ const contracts={akm:{consultation:true,prosthetics:false}};
+ assert.ok(vlkCaseIssues(sample,contracts,state.patients,state.staff).some(x=>x.includes("siuntimo")));
+ sample.referralReference="SIUNTIMAS-DEMO";
+ assert.deepEqual(vlkCaseIssues(sample,contracts,state.patients,state.staff),[]);
+ assert.ok(vlkCaseIssues({...sample,categoryId:"adult-standard"},contracts,state.patients,state.staff).some(x=>x.includes("sutartis")));
+});
+test("nauja VLK demo saugykla nekeičia ankstesnių pacientų duomenų ir sutartys iš pradžių nepatvirtintos",()=>{
+ const data=seedData("2026-11-17");
+ assert.deepEqual(data.vlkCases,[]);
+ assert.equal(data.vlkContracts.akm.prosthetics,false);
+ assert.equal(data.vlkContracts.kur.consultation,false);
+});
