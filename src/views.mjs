@@ -5,10 +5,11 @@ import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
 import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,registrationChecklist,invasiveConsentForItem,FORM_DISCLOSURES} from "./forms.mjs";
 import {invoiceCosts,salaryAccruals,salarySummary,validCost,parseLaboratoryCsv,roundEuro,DEFAULT_USAGE_FEES,usageFeeSnapshot,validUsageFee} from "./compensation.mjs";
 import {VLK_CATEGORIES,VLK_SOURCE_DATE,vlkCategory,vlkAmountIssues,vlkCaseIssues,vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "./vlk.mjs";
+import {PAYMENT_METHODS,paymentMethod,isConfirmed,paidAmount,pendingAmount,invoiceOutstanding,paymentEvents,cashRounded,cashDifference,advanceRemaining,patientAdvanceBalance,settlementDaySummary} from "./payments.mjs";
 
 const repository=openRepository();
 let db=repository.get();
-const ui={salaryMonth:isoDate().slice(0,7),category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
+const ui={cashDay:isoDate(),salaryMonth:isoDate().slice(0,7),category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const opt=(arr,value)=>arr.map(x=>'<option value="'+esc(x[0])+'"'+(String(x[0])===String(value)?' selected':'')+'>'+esc(x[1])+'</option>').join("");
@@ -270,14 +271,14 @@ function viewNotes(){
 function viewFinances(){
   const invoices=db.invoices.filter(i=>ui.clinic==="all"||i.clinicId===ui.clinic);
   const total=invoices.reduce((n,i)=>n+invoiceTotal(i),0);
-  const paid=invoices.reduce((n,i)=>n+(i.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0),0);
+  const paid=invoices.reduce((n,i)=>n+paidAmount(i),0);
   return page("Finansai","Demonstracinės sąskaitos ir mokėjimų įrašai",btn("+ Nauja sąskaita","new-invoice","btn primary"))+
     '<div class="stat-grid"><div class="stat"><small>Sąskaitų</small><strong>'+invoices.length+'</strong></div><div class="stat"><small>Išrašyta</small><strong>'+money(total)+'</strong></div>'+
     '<div class="stat"><small>Apmokėta (demo)</small><strong>'+money(paid)+'</strong></div><div class="stat"><small>Likutis</small><strong>'+money(Math.max(0,total-paid))+'</strong></div></div>'+
     '<section class="panel"><div class="notice warn">Sąskaitos ir mokėjimai yra demonstraciniai – nėra realių finansinių operacijų, mokesčių skaičiavimo ar integracijos su bankais.</div>'+
     '<div class="table-wrap"><table class="data-table"><thead><tr><th>Numeris</th><th>Data</th><th>Pacientas</th><th>Klinika</th><th>Suma</th><th>Likutis</th><th></th></tr></thead><tbody>'+
     invoices.map(i=>{
-      const rem=Math.max(0,invoiceTotal(i)-(i.payments||[]).reduce((n,p)=>n+Number(p.amount),0));
+      const rem=invoiceOutstanding(i,invoiceTotal(i));
       return '<tr><td>'+esc(i.number)+'</td><td>'+fmt(i.date)+'</td><td>'+esc(name(i.patientId))+'</td><td>'+esc(clinic(i.clinicId))+'</td><td>'+money(invoiceTotal(i))+'</td><td>'+money(rem)+'</td>'+
       '<td>'+btn("Atverti","open-invoice","btn small","data-id='"+esc(i.id)+"'")+'</td></tr>';
     }).join("")+'</tbody></table></div>'+(!invoices.length?empty("Sąskaitų nėra","Sukurkite demonstracinę sąskaitą."):"")+'</section>';
@@ -490,7 +491,7 @@ function viewReports(){
   const plans=db.plans.filter(p=>ui.clinic==="all"||p.clinicId===ui.clinic);
   const count=status=>visits.filter(a=>a.status===status).length;
   const invoiced=invoices.reduce((n,i)=>n+invoiceTotal(i),0);
-  const received=invoices.reduce((n,i)=>n+(i.payments||[]).reduce((sum,p)=>sum+Number(p.amount||0),0),0);
+  const received=invoices.reduce((n,i)=>n+paidAmount(i),0);
   const doctorVisits=new Map();
   for(const a of visits){const item=doctorVisits.get(a.staffId)||{total:0,completed:0};item.total++;if(a.status==="Atliktas")item.completed++;doctorVisits.set(a.staffId,item)}
   const serviceTotals=new Map();
@@ -642,7 +643,7 @@ function viewDrawer(){
   if(d.kind==="invoice"){
     const invoice=db.invoices.find(i=>i.id===d.id);
     if(invoice){
-      const total=invoiceTotal(invoice),paid=(invoice.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0),remaining=Math.max(0,total-paid);
+      const total=invoiceTotal(invoice),paid=paidAmount(invoice),remaining=invoiceOutstanding(invoice,total),reserved=pendingAmount(invoice),uncommitted=Math.max(0,roundEuro(remaining-reserved));
       return wrap("Sąskaita "+invoice.number,'<div class="detail-grid"><div class="detail-item"><small>Pacientas</small><b>'+esc(name(invoice.patientId))+'</b></div>'+
         '<div class="detail-item"><small>Data</small><b>'+fmt(invoice.date)+'</b></div>'+
         '<div class="detail-item"><small>Suma</small><b>'+money(total)+'</b></div><div class="detail-item"><small>Likutis</small><b>'+money(remaining)+'</b></div></div>'+
