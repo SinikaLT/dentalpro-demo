@@ -849,6 +849,19 @@ function viewDrawer(){
       '<div class="field"><label>Grąžinimo dokumento nuoroda</label><input name="reference" maxlength="120"></div></div>'+
       '<p>'+btn("Užregistruoti grąžinimą","advance-refund","btn primary")+'</p></form>');
   }
+  if(d.kind==="vlk-copay"){
+    const c=(db.vlkCases||[]).find(x=>x.id===d.id);
+    if(!c||c.status==="Atmestas"||!(Number(c.patientContribution)>0))
+      return wrap("VLK priemoka",empty("Šiam atvejui priemoka negalima",""));
+    const existing=sourceInvoice(db.invoices,{vlkCaseId:c.id});
+    if(existing)return wrap("Priemoka jau išrašyta",'<p>'+btn("Atverti sąskaitą","open-invoice","btn primary","data-id=\'"+esc(existing.id)+"\'")+'</p>');
+    return wrap("Paciento VLK priemoka (DEMO)",
+      '<div class="notice">Atvejis '+esc(c.caseNumber)+' · Pacientas '+esc(name(c.patientId))+
+      ' · Gydytojas '+esc(doctor(c.doctorId))+'</div>'+
+      '<p><b>Fiksuota priemokos suma: '+money(c.patientContribution)+'</b></p>'+
+      '<p class="help">Prie šios sąskaitos laboratorija ir medžiagos nebus priskiriamos pakartotinai. Gydytojo atlygis pagal šią priemoką skaičiuojamas tik VLK atvejui tapus „Baigtas“, o už priemoką gavus patvirtintą mokėjimą.</p>'+
+      '<p>'+btn("Sukurti vieną priemokos sąskaitą","save-vlk-copay","btn primary","data-id=\'"+esc(c.id)+"\'")+'</p>');
+  }
   if(d.kind==="invoice"){
     const invoice=db.invoices.find(i=>i.id===d.id);
     if(invoice){
@@ -1216,6 +1229,25 @@ function finalizeVlkCase(id,status){
    item.completedAt=status==="Baigtas"?new Date().toISOString():"";
  });
  ui.vlkEditingId="";render();notify(status==="Baigtas"?"VLK atvejis baigtas, atlygis apskaičiuotas (demo).":"VLK atvejis atmestas.");
+}
+function saveVlkCopay(id){
+ const c=(db.vlkCases||[]).find(x=>x.id===id&&x.status!=="Atmestas");
+ if(!c||!(Number(c.patientContribution)>0))return;
+ const previous=sourceInvoice(db.invoices,{vlkCaseId:c.id});
+ if(previous){modal("invoice",previous.id);notify("Priemokos sąskaita jau sukurta.");return}
+ const invoice={id:uid("inv"),number:"DP-VLK-"+String(Date.now()).slice(-9),
+  date:isoDate(),clinicId:c.clinicId,patientId:c.patientId,doctorId:c.doctorId,
+  doctorPercent:c.doctorPercent,planId:c.planId||"",planItemId:"",appointmentId:"",
+  vlkCaseId:c.id,kind:"vlk-contribution",usage:{materials:false,surgicalMaterials:false},
+  costs:{laboratory:[],materials:[]},items:[{id:uid("line"),description:"Paciento priemoka · "+c.caseNumber,
+    price:roundEuro(Number(c.patientContribution)),qty:1}],payments:[],demo:true};
+ const problems=[...duplicateInvoiceIssues(db.invoices,invoice),...vlkContributionInvoiceIssues(invoice,c)];
+ if(problems.length){notify(problems.join(" "),true);return}
+ update("Sukurta vienintelė VLK priemokos sąskaita",invoice.id,state=>{
+  if(duplicateInvoiceIssues(state.invoices,invoice).length)throw Error("Priemokos sąskaita jau egzistuoja.");
+  state.invoices.push(invoice);
+ });
+ modal("invoice",invoice.id);notify("Priemokos sąskaita sukurta. Savikaina lieka VLK atvejyje.");
 }
 function saveInvoice(){
   const v=stringValues(formData("invoice-form")),qty=Number(v.qty),price=Number(v.price);
@@ -1675,6 +1707,8 @@ function handleAction(target,event){
     case "save-service":saveService();break;
     case "new-invoice":modal("invoice");break;
     case "open-invoice":modal("invoice",id);break;
+    case "new-vlk-copay":modal("vlk-copay",id);break;
+    case "save-vlk-copay":saveVlkCopay(id);break;
     case "vlk-save":saveVlkCase();break;
     case "vlk-new":ui.vlkEditingId="";render();break;
     case "vlk-edit":ui.vlkEditingId=id;render();break;
