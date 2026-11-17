@@ -132,3 +132,19 @@ Sąskaitos kūrimo lange yra dvi atskiros varnelės: **Medžiagos** (pradinis į
 - **Banko suderinimas.** Laukiantys pavedimai matomi atskirame sąraše, atsekama išorinio pavedimo nuoroda. Importo iš banko API ar automatinio tikrinimo nėra.
 
 **Svarbu realiai klinikai:** išorinis kasos aparatas / i.EKA, kortelių terminalas, bankas ir oficialūs apskaitos dokumentai lieka atskiri. DentalPro demo įrašas nėra fiskalinis kvitas, mokėjimo pavedimo patvirtinimas ar oficiali buhalterinė sistema. Viešame GitHub Pages nėra prisijungimų, patikimų darbuotojų teisių ir serverinės finansinių įrašų apsaugos. Naudoti tik sintetinius duomenis.
+
+## Registratūros darbo vieta 2.0 (2026-11-17)
+
+Atlikta kasdienės administratorės darbo eigos demonstracinė integracija:
+- **Registratūros darbo vieta** vietoj bendro KPI ekrano: šiandienos pacientai, neužpildyti dokumentai, laukiančios registracijos, sąskaitų likučiai, atviros užduotys, laukiančiųjų sąrašas, gauti / vėluojantys laboratorijos darbai ir rytojaus rankinių priminimų eilė.
+- **Paciento paieška** pagal vardą / pavardę be lietuviškų diakritinių ženklų, telefono numerio skaitmenis ar el. paštą; perspėjimas dėl galimų kortelės dublikatų.
+- **Registracija** paciento ir gydytojo pasirinkimo seka, su grafiko / kėdės patikra, laisvo laiko siūlymu, paciento sukūrimu nepametant vizito ir rankiniu priminimo statusu. Laukiančiųjų sąrašo įrašas išsaugant vizitą pažymimas „Užregistruotas“.
+- **Dokumentai**: paciento kortelėje matomi registracijos dokumentai, galima pažymėti sveikatos anketos peržiūrą. Invazinio sutikimo demonstracinė forma išsaugo plano ir procedūros identifikatorius, dokumento tekstą ir pieštą parašą.
+- **Gydymo planai**: etapai, numatytos datos, atlikimo žymos, terminuoti užsakymai ir mygtukai naujam vizitui / sąskaitai. Sąskaitą galima pradėti ir iš esamo vizito.
+- **Laboratorijų užsakymai**: klinika, pacientas, planas, laboratorija, darbas, kaina, išsiuntimo / gavimo terminas ir rankinės būsenos.
+- **Finansai**: keturios atskiros navigacijos skiltys: pacientų atsiskaitymai, avansai ir grąžinimai, laukiantys mokėjimai, dienos kasa. Daliniai / mišrūs mokėjimai, rankinis banko suderinimas, atskiros VLK sumos išlieka.
+- **Audito demonstracija**: pagal įrašą rodomi riboto saugių laukų rinkinio pokyčiai „prieš → po“ ir laikas; jis nėra nuo klastojimo apsaugotas. Nepavykus išsaugoti naršyklės saugykloje, pakeitimas nelaikomas atliktu.
+
+Plačiau: [Registratūros darbo eiga](docs/REGISTRATUROS_DARBO_EIGA.md) ir [Saugi serverinė versija](docs/SAUGI_SERVERINE_VERSIJA.md).
+
+**Svarbu: tik demonstracija!** Realūs pacientų duomenys, atlyginimai ir dokumentai neleidžiami, nes vis dar nėra serverinės autentifikacijos / teisių, bendros patikimos DB, tikrų SMS / el. pašto siuntimo, realios fiskalizacijos, kortelių terminalo sąsajos ar VLK automatinių integracijų. Tikras saugumas privalo būti realizuotas atskiroje serverinėje infrastruktūroje, o ne meniu slėpimu.
