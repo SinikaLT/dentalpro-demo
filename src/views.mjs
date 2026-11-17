@@ -19,6 +19,7 @@ const doctor=id=>doctorName(db,id);
 const service=id=>serviceName(db,id);
 const activeServices=()=>db.services.filter(s=>s.active);
 const primaryService=()=>activeServices()[0]||db.services[0];
+const planInvoiceItems=(patientId,clinicId)=>db.plans.filter(p=>p.patientId===patientId&&p.clinicId===clinicId).flatMap(p=>p.items.map(i=>({id:i.id,planId:p.id,name:p.title+" – "+i.description,serviceId:i.serviceId,price:i.price,qty:i.qty})));
 const serviceChoices=(selected="")=>{const groups=new Map();for(const s of activeServices()){if(!groups.has(s.category))groups.set(s.category,[]);groups.get(s.category).push(s)}const historic=db.services.find(s=>s.id===selected&&!s.active);let html=historic?opt([[historic.id,historic.name+" (archyvinė)"]],selected):"";for(const [label,items] of groups)html+='<optgroup label="'+esc(label)+'">'+opt(items.map(s=>[s.id,s.name+" · "+(s.priceLabel||money(s.price))]),selected)+"</optgroup>";return html};
 const pricePicker=(serviceId,selected)=>{const s=db.services.find(x=>x.id===serviceId);const values=priceOptions(s);return values.length?'<select name="price" id="plan-item-price">'+opt(values.map(v=>[v,money(v)]),selected??values[0])+"</select>":'<input name="price" id="plan-item-price" type="number" min="0" step="0.01" value="'+esc(selected??(s?.priceMin==null?"":s?.price??0))+'" required>'};
 const clinic=id=>db.clinics.find(x=>x.id===id)?.name||"—";
@@ -578,7 +579,7 @@ function viewDrawer(){
       return wrap("Sąskaita "+invoice.number,'<div class="detail-grid"><div class="detail-item"><small>Pacientas</small><b>'+esc(name(invoice.patientId))+'</b></div>'+
         '<div class="detail-item"><small>Data</small><b>'+fmt(invoice.date)+'</b></div>'+
         '<div class="detail-item"><small>Suma</small><b>'+money(total)+'</b></div><div class="detail-item"><small>Likutis</small><b>'+money(remaining)+'</b></div></div>'+
-        '<h3 style="margin-top:24px">Paslaugos</h3>'+invoice.items.map(x=>'<div class="segment">'+esc(x.description)+' · '+money(x.price)+'</div>').join("")+
+        '<h3 style="margin-top:24px">Paslaugos</h3>'+(invoice.planItemId?'<p class="help">Susieta su gydymo plano procedūra: '+esc(invoice.planItemId)+'</p>':"")+invoice.items.map(x=>'<div class="segment">'+esc(x.description)+' · '+money(x.price)+'</div>').join("")+
         '<h3 style="margin-top:18px">Atlikęs gydytojas ir savikaina</h3>'+ 
         (invoice.doctorId?'<div class="notice">Gydytojas: <b>'+esc(doctor(invoice.doctorId))+'</b> · Užfiksuotas atlygio tarifas: <b>'+Number(invoice.doctorPercent)+' %</b></div>':'<div class="notice warn">Sąskaita nepriskirta gydytojui, todėl neįtraukiama į atlygio skaičiavimą.</div>')+
         '<p class="help">Sąskaitos savikaina turi būti suvestinė prieš pirmąjį mokėjimą. Užregistravus mokėjimą savikainos eilutės užrakinamos, kad nekeistų ankstesnių atlygio skaičiavimų.</p>'+
@@ -603,7 +604,7 @@ function viewDrawer(){
     const clinicId=ui.clinic==="all"?"akm":ui.clinic;
     return wrap("Nauja demonstracinė sąskaita",'<form id="invoice-form"><div class="field-grid"><div class="field full"><label>Klinika</label><select name="clinicId" id="invoice-clinic">'+opt(db.clinics.map(c=>[c.id,c.name]),clinicId)+'</select></div>'+
       '<div class="field full"><label>Pacientas</label><select name="patientId" id="invoice-patient">'+opt(db.patients.filter(p=>p.clinicIds.includes(clinicId)).map(p=>[p.id,name(p.id)]),ui.patient)+'</select></div>'+
-      '<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
+      '<div class="field full"><label>Gydymo plano procedūra (nebūtina)</label><select name="planItemId" id="invoice-plan-item"><option value="">Nesusieta</option>'+opt(planInvoiceItems(db.patients.some(p=>p.id===ui.patient&&p.clinicIds.includes(clinicId))?ui.patient:db.patients.find(p=>p.clinicIds.includes(clinicId))?.id,clinicId).map(x=>[x.id,x.name]),"")+'</select></div>'+'<div class="field full"><label>Paslauga</label><select name="serviceId" id="invoice-service">'+serviceChoices(primaryService()?.id)+'</select></div>'+
       '<div class="field"><label>Kiekis</label><input name="qty" type="number" min="1" max="100" value="1"></div>'+
       '<div class="field"><label>Kaina (€)</label><input name="price" id="invoice-price" type="number" min="0" step=".01" value="'+Number(primaryService()?.price||0)+'"></div>'+
       '<div class="field full"><label>Gydytojas, kuriam priskiriama procedūra</label><select name="doctorId" id="invoice-doctor"><option value="">Nepriskirti (atlygis nebus skaičiuojamas)</option>'+opt(db.staff.filter(d=>d.clinicIds.includes(clinicId)).map(d=>[d.id,d.name]),"")+'</select></div>'+
@@ -744,10 +745,12 @@ function saveInvoice(){
   if(!v.clinicId||!db.patients.some(p=>p.id===v.patientId&&p.clinicIds.includes(v.clinicId))||!db.services.some(s=>s.id===v.serviceId)||
      !Number.isInteger(qty)||qty<1||qty>100||!Number.isFinite(price)||price<0||!validDate(v.date)){
     notify("Neteisingi sąskaitos duomenys.",true);return}
+  const match=v.planItemId?planInvoiceItems(v.patientId,v.clinicId).find(x=>x.id===v.planItemId):null;
+  if(v.planItemId&&!match){notify("Pasirinkta procedūra nepriklauso pacientui ar klinikai.",true);return}
   const doc=db.staff.find(d=>d.id===v.doctorId&&d.clinicIds.includes(v.clinicId));
   if(v.doctorId&&!doc){notify("Gydytojas turi dirbti pasirinktoje klinikoje.",true);return}
   const percent=doc?(Number.isFinite(Number(doc.salaryPercent))?Number(doc.salaryPercent):35):null;
-  const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,doctorId:doc?.id||"",doctorPercent:percent,costs:{laboratory:[],materials:[]},
+  const invoice={id:uid("inv"),number:"DP-"+String(Date.now()).slice(-9),date:v.date,clinicId:v.clinicId,patientId:v.patientId,planItemId:match?.id||"",planId:match?.planId||"",doctorId:doc?.id||"",doctorPercent:percent,costs:{laboratory:[],materials:[]},
     items:[{id:uid("line"),description:service(v.serviceId),serviceId:v.serviceId,price,qty}],payments:[]};
   update("Sukurta demonstracinė sąskaita",invoice.id,s=>s.invoices.push(invoice));
   ui.modal={kind:"invoice",id:invoice.id};render();notify("Sąskaita sukurta.");
@@ -844,6 +847,7 @@ function switchAppointmentClinic(cid){
 }
 function switchInvoiceClinic(cid){
   $("invoice-patient").innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(cid)).map(p=>[p.id,name(p.id)]),"");
+  $("invoice-plan-item").innerHTML='<option value="">Nesusieta</option>'+opt(planInvoiceItems($("invoice-patient").value,cid).map(x=>[x.id,x.name]),"");
   $("invoice-doctor").innerHTML='<option value="">Nepriskirti (atlygis nebus skaičiuojamas)</option>'+opt(db.staff.filter(d=>d.clinicIds.includes(cid)).map(d=>[d.id,d.name]),"");
 }
 function removeFinding(){
@@ -983,6 +987,20 @@ function handleChange(target){
       form.querySelector('[name="laboratory"]').value=chosen.laboratory;
       form.querySelector('[name="description"]').value=chosen.name;
       form.querySelector('[name="price"]').value=chosen.price;
+    }
+    return;
+  }
+  if(target.id==="invoice-patient"){
+    $("invoice-plan-item").innerHTML='<option value="">Nesusieta</option>'+opt(planInvoiceItems(target.value,$("invoice-clinic").value).map(x=>[x.id,x.name]),"");
+    return;
+  }
+  if(target.id==="invoice-plan-item"){
+    const item=planInvoiceItems($("invoice-patient").value,$("invoice-clinic").value).find(x=>x.id===target.value);
+    if(item){
+      const select=$("invoice-service");
+      if(select.querySelector('option[value="'+item.serviceId+'"]'))select.value=item.serviceId;
+      $("invoice-price").value=item.price;
+      $("invoice-form").querySelector('[name="qty"]').value=item.qty;
     }
     return;
   }
