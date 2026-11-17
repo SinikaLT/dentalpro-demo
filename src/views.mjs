@@ -679,6 +679,19 @@ function viewDrawer(){
       '<div class="field"><label>Kaina (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" required value="'+Number(rec.price)+'"></div></div>'+
       '<div class="drawer-footer">'+btn("Išsaugoti","save-lab-edit","btn primary")+'</div></form>');
   }
+  if(d.kind==="advance-refund"){
+    const a=(db.advances||[]).find(x=>x.id===d.id);
+    if(!a)return wrap("Avanso grąžinimas",empty("Avansas nerastas",""));
+    return wrap("Grąžinti nepanaudotą avansą (DEMO)",
+      '<div class="notice warn">Tai tik rankinis įrašas. Pinigus grąžinkite kasos aparatu, per terminalą arba banku atskirai.</div>'+
+      '<p>Pacientas: <b>'+esc(name(a.patientId))+'</b>, turimas nepanaudotas avansas: <b>'+money(advanceRemaining(a))+'</b></p>'+
+      '<form id="advance-refund-form"><div class="field-grid">'+
+      '<div class="field"><label>Grąžinama suma (€)</label><input name="amount" type="number" min="0.01" step="0.01" max="'+advanceRemaining(a)+'" required value="'+advanceRemaining(a)+'"></div>'+
+      '<div class="field"><label>Būdas</label><select name="method">'+opt(PAYMENT_METHODS.filter(x=>x.id!=="advance").map(x=>[x.id,x.label]),a.method)+'</select></div>'+
+      '<div class="field"><label>Priežastis *</label><input name="reason" required maxlength="250"></div>'+
+      '<div class="field"><label>Grąžinimo dokumento nuoroda</label><input name="reference" maxlength="120"></div></div>'+
+      '<p>'+btn("Užregistruoti grąžinimą","advance-refund","btn primary")+'</p></form>');
+  }
   if(d.kind==="invoice"){
     const invoice=db.invoices.find(i=>i.id===d.id);
     if(invoice){
@@ -1288,6 +1301,17 @@ function handleAction(target,event){
     case "add-invoice-material":updateInvoiceCost("materials");break;
     case "remove-invoice-cost":if(confirm("Pašalinti demonstracinę savikainos eilutę?"))updateInvoiceCost(target.dataset.type,id);break;
     case "save-payment":savePayment();break;
+    case "payment-confirm":confirmPayment(target.dataset.invoice,id,true);break;
+    case "payment-cancel":confirmPayment(target.dataset.invoice,id,false);break;
+    case "invoice-refund":refundInvoicePayment();break;
+    case "advance-save":saveAdvance();break;
+    case "advance-confirm":confirmAdvance(id,true);break;
+    case "advance-cancel":confirmAdvance(id,false);break;
+    case "advance-allocate":allocateAdvance();break;
+    case "advance-refund-open":modal("advance-refund",id);break;
+    case "advance-refund":refundAdvance();break;
+    case "export-cash-day":downloadCashDayCsv();break;
+    case "close-cash-day":closeCashDay();break;
     case "export":downloadJson();notify("Demo JSON paruoštas.");break;
     case "export-appointments":downloadAppointmentsCsv();notify("Demo vizitų CSV paruoštas.");break;
     case "reset":if(confirm("Atkurti pradinius demonstracinius duomenis? Dabartiniai v2 demonstraciniai pakeitimai bus ištrinti.")){
@@ -1362,6 +1386,17 @@ function handleChange(target){
       form.querySelector('[name="labName"]').value=selected.name;
       form.querySelector('[name="labPrice"]').value=selected.price;
     }
+    return
+  }
+  if(target.id==="cash-day"){if(validDate(target.value)){ui.cashDay=target.value;render()}return}
+  if(target.id==="advance-clinic"){
+    const pick=$("advance-patient");
+    if(pick)pick.innerHTML=opt(db.patients.filter(p=>p.clinicIds.includes(target.value)).map(p=>[p.id,name(p.id)]),"");
+    return
+  }
+  if(target.id==="payment-method"){
+    const field=$("payment-status");
+    if(field){field.value=target.value==="transfer"?"pending":"confirmed";field.disabled=target.value==="transfer"}
     return
   }
   if(target.id==="salary-month"){ui.salaryMonth=target.value;render();return}
