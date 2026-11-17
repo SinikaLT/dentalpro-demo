@@ -562,6 +562,15 @@ function viewDrawer(){
       '<div class="field"><label>Aktyvi</label><input type="checkbox" name="active" '+(!s||s.active?"checked":"")+'></div></div>'+
       '<div class="drawer-footer">'+btn("Išsaugoti paslaugą","save-service","btn primary")+'</div></form>');
   }
+  if(d.kind==="lab-work"){
+    const rec=(db.laboratoryCatalog||[]).find(x=>x.id===d.id);
+    if(!rec)return wrap("Laboratorija",empty("Įrašas nerastas",""));
+    return wrap("Redaguoti laboratorijos įkainį (DEMO)",'<form id="lab-edit-form"><div class="field-grid">'+
+      '<div class="field"><label>Laboratorija</label><input name="laboratory" maxlength="160" required value="'+esc(rec.laboratory)+'"></div>'+
+      '<div class="field"><label>Darbo pavadinimas</label><input name="name" maxlength="160" required value="'+esc(rec.name)+'"></div>'+
+      '<div class="field"><label>Kaina (€)</label><input name="price" type="number" min="0" max="100000" step="0.01" required value="'+Number(rec.price)+'"></div></div>'+
+      '<div class="drawer-footer">'+btn("Išsaugoti","save-lab-edit","btn primary")+'</div></form>');
+  }
   if(d.kind==="invoice"){
     const invoice=db.invoices.find(i=>i.id===d.id);
     if(invoice){
