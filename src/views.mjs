@@ -6,13 +6,14 @@ import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,regis
 import {invoiceCosts,salaryAccruals,salarySummary,validCost,parseLaboratoryCsv,roundEuro,DEFAULT_USAGE_FEES,usageFeeSnapshot,validUsageFee} from "./compensation.mjs";
 import {VLK_CATEGORIES,VLK_SOURCE_DATE,vlkCategory,vlkAmountIssues,vlkCaseIssues,vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "./vlk.mjs";
 import {PAYMENT_METHODS,paymentMethod,isConfirmed,paidAmount,pendingAmount,invoiceOutstanding,paymentEvents,cashRounded,cashDifference,advanceRemaining,patientAdvanceBalance,settlementDaySummary} from "./payments.mjs";
+import {searchPatients,duplicatePatients,receptionistDashboard,LAB_ORDER_STATUSES,TASK_STATUSES,WAITLIST_STATUSES} from "./workflows.mjs";
 
 const labNames=()=>[...new Set((db.laboratoryCatalog||[]).filter(x=>x.active!==false).map(x=>x.laboratory).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"lt"));
 const labJobs=lab=>(db.laboratoryCatalog||[]).filter(x=>x.active!==false&&x.laboratory===lab);
 const labOptions=(lab,selected="")=>'<option value="">Pasirinkite darbą / rankinis įrašas</option>'+opt(labJobs(lab).map(x=>[x.id,x.name+" · "+money(x.price)]),selected);
 const repository=openRepository();
 let db=repository.get();
-const ui={cashDay:isoDate(),salaryMonth:isoDate().slice(0,7),category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
+const ui={cashDay:isoDate(),salaryMonth:isoDate().slice(0,7),category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",financeTab:"payments",modal:null};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const opt=(arr,value)=>arr.map(x=>'<option value="'+esc(x[0])+'"'+(String(x[0])===String(value)?' selected':'')+'>'+esc(x[1])+'</option>').join("");
@@ -45,7 +46,7 @@ function route(r){ui.route=r;ui.modal=null;render()}
 function render(){
   $("global-clinic").value=ui.clinic;
   document.querySelectorAll(".nav-btn").forEach(n=>n.classList.toggle("active",n.dataset.route===ui.route));
-  $("section-name").textContent=({overview:"Apžvalga",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",compensation:"Laboratorija ir atlygis",reports:"Ataskaitos",forms:"Paciento dokumentai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
+  $("section-name").textContent=({overview:"Registratūros darbo vieta",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",compensation:"Laboratorija ir atlygis",reports:"Ataskaitos",forms:"Paciento dokumentai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
   $("page").innerHTML=({
     overview:viewOverview,calendar:viewCalendar,patients:viewPatients,doctors:viewDoctors,
     odontogram:viewOdontogram,plans:viewPlans,notes:viewNotes,finances:viewFinances,
@@ -64,7 +65,7 @@ function eventRows(items){
 function viewOverview(){
   const today=appts().filter(a=>a.date===ui.day&&a.status!=="Atšauktas");
   const invoices=db.invoices.filter(i=>ui.clinic==="all"||i.clinicId===ui.clinic);
-  const debt=invoices.reduce((n,i)=>n+Math.max(0,invoiceTotal(i)-(i.payments||[]).reduce((s,p)=>s+Number(p.amount),0)),0);
+  const debt=invoices.reduce((n,i)=>n+invoiceOutstanding(i,invoiceTotal(i)),0);
   const activePlans=db.plans.filter(p=>(ui.clinic==="all"||p.clinicId===ui.clinic)&&!["Užbaigtas","Atšauktas"].includes(p.status));
   return page("Darbo vietos apžvalga","Dvi klinikos · keturios odontologinės kėdės · demonstraciniai duomenys",btn("+ Naujas vizitas","new-appt","btn primary"))+
     '<div class="stat-grid"><div class="stat"><small>Dienos vizitai</small><strong>'+today.length+'</strong><em>'+today.filter(a=>a.status==="Atliktas").length+' atlikti</em></div>'+
@@ -159,11 +160,11 @@ function calendarMonth(rows){
 }
 function calendarList(rows){const items=rows.filter(a=>a.date.startsWith(ui.day.slice(0,7)));return '<div class="panel-title"><h2>Vizitai · '+ui.day.slice(0,7)+'</h2><span class="muted">'+items.length+' įrašų</span></div>'+eventRows(items)}
 function viewPatients(){
-  const patients=listPatients().filter(p=>(p.firstName+" "+p.lastName).toLocaleLowerCase("lt").includes(ui.search.toLocaleLowerCase("lt")));
+  const patients=searchPatients(listPatients(),ui.search);
   const p=db.patients.find(p=>p.id===ui.patient)||patients[0];
   return page("Pacientai","Pacientų kortelės, vizitų istorija, gydymo eiga",btn("+ Naujas pacientas","new-patient","btn primary"))+
     '<div class="three-cols"><section class="panel"><div class="panel-title"><h2>Pacientų sąrašas</h2><span class="pill grey">'+patients.length+'</span></div>'+
-    '<input type="search" id="patient-search" value="'+esc(ui.search)+'" placeholder="Ieškoti paciento…" aria-label="Pacientų paieška"><div class="patient-list" style="margin-top:15px">'+
+    '<input type="search" id="patient-search" value="'+esc(ui.search)+'" placeholder="Ieškoti pagal vardą, pavardę, telefoną ar el. paštą…" aria-label="Pacientų paieška"><div class="patient-list" style="margin-top:15px">'+
     patients.map(p=>'<button class="person-card '+(ui.patient===p.id?"selected":"")+'" data-action="select-patient" data-id="'+esc(p.id)+'"><span class="person-dot">'+esc(p.firstName[0]+p.lastName[0])+'</span><span><b>'+esc(name(p.id))+'</b><small>'+esc(p.id)+' · '+esc(p.clinicIds.map(clinic).join(", "))+'</small></span></button>').join("")+'</div></section>'+
     '<section class="panel">'+(p?patientDetail(p):empty("Paciento nėra","Sukurkite naują demonstracinį įrašą."))+'</section></div>';
 }
@@ -481,7 +482,8 @@ function saveRegistrationForm(){
  if(issues.length){notify("Patikrinkite privalomus laukus ir parašą: "+issues.join("; "),true);return}
  const type=ui.modal.formType,patientId=ui.patient;
  const signed={id:uid("form"),version:FORM_VERSION,type,patientId,clinicId:db.patients.find(p=>p.id===patientId)?.clinicIds[0],
- answers,signature:ui.modal.signature,signedAt:new Date().toISOString(),demo:true};
+ planId:type==="invasive"?(ui.modal.planId||""):"",planItemId:type==="invasive"?(ui.modal.planItemId||""):"",
+ documentText:FORM_DISCLOSURES[type],answers,signature:ui.modal.signature,signedAt:new Date().toISOString(),demo:true};
  update("Pasirašytas demo paciento dokumentas",signed.id,s=>{s.forms??=[];s.forms.push(signed)});
  ui.modal=null;ui.route="forms";render();notify("Dokumentas pasirašytas (tik demo).");
 }
@@ -817,6 +819,8 @@ function savePatient(){
     const hasAppts=db.appointments.some(a=>a.patientId===old.id&&!ids.includes(a.clinicId));
     if(hasAppts){notify("Negalima pašalinti klinikos, kurioje pacientas turi vizitų.",true);return}
   }
+  const dupe=duplicatePatients(db.patients,{firstName:v.firstName,lastName:v.lastName,birthDate:v.birthDate,phone:v.phone},old?.id);
+  if(dupe.length&&!confirm("Galimas pasikartojantis pacientas: "+dupe.map(x=>name(x.id)).join(", ")+". Vis tiek tęsti?"))return;
   const p={id:old?.id||uid("p"),firstName:v.firstName.trim(),lastName:v.lastName.trim(),birthDate:v.birthDate||"",
     phone:v.phone?.trim()||"",email:v.email?.trim()||"",alerts:v.alerts?.trim()||"",clinicIds:ids,createdAt:old?.createdAt||isoDate(),synthetic:true};
   update(old?"Atnaujinta paciento kortelė":"Sukurtas demo pacientas",p.id,s=>{
@@ -1523,8 +1527,8 @@ function start(){
     '<div class="top-right"><div class="clinic-select"><select id="global-clinic" aria-label="Pasirinkti kliniką">'+opt([["akm","Naujoji Akmenė"],["kur","Kuršėnai"],["all","Abi klinikos (demo)"]],ui.clinic)+'</select></div>'+
     '<div class="user-avatar" title="Demonstracinis naudotojas">DP</div></div></header><main class="workspace" id="page"></main></div></div><div id="drawer-root"></div>';
   $("global-clinic").addEventListener("change",e=>selectClinic(e.target.value));
-  document.addEventListener("click",e=>{const target=e.target.closest("[data-action]");if(target)handleAction(target,e)});
-  document.addEventListener("change",e=>handleChange(e.target));
+  document.addEventListener("click",e=>{const target=e.target.closest("[data-action]");if(target)try{handleAction(target,e)}catch(error){notify(error.message||"Nepavyko išsaugoti pakeitimų.",true)}});
+  document.addEventListener("change",e=>{try{handleChange(e.target)}catch(error){notify(error.message||"Nepavyko išsaugoti pakeitimų.",true)}});
   document.addEventListener("submit",e=>e.preventDefault());
   document.addEventListener("input",e=>{
     if(e.target.id!=="patient-search")return;
