@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {seedData,openRepository} from "../src/store.mjs";
 import {appointmentIssues,invoiceTotal,isoDate} from "../src/domain.mjs";
 import {appointmentIntake,labVisitWarnings,sourceInvoice,duplicateInvoiceIssues,planItemBillingState,
- vlkContributionInvoiceIssues,vlkCombinedAccruals} from "../src/billing.mjs";
+ vlkContributionInvoiceIssues,vlkCombinedAccruals,suspectedRepeatInvoices} from "../src/billing.mjs";
 import {paidAmount,invoiceOutstanding,invoiceCashRounding,cashDaySummary,settlementDaySummary} from "../src/payments.mjs";
 import {salarySummary} from "../src/compensation.mjs";
 import {vlkCaseEarning,vlkSalaryRows,vlkSalaryTotal} from "../src/vlk.mjs";
@@ -87,4 +87,35 @@ test("nėra tyliai išsaugotų duomenų, jei naršyklės saugykla atmeta įrašy
  const initial=repository.get().patients.length;
  assert.throws(()=>repository.transaction("test","p-0-0",state=>state.patients.pop()),/Nepavyko išsaugoti/);
  assert.equal(repository.get().patients.length,initial);
+});
+
+
+test("rankiniu būdu rašomos tokios pačios paslaugos sąskaitos perspėjamos, tačiau nėra aklai draudžiamos",()=>{
+ const old={id:"a",patientId:"p-0-0",clinicId:"akm",date:"2026-11-17",
+   items:[{serviceId:"s-cons",price:35,qty:1}]};
+ const duplicate={...old,id:"b"};
+ assert.equal(suspectedRepeatInvoices([old],duplicate).length,1);
+ assert.equal(suspectedRepeatInvoices([old],{...duplicate,date:"2026-11-18"}).length,0);
+ assert.equal(suspectedRepeatInvoices([old],{...duplicate,items:[{serviceId:"s-cons",price:35,qty:2}]}).length,0);
+});
+test("grynųjų grąžinimų ir avansų apvalinimo skirtumai matomi dienos uždaryme",()=>{
+ const invoice={clinicId:"akm",patientId:"p-0-0",number:"DP-R",payments:[
+  {id:"payment",date:"2026-11-17",confirmedDate:"2026-11-17",status:"confirmed",method:"cash",amount:12.03,cashAmount:12.05}],
+ refunds:[{id:"refund",date:"2026-11-17",method:"cash",amount:2.03,cashAmount:2.05}]};
+ const advances=[{id:"advance",clinicId:"akm",patientId:"p-0-0",date:"2026-11-17",
+  status:"confirmed",method:"cash",amount:5.03,cashAmount:5.05,allocations:[],refunds:[]}];
+ const day=cashDaySummary([invoice],advances,"2026-11-17","akm");
+ assert.equal(day.totals.cash,15.05);
+ assert.equal(day.roundingTotal,0.02);
+ assert.equal(day.rows.find(r=>r.kind==="refund").rounding,-0.02);
+});
+test("VLK vienos plano procedūros ryšys neturi blokuoti kitų to paties plano etapų",()=>{
+ const state=seedData("2026-11-17");
+ state.plans.push({id:"plan-2",patientId:"p-0-0",clinicId:"akm",items:[
+  {id:"line-1",description:"Protezas",done:true},
+  {id:"line-2",description:"Privati konsultacija",done:true}
+ ]});
+ state.vlkCases.push({id:"vlk-1",planId:"plan-2",planItemId:"line-1",status:"Vykdomas"});
+ assert.equal(planItemBillingState(state,"plan-2","line-1").status,"VLK atvejis");
+ assert.equal(planItemBillingState(state,"plan-2","line-2").status,"Paruošta apmokestinti");
 });
