@@ -53,7 +53,7 @@ export function seedData(today=isoDate()){
       id:"demo-a-"+i,clinicId:a[0],chairId:a[1],patientId:a[2],staffId:a[3],
       date:day,time:a[4],duration:services.find(s=>s.id===a[5]).duration,serviceId:a[5],status:a[6],notes:""
     })),
-    findings:[],clinicalNotes:[],plans:[],invoices:[],forms:[],laboratoryCatalog:JSONclone(DEFAULT_LAB_WORK),usageFees:JSONclone(DEFAULT_USAGE_FEES),audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
+    findings:[],clinicalNotes:[],plans:[],invoices:[],forms:[],vlkCases:[],vlkContracts:{akm:{prosthetics:false,consultation:false},kur:{prosthetics:false,consultation:false}},laboratoryCatalog:JSONclone(DEFAULT_LAB_WORK),usageFees:JSONclone(DEFAULT_USAGE_FEES),audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
   };
 }
 function parse(storage,key,defaultValue){
@@ -67,6 +67,8 @@ export function openRepository(storage=globalThis.localStorage){
     try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}
   }
   if(!Array.isArray(current.forms)){current.forms=[];try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
+  if(!Array.isArray(current.vlkCases)){current.vlkCases=[];try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
+  if(!current.vlkContracts||typeof current.vlkContracts!=="object"){current.vlkContracts={akm:{prosthetics:false,consultation:false},kur:{prosthetics:false,consultation:false}};try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
   if(!Array.isArray(current.laboratoryCatalog)){current.laboratoryCatalog=JSONclone(DEFAULT_LAB_WORK);try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
   if(!current.usageFees||typeof current.usageFees!=="object"){current.usageFees=JSONclone(DEFAULT_USAGE_FEES);try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
   // Kainyno naujinimas keičia tik katalogą, o ne jau išsaugotų planų kainas.
