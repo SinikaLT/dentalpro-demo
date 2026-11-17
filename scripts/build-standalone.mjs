@@ -5,7 +5,7 @@ import {dirname,resolve} from "node:path";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const read=path=>readFileSync(resolve(root,path),"utf8");
 const css=read("src/styles.css");
-const modules=["src/domain.mjs","src/pricelist.mjs","src/forms.mjs","src/compensation.mjs","src/vlk.mjs","src/store.mjs","src/views.mjs"].map(read);
+const modules=["src/domain.mjs","src/pricelist.mjs","src/forms.mjs","src/payments.mjs","src/compensation.mjs","src/vlk.mjs","src/store.mjs","src/views.mjs"].map(read);
 const script=modules.map(code=>code
   .replace(/^import\s+\{[^\n]+\}\s+from\s+["'][^"']+["'];?\s*$/gm,"")
   .replace(/^export\s+/gm,"")).join("\n;\n");
