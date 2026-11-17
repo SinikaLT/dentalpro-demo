@@ -53,7 +53,7 @@ export function seedData(today=isoDate()){
       id:"demo-a-"+i,clinicId:a[0],chairId:a[1],patientId:a[2],staffId:a[3],
       date:day,time:a[4],duration:services.find(s=>s.id===a[5]).duration,serviceId:a[5],status:a[6],notes:""
     })),
-    findings:[],clinicalNotes:[],plans:[],invoices:[],advances:[],cashClosings:[],forms:[],vlkCases:[],vlkContracts:{akm:{prosthetics:false,consultation:false},kur:{prosthetics:false,consultation:false}},laboratoryCatalog:JSONclone(DEFAULT_LAB_WORK),usageFees:JSONclone(DEFAULT_USAGE_FEES),audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
+    findings:[],clinicalNotes:[],plans:[],invoices:[],advances:[],cashClosings:[],tasks:[],labOrders:[],waitlist:[],forms:[],vlkCases:[],vlkContracts:{akm:{prosthetics:false,consultation:false},kur:{prosthetics:false,consultation:false}},laboratoryCatalog:JSONclone(DEFAULT_LAB_WORK),usageFees:JSONclone(DEFAULT_USAGE_FEES),audit:[{id:"seed",at:new Date().toISOString(),action:"Sukurti sintetiniai demonstraciniai įrašai",entity:"sistema"}]
   };
 }
 function parse(storage,key,defaultValue){
@@ -66,6 +66,7 @@ export function openRepository(storage=globalThis.localStorage){
     current=seedData();
     try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}
   }
+  for(const field of ["tasks","labOrders","waitlist"]){if(!Array.isArray(current[field])){current[field]=[];try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}}
   if(!Array.isArray(current.advances)){current.advances=[];try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
   if(!Array.isArray(current.cashClosings)){current.cashClosings=[];try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
   if(!Array.isArray(current.forms)){current.forms=[];try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}}
@@ -80,17 +81,18 @@ export function openRepository(storage=globalThis.localStorage){
     current.catalogRevision="mk-2026-11";
     try{storage?.setItem(STORAGE_KEY,JSON.stringify(current))}catch{}
   }
-  const persist=()=>{try{storage?.setItem(STORAGE_KEY,JSON.stringify(current));return true}catch{return false}};
+  const persist=value=>{try{if(!storage?.setItem)return false;storage.setItem(STORAGE_KEY,JSON.stringify(value));return true}catch{return false}};
   return {
     get(){return JSONclone(current)},
     transaction(action,entity,update){
       const copy=JSONclone(current);
       const result=update(copy);
-      copy.audit.unshift({id:uid("audit"),at:new Date().toISOString(),action,entity:String(entity||"")});
+      copy.audit.unshift({id:uid("audit"),at:new Date().toISOString(),action,entity:String(entity||""),actor:"Demonstracinis naudotojas"});
       copy.audit=copy.audit.slice(0,250);
-      current=copy;persist();return result;
+      if(!persist(copy))throw new Error("Nepavyko išsaugoti naršyklėje. Duomenys nepakeisti; patikrinkite saugyklos vietą arba teises.");
+      current=copy;return result;
     },
-    reset(){current=seedData();persist();return this.get()},
+    reset(){const fresh=seedData();if(!persist(fresh))throw new Error("Nepavyko išsaugoti demo pradinių duomenų.");current=fresh;return this.get()},
     export(){return JSON.stringify(current,null,2)},
     storageAvailable(){try{const k="__dentalpro_probe";storage?.setItem(k,"1");storage?.removeItem(k);return true}catch{return false}}
   };
