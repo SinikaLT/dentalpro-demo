@@ -266,3 +266,30 @@ test("daliniuose mokėjimuose fiksuotos medžiagos atskaitomos vieną kartą",()
  assert.equal(salarySummary([invoice],"2026-11").total,0);
  assert.equal(salarySummary([invoice],"2026-12").total,30);
 });
+
+import {DEFAULT_USAGE_FEES,usageFeeSnapshot,validUsageFee} from "../src/compensation.mjs";
+
+test("medžiagų ir chirurginių medžiagų tarifai keičiami, tačiau išsaugoti sąskaitoje lieka tie patys",()=>{
+ const configured={materials:7.5,surgicalMaterials:27};
+ const snapshot=usageFeeSnapshot({materials:true,surgicalMaterials:true},configured);
+ assert.deepEqual(snapshot,{materials:true,surgicalMaterials:true,materialsFee:7.5,surgicalMaterialsFee:27});
+ const invoice={items:[{price:150,qty:1}],usage:snapshot,
+   doctorId:"dr-akm-1",doctorPercent:40,clinicId:"akm",number:"DP-NEW",
+   payments:[{id:"p-new",date:"2026-11-17",amount:150}]};
+ assert.deepEqual(invoiceCosts(invoice),{lab:0,materials:0,standard:7.5,surgical:27});
+ assert.equal(salaryAccruals([invoice])[0].earning,46.2);
+ configured.materials=10;configured.surgicalMaterials=40;
+ assert.equal(salaryAccruals([invoice])[0].earning,46.2);
+ assert.equal(invoiceTotal(invoice),150);
+ assert.deepEqual(DEFAULT_USAGE_FEES,{materials:5,surgicalMaterials:20});
+});
+test("nepažymėti atskaitymai netaikomi, naujam tarifui galioja įvesties patikra",()=>{
+ const usage=usageFeeSnapshot({materials:false,surgicalMaterials:true},{materials:9,surgicalMaterials:32});
+ assert.equal(invoiceCosts({usage}).standard,0);
+ assert.equal(invoiceCosts({usage}).surgical,32);
+ assert.equal(validUsageFee(""),false);
+ assert.equal(validUsageFee(-1),false);
+ assert.equal(validUsageFee(1001),false);
+ assert.equal(validUsageFee("15,00"),false);
+ assert.equal(validUsageFee("7.50"),true);
+});
