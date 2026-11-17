@@ -18,7 +18,8 @@ export function planItemBillingState(state,planId,itemId){
  const plan=(state.plans||[]).find(p=>p.id===planId),item=plan?.items.find(x=>x.id===itemId);
  if(!plan||!item)return {status:"Nerasta",invoice:null};
  const invoice=sourceInvoice(state.invoices,{planItemId:itemId});
- const vlkCase=(state.vlkCases||[]).find(c=>c.planId===planId&&c.status!=="Atmestas");
+ const vlkCase=(state.vlkCases||[]).find(c=>c.status!=="Atmestas"&&
+  (c.planItemId===itemId||(c.planId===planId&&!c.planItemId&&plan.items.length===1)));
  if(invoice)return {status:"Apmokestinta",invoice};
  if(vlkCase)return {status:"VLK atvejis",invoice:null,vlkCase};
  return {status:item.done?"Paruošta apmokestinti":"Planuojama",invoice:null};
