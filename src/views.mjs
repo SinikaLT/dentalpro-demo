@@ -924,6 +924,14 @@ function handleAction(target,event){
     case "new-invoice":modal("invoice");break;
     case "open-invoice":modal("invoice",id);break;
     case "save-invoice":saveInvoice();break;
+    case "save-doctor-percent":saveDoctorPercent(id);break;
+    case "save-lab-work":saveLaboratoryWork("lab-catalog-form");break;
+    case "edit-lab-work":modal("lab-work",id);break;
+    case "save-lab-edit":saveLaboratoryWork("lab-edit-form",ui.modal?.id);break;
+    case "import-lab-csv":importLaboratoryCsv();break;
+    case "add-invoice-lab":updateInvoiceCost("laboratory");break;
+    case "add-invoice-material":updateInvoiceCost("materials");break;
+    case "remove-invoice-cost":if(confirm("Pašalinti demonstracinę savikainos eilutę?"))updateInvoiceCost(target.dataset.type,id);break;
     case "save-payment":savePayment();break;
     case "export":downloadJson();notify("Demo JSON paruoštas.");break;
     case "export-appointments":downloadAppointmentsCsv();notify("Demo vizitų CSV paruoštas.");break;
@@ -967,6 +975,17 @@ function handleChange(target){
     return
   }
   if(target.id==="service-category-filter"){ui.category=target.value;render();return}
+  if(target.id==="salary-month"){ui.salaryMonth=target.value;render();return}
+  if(target.id==="invoice-lab-work"){
+    const chosen=(db.laboratoryCatalog||[]).find(x=>x.id===target.value);
+    const form=$("invoice-lab-cost-form");
+    if(form&&chosen){
+      form.querySelector('[name="laboratory"]').value=chosen.laboratory;
+      form.querySelector('[name="description"]').value=chosen.name;
+      form.querySelector('[name="price"]').value=chosen.price;
+    }
+    return;
+  }
   if(target.id==="invoice-clinic"){switchInvoiceClinic(target.value);return}
   if(target.id==="invoice-service"){$("invoice-price").value=db.services.find(s=>s.id===target.value)?.price||0;return}
   if(target.closest("#plan-item-form")&&target.name==="serviceId"){
