@@ -175,3 +175,27 @@ test("invazinių procedūrų sutikimui būtina individuali procedūros informaci
  assert.ok(validateForm("invasive",{...answers,alternatives:""},signature).length>0);
  assert.ok(validateForm("invasive",answers,null).length>0);
 });
+
+import {registrationChecklist,invasiveConsentForItem,FORM_DISCLOSURES} from "../src/forms.mjs";
+
+test("registracijai skaičiuojamos 3 atskiros pasirašytos formos, ne invazinis sutikimas",()=>{
+ const records=[
+  {id:"a",type:"agreement",patientId:"p1",signedAt:"2026-11-17T12:00:00Z",demo:true},
+  {id:"h",type:"health",patientId:"p1",signedAt:"2026-11-17T12:01:00Z",demo:true},
+  {id:"x",type:"invasive",patientId:"p1",signedAt:"2026-11-17T12:02:00Z",demo:true}
+ ];
+ const checks=registrationChecklist(records,"p1");
+ assert.equal(checks.length,3);
+ assert.deepEqual(checks.map(x=>x.signed),[true,false,true]);
+ assert.ok(registrationChecklist(records,"p2").every(x=>!x.signed));
+});
+test("invazinis sutikimas susiejamas tik su paciento plano konkrečia procedūra",()=>{
+ const records=[
+  {id:"a",type:"invasive",patientId:"p1",planId:"plan-a",planItemId:"item-a",signedAt:"2026-11-17T12:00:00Z",demo:true,answers:{decision:"Sutinku"}},
+  {id:"b",type:"invasive",patientId:"p1",planId:"plan-b",planItemId:"item-b",signedAt:"2026-11-17T13:00:00Z",demo:true,answers:{decision:"Atsisakau"}}
+ ];
+ assert.equal(invasiveConsentForItem(records,"p1","plan-a","item-a").id,"a");
+ assert.equal(invasiveConsentForItem(records,"p1","plan-a","item-b"),null);
+ assert.equal(invasiveConsentForItem(records,"p2","plan-a","item-a"),null);
+ assert.ok(Object.values(FORM_DISCLOSURES).every(text=>text.length>100));
+});
