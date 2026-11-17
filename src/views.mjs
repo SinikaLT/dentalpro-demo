@@ -3,10 +3,11 @@ import {CLINICS,CHAIRS,STATUSES,PLAN_STATUSES,WEEKDAYS,PERMANENT,PRIMARY,CONDITI
 import {openRepository,defaultAvailability,defaultBreaks} from "./store.mjs";
 import {PRICE_SOURCE,PRICE_REVIEWED,priceOptions} from "./pricelist.mjs";
 import {FORM_VERSION,FORM_TYPES,HEALTH_QUESTIONS,validateForm,statusOfForm,registrationChecklist,invasiveConsentForItem,FORM_DISCLOSURES} from "./forms.mjs";
+import {invoiceCosts,salaryAccruals,salarySummary,validCost,parseLaboratoryCsv,roundEuro} from "./compensation.mjs";
 
 const repository=openRepository();
 let db=repository.get();
-const ui={category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
+const ui={salaryMonth:isoDate().slice(0,7),category:"all",route:"overview",clinic:"akm",day:isoDate(),view:"day",doctor:"",chair:"",status:"",service:"",patient:"p-0-0",patientTab:"overview",tooth:11,selectedDoctor:"",selectedPlan:"",search:"",modal:null};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const opt=(arr,value)=>arr.map(x=>'<option value="'+esc(x[0])+'"'+(String(x[0])===String(value)?' selected':'')+'>'+esc(x[1])+'</option>').join("");
@@ -38,11 +39,11 @@ function route(r){ui.route=r;ui.modal=null;render()}
 function render(){
   $("global-clinic").value=ui.clinic;
   document.querySelectorAll(".nav-btn").forEach(n=>n.classList.toggle("active",n.dataset.route===ui.route));
-  $("section-name").textContent=({overview:"Apžvalga",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",reports:"Ataskaitos",forms:"Paciento dokumentai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
+  $("section-name").textContent=({overview:"Apžvalga",calendar:"Registracijos kalendorius",patients:"Pacientai",doctors:"Gydytojų grafikai",odontogram:"Odontograma",plans:"Gydymo planai",notes:"Klinikiniai įrašai",finances:"Finansai",compensation:"Laboratorija ir atlygis",reports:"Ataskaitos",forms:"Paciento dokumentai",services:"Paslaugos",vlk:"VLK / PSDF",admin:"Administravimas"})[ui.route];
   $("page").innerHTML=({
     overview:viewOverview,calendar:viewCalendar,patients:viewPatients,doctors:viewDoctors,
     odontogram:viewOdontogram,plans:viewPlans,notes:viewNotes,finances:viewFinances,
-    services:viewServices,reports:viewReports,forms:viewForms,vlk:viewVlk,admin:viewAdmin
+    services:viewServices,compensation:viewCompensation,reports:viewReports,forms:viewForms,vlk:viewVlk,admin:viewAdmin
   }[ui.route]||viewOverview)();
   $("drawer-root").innerHTML=ui.modal?((ui.modal.kind==="registration-form"||ui.modal.kind==="signed-form")?formDrawer(ui.modal):viewDrawer()):"";
   if(ui.modal?.kind==="registration-form")setupSignatureCanvas();
@@ -423,6 +424,41 @@ function saveRegistrationForm(){
  answers,signature:ui.modal.signature,signedAt:new Date().toISOString(),demo:true};
  update("Pasirašytas demo paciento dokumentas",signed.id,s=>{s.forms??=[];s.forms.push(signed)});
  ui.modal=null;ui.route="forms";render();notify("Dokumentas pasirašytas (tik demo).");
+}
+function viewCompensation(){
+ const catalog=db.laboratoryCatalog||[],summary=salarySummary(db.invoices,ui.salaryMonth,ui.clinic);
+ const registered=(db.invoices||[]).filter(i=>i.doctorId&&(ui.clinic==="all"||ui.clinic===i.clinicId));
+ const percent=doctor=>Number.isFinite(Number(doctor.salaryPercent))?doctor.salaryPercent:35;
+ return page("Laboratorija ir gydytojų atlygis","Tik sintetinė savininko ataskaitos demonstracija")+
+ '<section class="panel"><div class="notice warn"><b>NĖRA saugios prieigos kontrolės.</b> Ši vieša demonstracija neriboja matomumo pagal naudotoją. Toliau naudokite tik išgalvotas sumas ir vardus. Tik savininkui prieinama ataskaita bus galima tik įdiegus serverinį prisijungimą bei teisių tikrinimą.</div>'+
+ '<h2>Gydytojų individualūs procentai</h2><div class="table-wrap"><table class="data-table"><thead><tr><th>Gydytojas</th><th>Procentas</th><th></th></tr></thead><tbody>'+
+ db.staff.map(d=>'<tr><td>'+esc(d.name)+'</td><td><input aria-label="Atlygio procentas" id="salary-'+esc(d.id)+'" type="number" min="0" max="100" step="0.1" value="'+percent(d)+'" style="max-width:120px"> %</td><td>'+
+ btn("Išsaugoti","save-doctor-percent","btn small","data-id=\'"+esc(d.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
+ '<p class="help">Procentas užfiksuojamas naujai sąskaitai jos sukūrimo metu. Vėlesni nustatymų pakeitimai ankstesnių sąskaitų procento nekeičia.</p></section>'+
+ '<section class="panel"><h2>Technikų laboratorijos kainynas</h2><p class="help">Pavyzdiniai įkainiai; pasirinkus darbą konkrečioje sąskaitoje jo kaina išsaugoma kaip atskira savikainos kopija.</p>'+
+ '<div class="table-wrap"><table class="data-table"><thead><tr><th>Laboratorija</th><th>Darbas</th><th>Įkainis</th><th></th></tr></thead><tbody>'+
+ catalog.filter(x=>x.active!==false).map(x=>'<tr><td>'+esc(x.laboratory)+'</td><td>'+esc(x.name)+'</td><td>'+money(x.price)+'</td><td>'+
+ btn("Keisti","edit-lab-work","btn small","data-id=\'"+esc(x.id)+"\'")+'</td></tr>').join("")+'</tbody></table></div>'+
+ '<h3 style="margin-top:18px">Pridėti ar atnaujinti įkainį</h3><form id="lab-catalog-form"><div class="field-grid">'+
+ '<div class="field"><label>Laboratorija</label><input name="laboratory" maxlength="160" required placeholder="Pvz., Laboratorija A (demo)"></div>'+
+ '<div class="field"><label>Darbas</label><input name="name" maxlength="160" required placeholder="Pvz., Cirkonio vainikėlis"></div>'+
+ '<div class="field"><label>Įkainis (€)</label><input type="number" name="price" min="0" max="100000" step="0.01" required></div></div>'+
+ '<p>'+btn("Pridėti į kainyną","save-lab-work","btn primary")+'</p></form>'+
+ '<details><summary>Importuoti laboratorijos kainyną iš CSV (taip pat galima išsaugoti iš Excel)</summary>'+
+ '<p class="help">Stulpeliai: Laboratorija;Darbas;Kaina. Esami darbai su tuo pačiu laboratorijos ir darbo pavadinimu atnaujinami. Naudokite tik demo sumas.</p>'+
+ '<textarea id="lab-csv" rows="5" placeholder="Laboratorija;Darbas;Kaina\nDemo laboratorija;Cirkonio vainikėlis;95"></textarea>'+
+ '<p>'+btn("Importuoti CSV","import-lab-csv","btn small")+'</p></details></section>'+
+ '<section class="panel"><div class="panel-title"><h2>Mėnesinė gydytojų atlygio ataskaita (DEMO)</h2><label>Mėnuo <input id="salary-month" aria-label="Atlygio mėnuo" type="month" value="'+esc(ui.salaryMonth)+'"></label></div>'+
+ '<p class="help">Atlygis = max(0, iki šiol gauta už sąskaitą − laboratorija − medžiagos) × gydytojo %. Mėnesio atlygis yra padidėjimas nuo šį mėnesį gautų įmokų. Kai savikaina dar nepadengta, atlygis 0 €. Kaina fiksuojama sąskaitoje. Mokesčiai ir realios išmokos neskaičiuojami.</p>'+
+ '<div class="stat-grid"><div class="stat"><small>Atlygis per pasirinktą mėnesį</small><strong>'+money(summary.total)+'</strong></div>'+
+ '<div class="stat"><small>Gautos įmokos per mėnesį</small><strong>'+money(summary.rows.reduce((n,r)=>n+r.paymentAmount,0))+'</strong></div>'+
+ '<div class="stat"><small>Priskirtos sąskaitos</small><strong>'+registered.length+'</strong></div>'+
+ '<div class="stat"><small>Įmokų įrašai</small><strong>'+summary.rows.length+'</strong></div></div>'+
+ '<h3>Pagal gydytojus</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Gydytojas</th><th>Pacientų įmokos</th><th>Priskaičiuotas atlygis</th></tr></thead><tbody>'+
+ summary.doctors.map(x=>'<tr><td>'+esc(doctor(x.doctorId))+'</td><td>'+money(x.received)+'</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
+ '<h3 style="margin-top:18px">Įmokų detalizacija</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Data</th><th>Gydytojas</th><th>Sąskaita</th><th>Gauta</th><th>Laboratorija (viso)</th><th>Medžiagos (viso)</th><th>%</th><th>Atlygis nuo įmokos</th></tr></thead><tbody>'+
+ summary.rows.map(x=>'<tr><td>'+fmt(x.date)+'</td><td>'+esc(doctor(x.doctorId))+'</td><td>'+esc(x.invoiceNumber)+'</td><td>'+money(x.paymentAmount)+'</td><td>'+money(x.lab)+'</td><td>'+money(x.materials)+'</td><td>'+x.doctorPercent+' %</td><td><b>'+money(x.earning)+'</b></td></tr>').join("")+'</tbody></table></div>'+
+ (!summary.rows.length?empty("Nėra įmokų","Sukurkite demo sąskaitą, priskirkite gydytoją ir užregistruokite mokėjimą."):"")+'</section>';
 }
 function viewReports(){
   const visits=db.appointments.filter(a=>ui.clinic==="all"||a.clinicId===ui.clinic);
@@ -859,6 +895,7 @@ function start(){
       ["plans","☷","Gydymo planai",""],
       ["notes","▧","Klinikiniai įrašai",""],
       ["finances","€","Finansai","VALDYMAS"],
+       ["compensation","▤","Laboratorija ir atlygis (DEMO)",""],
        ["reports","▥","Ataskaitos",""],
       ["services","☰","Paslaugos",""],
       ["vlk","◈","VLK / PSDF",""],
