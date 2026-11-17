@@ -1,4 +1,4 @@
-import {paymentEvents} from "./payments.mjs";
+import {paymentEvents,invoiceCashRounding} from "./payments.mjs";
 // Tik sintetinė demonstracinė darbo užmokesčio apskaita.
 // Realioje sistemoje būtina serverinė prieigos kontrolė (owner role), audit trail ir DB.
 export const DEFAULT_LAB_WORK=[
@@ -44,7 +44,7 @@ export function salaryAccruals(invoices){
  const rows=[];
  for(const invoice of invoices||[]){
    if(invoice.vlkCaseId||!invoice.doctorId||!Number.isFinite(Number(invoice.doctorPercent)))continue;
-   const total=(invoice.items||[]).reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||1),0);
+   const total=(invoice.items||[]).reduce((sum,x)=>sum+Number(x.price||0)*Number(x.qty||1),0)+invoiceCashRounding(invoice);
    const costs=invoiceCosts(invoice);
    let received=0,earned=0;
    for(const payment of paymentEvents(invoice)){
