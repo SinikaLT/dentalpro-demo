@@ -6,7 +6,7 @@
   "description": "Odontologijos klinikų valdymo sistemos demonstracinė versija",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/domain.mjs && node --check src/pricelist.mjs && node --check src/forms.mjs && node --check src/payments.mjs && node --check src/compensation.mjs && node --check src/vlk.mjs && node --check src/store.mjs && node --check src/views.mjs",
+    "check": "node --check src/domain.mjs && node --check src/pricelist.mjs && node --check src/forms.mjs && node --check src/payments.mjs && node --check src/workflows.mjs && node --check src/compensation.mjs && node --check src/vlk.mjs && node --check src/store.mjs && node --check src/views.mjs",
     "verify": "npm run check && npm run build && npm test",
     "build": "node scripts/build-standalone.mjs"
   },
