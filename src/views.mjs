@@ -203,11 +203,14 @@ function viewPatients(){
     '<section class="panel">'+(p?patientDetail(p):empty("Paciento nėra","Sukurkite naują demonstracinį įrašą."))+'</section></div>';
 }
 function registrationBanner(patientId){
-  const status=registrationChecklist(db.forms,patientId),ready=status.every(x=>x.signed);
+  const status=registrationChecklist(db.forms,patientId),
+    review=db.patients.find(p=>p.id===patientId)?.healthReviewRequired===true,
+    ready=status.every(x=>x.signed)&&!review;
   return '<div class="notice '+(ready?"":"warn")+'" style="margin-top:14px"><b>Registracijos dokumentai: '+status.filter(x=>x.signed).length+'/3 (demo)</b>'+
     '<div class="actions" style="margin-top:10px">'+status.map(x=>'<span class="pill '+(x.signed?"":"grey")+'">'+
-    esc(FORM_TYPES.find(f=>f.id===x.type)?.short||x.type)+': '+(x.signed?"Pasirašyta":"Trūksta")+'</span>').join("")+'</div>'+
+    esc(FORM_TYPES.find(f=>f.id===x.type)?.short||x.type)+': '+(x.type==="health"&&review?"Reikia peržiūrėti":x.signed?"Pasirašyta":"Trūksta")+'</span>').join("")+'</div>'+
     '<p class="help">Invazinės procedūros sutikimas pildomas atskirai konkrečiai procedūrai; jis nėra būtinas kiekvienai registracijai.</p>'+
+    (review?'<p class="help"><b>Sveikatos anketą reikia peržiūrėti prieš kitą vizitą.</b></p>':"")+
     (!ready?btn("Užpildyti dokumentus","patient-documents","btn primary small"):"")+'</div>';
 }
 function patientDetail(p){
@@ -218,6 +221,10 @@ function patientDetail(p){
     out+='<div class="detail-grid">'+[["Gimimo data",p.birthDate?fmt(p.birthDate):"Nenurodyta"],["Telefonas",p.phone||"Nenurodyta"],["El. paštas",p.email||"Nenurodyta"],["Klinikos",p.clinicIds.map(clinic).join(", ")]].map(([k,v])=>'<div class="detail-item"><small>'+k+'</small><b>'+esc(v)+'</b></div>').join("")+'</div>'+
       (p.alerts?'<div class="notice warn" style="margin-top:14px">'+esc(p.alerts)+'</div>':"")+
        registrationBanner(p.id)+
+      '<div class="notice" style="margin-top:12px"><b>Paciento atsiskaitymai:</b> skola '+
+       money(db.invoices.filter(i=>i.patientId===p.id).reduce((n,i)=>n+invoiceOutstanding(i,invoiceTotal(i)),0))+
+       ' · avansų likutis '+money((db.advances||[]).filter(a=>a.patientId===p.id).reduce((n,a)=>n+advanceRemaining(a),0))+
+       ' '+btn("Atsiskaityti","work-payment","btn small","data-id=\'"+esc(p.id)+"\'")+'</div>'+
       '<hr class="section-divider"><div class="actions">'+btn("Odontograma","patient-odontogram","btn small")+btn("Klinikiniai įrašai","patient-notes","btn small")+btn("Dokumentai ir parašai","patient-documents","btn small")+btn("VLK / PSDF","patient-vlk","btn small")+btn("+ Vizitas","new-appt","btn primary small")+'</div><h3 style="margin-top:24px">Apsilankymų istorija</h3>'+eventRows(items.slice(0,5));
   }else if(ui.patientTab==="history"){
     out+=eventRows(items);
@@ -420,7 +427,9 @@ function viewForms(){
      (latest?btn("Peržiūrėti","view-form","btn small","data-id=\'"+esc(latest.id)+"\'"):"")+'</div></div>';
  });
  return page("Paciento dokumentai","Keturi atskiri dokumentai su demonstraciniu paciento parašu")+
-   '<div class="panel"><div class="search-line">'+patientPicker()+'</div><div class="notice">Registracijos dokumentai: <b>'+checklist.filter(x=>x.signed).length+'/3</b> pasirašyti (demo). Invazinės procedūros sutikimas – tik konkrečiam gydymui.</div><p class="help">Pacientas: <b>'+esc(name(p.id))+
+   '<div class="panel"><div class="search-line">'+patientPicker()+'</div><div class="notice">Registracijos dokumentai: <b>'+checklist.filter(x=>x.signed).length+'/3</b> pasirašyti (demo).'+
+   (p.healthReviewRequired?'<b> Sveikatos anketa pažymėta peržiūrai.</b>':"")+
+   ' Invazinės procedūros sutikimas – tik konkrečiam gydymui.</div><p class="help">Pacientas: <b>'+esc(name(p.id))+
    '</b>. Dokumentai išsaugomi tik šios naršyklės demonstracinėje saugykloje. Nėra asmens tapatybės patvirtinimo ar kvalifikuoto elektroninio parašo.</p>'+
    '<div class="notice warn">NEVESTI realių pacientų sveikatos duomenų, tikrus parašus ar tapatybės informaciją. Klinikos vadovas turi patvirtinti realias formas ir jų versijas prieš naudojimą.</div>'+
    items.join("")+'</div><section class="panel"><h2>Pasirašymo istorija</h2>'+
@@ -538,7 +547,10 @@ function saveRegistrationForm(){
  const signed={id:uid("form"),version:FORM_VERSION,type,patientId,clinicId:db.patients.find(p=>p.id===patientId)?.clinicIds[0],
  planId:type==="invasive"?(ui.modal.planId||""):"",planItemId:type==="invasive"?(ui.modal.planItemId||""):"",
  documentText:FORM_DISCLOSURES[type],answers,signature:ui.modal.signature,signedAt:new Date().toISOString(),demo:true};
- update("Pasirašytas demo paciento dokumentas",signed.id,s=>{s.forms??=[];s.forms.push(signed)});
+ update("Pasirašytas demo paciento dokumentas",signed.id,s=>{
+    s.forms??=[];s.forms.push(signed);
+    if(type==="health"){const patient=s.patients.find(p=>p.id===patientId);if(patient)patient.healthReviewRequired=false}
+  });
  ui.modal=null;ui.route="forms";render();notify("Dokumentas pasirašytas (tik demo).");
 }
 function viewCompensation(){
@@ -746,7 +758,8 @@ function viewDrawer(){
       '<div class="field"><label>Telefonas (išgalvotas)</label><input name="phone" maxlength="45" value="'+esc(a.phone||"")+'"></div>'+
       '<div class="field full"><label>El. paštas (išgalvotas)</label><input type="text" name="email" value="'+esc(a.email||"")+'"></div>'+
       '<div class="field full"><label>Klinika</label><div class="flex">'+db.clinics.map(c=>'<label style="font-weight:400"><input name="clinicIds" type="checkbox" value="'+c.id+'" '+(a.clinicIds.includes(c.id)?"checked":"")+'>'+esc(c.name)+'</label>').join("")+'</div></div>'+
-      '<div class="field full"><label>Pastabos / įspėjimai (tik demo)</label><textarea name="alerts">'+esc(a.alerts||"")+'</textarea></div></div>'+
+      '<div class="field full"><label>Pastabos / įspėjimai (tik demo)</label><textarea name="alerts">'+esc(a.alerts||"")+'</textarea></div>'+
+       '<div class="field full"><label><input type="checkbox" name="healthReviewRequired" '+(a.healthReviewRequired?"checked":"")+'> Reikia peržiūrėti sveikatos anketą prieš kitą vizitą</label></div></div>'+
       '<div class="drawer-footer">'+btn("Išsaugoti pacientą","save-patient","btn primary")+'</div></form>');
   }
   if(d.kind==="doctor"){
@@ -985,7 +998,7 @@ function savePatient(){
   const dupe=duplicatePatients(db.patients,{firstName:v.firstName,lastName:v.lastName,birthDate:v.birthDate,phone:v.phone},old?.id);
   if(dupe.length&&!confirm("Galimas pasikartojantis pacientas: "+dupe.map(x=>name(x.id)).join(", ")+". Vis tiek tęsti?"))return;
   const p={id:old?.id||uid("p"),firstName:v.firstName.trim(),lastName:v.lastName.trim(),birthDate:v.birthDate||"",
-    phone:v.phone?.trim()||"",email:v.email?.trim()||"",alerts:v.alerts?.trim()||"",clinicIds:ids,createdAt:old?.createdAt||isoDate(),synthetic:true};
+    phone:v.phone?.trim()||"",email:v.email?.trim()||"",alerts:v.alerts?.trim()||"",healthReviewRequired:v.healthReviewRequired==="on",clinicIds:ids,createdAt:old?.createdAt||isoDate(),synthetic:true};
   update(old?"Atnaujinta paciento kortelė":"Sukurtas demo pacientas",p.id,s=>{
     const i=s.patients.findIndex(x=>x.id===p.id);if(i>=0)s.patients[i]=p;else s.patients.push(p);
   });
@@ -1457,7 +1470,7 @@ function handleAction(target,event){
     case "work-patient":ui.patient=id;ui.patientTab="overview";route("patients");break;
     case "work-documents":ui.patient=id;route("forms");break;
     case "work-payment":{
-      ui.patient=id;
+      ui.patient=id||ui.patient;
       const item=db.invoices.find(i=>i.patientId===id&&invoiceOutstanding(i,invoiceTotal(i))>0.001);
       if(item)modal("invoice",item.id);else modal("invoice");
       break;
